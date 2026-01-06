@@ -295,7 +295,8 @@ export function UnconnectedGitHubConnector({
             <span className="font-medium">GitHub Integration</span>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            GitHub integration requires authentication. Configure your GitHub access token in settings to connect repositories.
+            GitHub integration requires authentication. Configure your GitHub
+            access token in settings to connect repositories.
           </p>
           <Button
             variant="outline"
@@ -317,7 +318,8 @@ export function UnconnectedGitHubConnector({
     <div className="w-full" data-testid="github-setup-repo">
       <div className="p-4 border rounded-md bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          GitHub repository setup is available. Use the settings panel to configure your repository connection.
+          GitHub repository setup is available. Use the settings panel to
+          configure your repository connection.
         </p>
       </div>
     </div>

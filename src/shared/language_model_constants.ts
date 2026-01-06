@@ -289,7 +289,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       maxOutputTokens: 32_000,
       contextWindow: 128_000,
       temperature: 0,
-    }
+    },
   ],
   azure: [
     {

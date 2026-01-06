@@ -38,7 +38,9 @@ export function useRunApp() {
       if (proxyUrlMatch && proxyUrlMatch[1]) {
         const proxyUrl = proxyUrlMatch[1];
         const originalUrl = originalUrlMatch && originalUrlMatch[1];
-        console.log(`🌐 [APP_URL] Setting app URL - proxyUrl: ${proxyUrl}, appId: ${output.appId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+        console.log(
+          `🌐 [APP_URL] Setting app URL - proxyUrl: ${proxyUrl}, appId: ${output.appId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+        );
         setAppUrlObj({
           appUrl: proxyUrl,
           appId: output.appId,
@@ -221,7 +223,9 @@ export function useRunApp() {
   );
 
   const refreshAppIframe = useCallback(async () => {
-    console.log(`🔄 [REFRESH_IFRAME] Incrementing previewPanelKey, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    console.log(
+      `🔄 [REFRESH_IFRAME] Incrementing previewPanelKey, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+    );
     setPreviewPanelKey((prevKey) => prevKey + 1);
   }, [setPreviewPanelKey]);
 

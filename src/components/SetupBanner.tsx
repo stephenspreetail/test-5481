@@ -123,9 +123,7 @@ export function SetupBanner() {
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
                   {getStatusIcon(isAnyProviderSetup())}
-                  <span className="font-medium text-sm">
-                    Setup AI Access
-                  </span>
+                  <span className="font-medium text-sm">Setup AI Access</span>
                 </div>
               </div>
             </AccordionTrigger>

@@ -8,7 +8,11 @@
 import Fastify from "fastify";
 import { streamQuery } from "./agent.js";
 import { DevServerManager } from "./dev-server.js";
-import type { HealthResponse, QueryRequest, SystemPromptConfig } from "./types.js";
+import type {
+  HealthResponse,
+  QueryRequest,
+  SystemPromptConfig,
+} from "./types.js";
 import { DEFAULT_TOOLS } from "./types.js";
 
 // Configuration from environment
@@ -55,7 +59,8 @@ app.get<{ Reply: HealthResponse }>("/health", async () => {
  * Returns Server-Sent Events stream
  */
 app.post<{ Body: QueryRequest }>("/query", async (request, reply) => {
-  const { prompt, sessionId, chatId, allowedTools, systemPrompt } = request.body;
+  const { prompt, sessionId, chatId, allowedTools, systemPrompt } =
+    request.body;
 
   if (!prompt) {
     reply.status(400).send({ error: "prompt is required" });
@@ -76,7 +81,10 @@ app.post<{ Body: QueryRequest }>("/query", async (request, reply) => {
   };
 
   try {
-    request.log.info({ chatId, sessionId, prompt: prompt.substring(0, 100) }, "Starting agent query");
+    request.log.info(
+      { chatId, sessionId, prompt: prompt.substring(0, 100) },
+      "Starting agent query",
+    );
 
     for await (const event of streamQuery(prompt, {
       cwd: WORKSPACE_DIR,
@@ -108,7 +116,8 @@ app.post("/dev-server/start", async (request, reply) => {
     return { success: true, status: devServerManager.getStatus() };
   } catch (error) {
     reply.status(500).send({
-      error: error instanceof Error ? error.message : "Failed to start dev server",
+      error:
+        error instanceof Error ? error.message : "Failed to start dev server",
     });
   }
 });
@@ -122,7 +131,8 @@ app.post("/dev-server/stop", async (request, reply) => {
     return { success: true, status: devServerManager.getStatus() };
   } catch (error) {
     reply.status(500).send({
-      error: error instanceof Error ? error.message : "Failed to stop dev server",
+      error:
+        error instanceof Error ? error.message : "Failed to stop dev server",
     });
   }
 });
@@ -136,7 +146,8 @@ app.post("/dev-server/restart", async (request, reply) => {
     return { success: true, status: devServerManager.getStatus() };
   } catch (error) {
     reply.status(500).send({
-      error: error instanceof Error ? error.message : "Failed to restart dev server",
+      error:
+        error instanceof Error ? error.message : "Failed to restart dev server",
     });
   }
 });

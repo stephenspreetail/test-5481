@@ -41,7 +41,7 @@ class SecretService {
     const decipher = crypto.createDecipheriv(
       "aes-256-gcm",
       this.masterKey,
-      Buffer.from(data.iv, "hex")
+      Buffer.from(data.iv, "hex"),
     );
     decipher.setAuthTag(Buffer.from(data.authTag, "hex"));
 
@@ -61,7 +61,7 @@ class SecretService {
   async setUserSecret(
     userId: number,
     key: string,
-    value: string
+    value: string,
   ): Promise<void> {
     const encrypted = this.encrypt(value);
 
@@ -135,11 +135,7 @@ class SecretService {
   /**
    * Set an environment variable for an app
    */
-  async setAppEnvVar(
-    appId: number,
-    key: string,
-    value: string
-  ): Promise<void> {
+  async setAppEnvVar(appId: number, key: string, value: string): Promise<void> {
     const encrypted = this.encrypt(value);
 
     await db

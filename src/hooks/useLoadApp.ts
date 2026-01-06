@@ -31,16 +31,19 @@ export function useLoadApp(appId: number | null) {
   });
 
   // Handle app name update from WebSocket
-  const handleAppNameUpdate = useCallback((updatedAppId: number, name: string) => {
-    if (appId === updatedAppId) {
-      // Update the query cache directly for immediate UI update
-      queryClient.setQueryData<App | null>(["app", appId], (old) =>
-        old ? { ...old, name } : null
-      );
-      // Also update the atom
-      setApp((prev) => prev ? { ...prev, name } : null);
-    }
-  }, [appId, queryClient, setApp]);
+  const handleAppNameUpdate = useCallback(
+    (updatedAppId: number, name: string) => {
+      if (appId === updatedAppId) {
+        // Update the query cache directly for immediate UI update
+        queryClient.setQueryData<App | null>(["app", appId], (old) =>
+          old ? { ...old, name } : null,
+        );
+        // Also update the atom
+        setApp((prev) => (prev ? { ...prev, name } : null));
+      }
+    },
+    [appId, queryClient, setApp],
+  );
 
   // Subscribe to app name updates
   useEffect(() => {

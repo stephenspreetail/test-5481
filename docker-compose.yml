@@ -4,7 +4,7 @@ services:
     image: traefik:v3.0
     container_name: kova-traefik
     ports:
-      - "8081:8081"   # Preview access (app-{id}.localhost:8081) + Dashboard (traefik.localhost:8081)
+      - "8081:8081" # Preview access (app-{id}.localhost:8081) + Dashboard (traefik.localhost:8081)
     volumes:
       # Static config
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro

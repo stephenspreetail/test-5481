@@ -18,8 +18,13 @@ export function isRandomAppName(name: string): boolean {
 /**
  * Generate a short, descriptive name for an app based on the user's first message
  */
-export async function generateAppName(userPrompt: string): Promise<string | null> {
-  console.log("[TitleGenerator] Generating app name for prompt:", userPrompt.slice(0, 100));
+export async function generateAppName(
+  userPrompt: string,
+): Promise<string | null> {
+  console.log(
+    "[TitleGenerator] Generating app name for prompt:",
+    userPrompt.slice(0, 100),
+  );
 
   if (!anthropic) {
     console.warn("[TitleGenerator] No Anthropic API key configured");
@@ -55,7 +60,10 @@ User's request: "${userPrompt.slice(0, 500)}"`,
     // Ensure name is not too long
     return name.length > 50 ? name.slice(0, 47) + "..." : name;
   } catch (error: any) {
-    console.error("[TitleGenerator] Failed to generate app name:", error?.message || error);
+    console.error(
+      "[TitleGenerator] Failed to generate app name:",
+      error?.message || error,
+    );
     return null;
   }
 }
@@ -64,7 +72,10 @@ User's request: "${userPrompt.slice(0, 500)}"`,
  * Generate a short, descriptive title for a chat based on the user's first message
  */
 export async function generateChatTitle(userPrompt: string): Promise<string> {
-  console.log("[TitleGenerator] Generating title for prompt:", userPrompt.slice(0, 100));
+  console.log(
+    "[TitleGenerator] Generating title for prompt:",
+    userPrompt.slice(0, 100),
+  );
 
   if (!anthropic) {
     console.warn("[TitleGenerator] No Anthropic API key configured");
@@ -96,7 +107,10 @@ User message: "${userPrompt.slice(0, 500)}"`,
     // Ensure title is not too long
     return title.length > 60 ? title.slice(0, 57) + "..." : title;
   } catch (error: any) {
-    console.error("[TitleGenerator] Failed to generate title:", error?.message || error);
+    console.error(
+      "[TitleGenerator] Failed to generate title:",
+      error?.message || error,
+    );
     return "New Chat";
   }
 }

@@ -50,7 +50,7 @@ export async function chatsRoutes(app: FastifyInstance) {
    */
   async function verifyChatOwnership(
     chatId: number,
-    userId: number
+    userId: number,
   ): Promise<{ chat: typeof chats.$inferSelect } | null> {
     const result = await db
       .select({
@@ -162,7 +162,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         .orderBy(messages.createdAt);
 
       return result;
-    }
+    },
   );
 
   /**
@@ -191,7 +191,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         .returning();
 
       reply.status(201).send(result[0]);
-    }
+    },
   );
 
   /**
@@ -224,8 +224,8 @@ export async function chatsRoutes(app: FastifyInstance) {
         .where(
           and(
             eq(messages.id, parseInt(messageId)),
-            eq(messages.chatId, parseInt(id))
-          )
+            eq(messages.chatId, parseInt(id)),
+          ),
         )
         .returning();
 
@@ -235,7 +235,7 @@ export async function chatsRoutes(app: FastifyInstance) {
       }
 
       return result[0];
-    }
+    },
   );
 
   /**
@@ -257,7 +257,7 @@ export async function chatsRoutes(app: FastifyInstance) {
       await db.delete(messages).where(eq(messages.chatId, parseInt(id)));
 
       return { success: true };
-    }
+    },
   );
 
   // =====================
@@ -284,7 +284,7 @@ export async function chatsRoutes(app: FastifyInstance) {
 
       // No approval required - agent executes autonomously
       return { proposal: null };
-    }
+    },
   );
 
   /**
@@ -304,7 +304,7 @@ export async function chatsRoutes(app: FastifyInstance) {
       }
 
       return { success: true };
-    }
+    },
   );
 
   /**
@@ -324,6 +324,6 @@ export async function chatsRoutes(app: FastifyInstance) {
       }
 
       return { success: true };
-    }
+    },
   );
 }

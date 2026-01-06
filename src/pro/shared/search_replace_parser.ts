@@ -17,12 +17,15 @@ export interface SearchReplaceBlock {
  * @param content The string containing search/replace blocks
  * @returns Array of parsed blocks with search and replace content
  */
-export function parseSearchReplaceBlocks(content: string): SearchReplaceBlock[] {
+export function parseSearchReplaceBlocks(
+  content: string,
+): SearchReplaceBlock[] {
   const blocks: SearchReplaceBlock[] = [];
 
   // Regex to match search/replace blocks
   // Handles both CRLF and LF line endings
-  const blockRegex = /<<<<<<< SEARCH\r?\n([\s\S]*?)=======\r?\n([\s\S]*?)>>>>>>> REPLACE/g;
+  const blockRegex =
+    /<<<<<<< SEARCH\r?\n([\s\S]*?)=======\r?\n([\s\S]*?)>>>>>>> REPLACE/g;
 
   let match;
   while ((match = blockRegex.exec(content)) !== null) {

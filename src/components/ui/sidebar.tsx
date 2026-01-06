@@ -456,8 +456,7 @@ const sidebarMenuButtonVariants = cva(
     variants: {
       variant: {
         default: "hover:bg-card hover:shadow-sm",
-        outline:
-          "bg-card shadow-sm hover:shadow-md",
+        outline: "bg-card shadow-sm hover:shadow-md",
       },
       size: {
         default: "h-8 text-sm",

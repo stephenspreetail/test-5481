@@ -25,29 +25,39 @@ export default function ChatPage() {
 
   // DIAGNOSTIC: Track ChatPage mount/unmount
   useEffect(() => {
-    console.log(`📄 [ChatPage] MOUNTED - chatId: ${chatId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    console.log(
+      `📄 [ChatPage] MOUNTED - chatId: ${chatId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+    );
     return () => {
-      console.log(`📄 [ChatPage] UNMOUNTED - chatId: ${chatId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+      console.log(
+        `📄 [ChatPage] UNMOUNTED - chatId: ${chatId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+      );
     };
   }, []);
 
   // DIAGNOSTIC: Track chatId changes
   useEffect(() => {
-    console.log(`📄 [ChatPage] chatId changed to: ${chatId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    console.log(
+      `📄 [ChatPage] chatId changed to: ${chatId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+    );
   }, [chatId]);
 
   useEffect(() => {
     if (!chatId && chats.length && !loading) {
       // Not a real navigation, just a redirect, when the user navigates to /chat
       // without a chatId, we redirect to the first chat
-      console.log(`📄 [ChatPage] No chatId, redirecting to first chat: ${chats[0].id}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+      console.log(
+        `📄 [ChatPage] No chatId, redirecting to first chat: ${chats[0].id}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+      );
       setSelectedAppId(chats[0].appId);
       navigate({ to: "/chat", search: { id: chats[0].id }, replace: true });
     }
   }, [chatId, chats, loading, navigate]);
 
   useEffect(() => {
-    console.log(`📄 [ChatPage] isPreviewOpen changed to: ${isPreviewOpen}, expanding/collapsing panel, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    console.log(
+      `📄 [ChatPage] isPreviewOpen changed to: ${isPreviewOpen}, expanding/collapsing panel, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+    );
     if (isPreviewOpen) {
       ref.current?.expand();
     } else {

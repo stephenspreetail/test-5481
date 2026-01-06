@@ -14,11 +14,11 @@ export function useChats(appId: number | null) {
     (chatId: number, title: string) => {
       setChats((prevChats) =>
         prevChats.map((chat) =>
-          chat.id === chatId ? { ...chat, title } : chat
-        )
+          chat.id === chatId ? { ...chat, title } : chat,
+        ),
       );
     },
-    [setChats]
+    [setChats],
   );
 
   useEffect(() => {

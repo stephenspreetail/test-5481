@@ -155,15 +155,21 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
   // DIAGNOSTIC: Track PreviewIframe mount/unmount
   useEffect(() => {
-    console.log(`🖼️ [PreviewIframe] MOUNTED - selectedAppId: ${selectedAppId}, appUrl: ${appUrl}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    console.log(
+      `🖼️ [PreviewIframe] MOUNTED - selectedAppId: ${selectedAppId}, appUrl: ${appUrl}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+    );
     return () => {
-      console.log(`🖼️ [PreviewIframe] UNMOUNTED - selectedAppId: ${selectedAppId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+      console.log(
+        `🖼️ [PreviewIframe] UNMOUNTED - selectedAppId: ${selectedAppId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+      );
     };
   }, []);
 
   // DIAGNOSTIC: Track appUrl changes
   useEffect(() => {
-    console.log(`🖼️ [PreviewIframe] appUrl changed to: ${appUrl}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    console.log(
+      `🖼️ [PreviewIframe] appUrl changed to: ${appUrl}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+    );
   }, [appUrl]);
   const setAppOutput = useSetAtom(appOutputAtom);
   // State to trigger iframe reload

@@ -41,7 +41,9 @@ export interface SystemPromptConfig {
 /**
  * Construct the system prompt config for the Claude Agent SDK
  */
-export function constructSystemPromptConfig(customAppend?: string): SystemPromptConfig {
+export function constructSystemPromptConfig(
+  customAppend?: string,
+): SystemPromptConfig {
   return {
     type: "preset",
     preset: "claude_code",

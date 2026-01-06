@@ -34,9 +34,7 @@ export function NeonConnector() {
             <Button
               variant="outline"
               onClick={() => {
-                getClient().openExternalUrl(
-                  "https://console.neon.tech/",
-                );
+                getClient().openExternalUrl("https://console.neon.tech/");
               }}
               className="ml-2 px-2 py-1 h-8 mb-2"
               style={{ display: "inline-flex", alignItems: "center" }}

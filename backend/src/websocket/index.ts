@@ -65,17 +65,15 @@ export async function setupWebSocket(app: FastifyInstance) {
         const message: WebSocketMessage = JSON.parse(data.toString());
 
         if (!ws.userId) {
-          ws.send(JSON.stringify({ type: "error", error: "Not authenticated" }));
+          ws.send(
+            JSON.stringify({ type: "error", error: "Not authenticated" }),
+          );
           return;
         }
 
         switch (message.type) {
           case "chat:stream":
-            await handleChatStream(
-              ws,
-              ws.userId,
-              message as ChatStreamMessage
-            );
+            await handleChatStream(ws, ws.userId, message as ChatStreamMessage);
             break;
 
           case "chat:cancel":
@@ -105,7 +103,7 @@ export async function setupWebSocket(app: FastifyInstance) {
               JSON.stringify({
                 type: "error",
                 error: `Unknown message type: ${message.type}`,
-              })
+              }),
             );
         }
       } catch (err: any) {
@@ -114,7 +112,7 @@ export async function setupWebSocket(app: FastifyInstance) {
           JSON.stringify({
             type: "error",
             error: err.message || "Invalid message",
-          })
+          }),
         );
       }
     });
@@ -136,7 +134,7 @@ export async function setupWebSocket(app: FastifyInstance) {
         type: "connected",
         userId: ws.userId,
         timestamp: Date.now(),
-      })
+      }),
     );
   });
 }

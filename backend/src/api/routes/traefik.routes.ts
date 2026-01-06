@@ -71,15 +71,19 @@ export async function traefikRoutes(app: FastifyInstance): Promise<void> {
       // Log if container count changed or heartbeat interval passed
       const timestamp = new Date().toLocaleString();
       if (containerCount !== lastContainerCount) {
-        console.log(`[${timestamp}] [Traefik] Route config updated: ${containerCount} container(s) active`);
+        console.log(
+          `[${timestamp}] [Traefik] Route config updated: ${containerCount} container(s) active`,
+        );
         lastContainerCount = containerCount;
         lastHeartbeatLog = now;
       } else if (now - lastHeartbeatLog >= TRAEFIK_HEARTBEAT_INTERVAL_MS) {
-        console.log(`[${timestamp}] [Traefik] ${containerCount} container(s) active`);
+        console.log(
+          `[${timestamp}] [Traefik] ${containerCount} container(s) active`,
+        );
         lastHeartbeatLog = now;
       }
 
       return reply.send(traefikConfig);
-    }
+    },
   );
 }

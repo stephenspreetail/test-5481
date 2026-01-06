@@ -99,10 +99,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Graceful shutdown hook
   app.addHook("onClose", async () => {
     if (config.NODE_ENV === "development") {
-      app.log.info(`Shutting down kova-app-container service (${config.NODE_ENV} mode)...`);
+      app.log.info(
+        `Shutting down kova-app-container service (${config.NODE_ENV} mode)...`,
+      );
       await appContainerService.shutdown();
     } else {
-      app.log.info(`Don't shutdown kova-app-container services (${config.NODE_ENV} mode)...`);
+      app.log.info(
+        `Don't shutdown kova-app-container services (${config.NODE_ENV} mode)...`,
+      );
     }
   });
 

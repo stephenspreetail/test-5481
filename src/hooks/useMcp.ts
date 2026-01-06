@@ -35,7 +35,9 @@ export function useMcp() {
     queryFn: async () => {
       const client = getClient();
       const entries = await Promise.all(
-        serverIds.map(async (id) => [id, await client.listMcpTools(id)] as const),
+        serverIds.map(
+          async (id) => [id, await client.listMcpTools(id)] as const,
+        ),
       );
       return Object.fromEntries(entries) as Record<number, McpTool[]>;
     },

@@ -73,7 +73,7 @@ export function unsubscribeFromAllApps(ws: WebSocket) {
 export async function handleAppInput(
   ws: WebSocket,
   userId: number,
-  message: AppInputMessage
+  message: AppInputMessage,
 ) {
   const { appId, response } = message;
 
@@ -98,7 +98,7 @@ export async function handleAppInput(
 export function broadcastAppOutput(
   appId: number,
   outputType: AppOutputMessage["outputType"],
-  message: string
+  message: string,
 ) {
   const subscribers = appSubscriptions.get(appId);
   if (!subscribers || subscribers.size === 0) {
@@ -126,7 +126,7 @@ export function broadcastAppStatus(
   appId: number,
   status: AppStatusMessage["status"],
   url?: string,
-  error?: string
+  error?: string,
 ) {
   // Update running apps state
   if (status === "stopped") {
@@ -160,7 +160,7 @@ function sendStatus(
   ws: WebSocket,
   appId: number,
   status: AppStatusMessage["status"],
-  url?: string
+  url?: string,
 ) {
   const statusMsg: AppStatusMessage = {
     type: "app:status",

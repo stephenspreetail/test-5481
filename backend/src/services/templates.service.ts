@@ -40,10 +40,12 @@ export async function fetchApiTemplates(): Promise<Template[]> {
   // Start new fetch
   apiTemplatesFetchPromise = (async (): Promise<Template[]> => {
     try {
-      const response = await fetch("https://api.spreetail.com/kova/v1/templates");
+      const response = await fetch(
+        "https://api.spreetail.com/kova/v1/templates",
+      );
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch templates: ${response.status} ${response.statusText}`
+          `Failed to fetch templates: ${response.status} ${response.statusText}`,
         );
       }
 
@@ -70,12 +72,14 @@ export async function getAllTemplates(): Promise<Template[]> {
   return [...localTemplatesData, ...apiTemplates];
 }
 
-export async function getTemplateOrThrow(templateId: string): Promise<Template> {
+export async function getTemplateOrThrow(
+  templateId: string,
+): Promise<Template> {
   const allTemplates = await getAllTemplates();
   const template = allTemplates.find((template) => template.id === templateId);
   if (!template) {
     throw new Error(
-      `Template ${templateId} not found. Please select a different template.`
+      `Template ${templateId} not found. Please select a different template.`,
     );
   }
   return template;

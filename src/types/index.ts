@@ -291,7 +291,6 @@ export const UserBudgetInfoSchema = z.object({
 });
 export type UserBudgetInfo = z.infer<typeof UserBudgetInfoSchema>;
 
-
 export interface AppUpgrade {
   id: string;
   title: string;
@@ -552,4 +551,3 @@ export interface SelectNodeFolderResult {
   canceled?: boolean;
   selectedPath: string | null;
 }
-

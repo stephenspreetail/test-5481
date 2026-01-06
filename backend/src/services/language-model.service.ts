@@ -97,7 +97,7 @@ class LanguageModelService {
    */
   async createProvider(
     userId: number,
-    params: CreateProviderParams
+    params: CreateProviderParams,
   ): Promise<LanguageModelProvider> {
     const { id, name, apiBaseUrl, envVarName } = params;
 
@@ -114,8 +114,8 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModelProviders.id, fullId),
-          eq(languageModelProviders.userId, userId)
-        )
+          eq(languageModelProviders.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -146,7 +146,7 @@ class LanguageModelService {
    */
   async updateProvider(
     userId: number,
-    params: CreateProviderParams
+    params: CreateProviderParams,
   ): Promise<LanguageModelProvider> {
     const { id, name, apiBaseUrl, envVarName } = params;
 
@@ -163,8 +163,8 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModelProviders.id, fullId),
-          eq(languageModelProviders.userId, userId)
-        )
+          eq(languageModelProviders.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -184,8 +184,8 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModelProviders.id, fullId),
-          eq(languageModelProviders.userId, userId)
-        )
+          eq(languageModelProviders.userId, userId),
+        ),
       )
       .returning();
 
@@ -215,8 +215,8 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModelProviders.id, providerId),
-          eq(languageModelProviders.userId, userId)
-        )
+          eq(languageModelProviders.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -231,8 +231,8 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModels.customProviderId, providerId),
-          eq(languageModels.userId, userId)
-        )
+          eq(languageModels.userId, userId),
+        ),
       );
 
     // Delete the provider
@@ -241,15 +241,18 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModelProviders.id, providerId),
-          eq(languageModelProviders.userId, userId)
-        )
+          eq(languageModelProviders.userId, userId),
+        ),
       );
   }
 
   /**
    * Get language models for a specific provider
    */
-  async getModels(userId: number, providerId: string): Promise<LanguageModel[]> {
+  async getModels(
+    userId: number,
+    providerId: string,
+  ): Promise<LanguageModel[]> {
     const providers = await this.getProviders(userId);
     const provider = providers.find((p) => p.id === providerId);
 
@@ -270,8 +273,8 @@ class LanguageModelService {
             eq(languageModels.userId, userId),
             isCustomProvider(providerId)
               ? eq(languageModels.customProviderId, providerId)
-              : eq(languageModels.builtinProviderId, providerId)
-          )
+              : eq(languageModels.builtinProviderId, providerId),
+          ),
         );
 
       customModels = customModelsDb.map((model) => ({
@@ -286,7 +289,7 @@ class LanguageModelService {
     } catch (error) {
       console.error(
         `Error fetching custom models for provider "${providerId}" from DB:`,
-        error
+        error,
       );
     }
 
@@ -310,7 +313,7 @@ class LanguageModelService {
    * Get all language models grouped by provider
    */
   async getModelsByProviders(
-    userId: number
+    userId: number,
   ): Promise<Record<string, LanguageModel[]>> {
     const providers = await this.getProviders(userId);
 
@@ -381,8 +384,8 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModels.apiName, apiName),
-          eq(languageModels.userId, userId)
-        )
+          eq(languageModels.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -395,8 +398,8 @@ class LanguageModelService {
       .where(
         and(
           eq(languageModels.apiName, apiName),
-          eq(languageModels.userId, userId)
-        )
+          eq(languageModels.userId, userId),
+        ),
       );
   }
 
@@ -406,7 +409,7 @@ class LanguageModelService {
   async deleteModel(
     userId: number,
     providerId: string,
-    modelApiName: string
+    modelApiName: string,
   ): Promise<void> {
     if (!providerId || !modelApiName) {
       throw new Error("Provider ID and Model API Name are required.");
@@ -429,8 +432,8 @@ class LanguageModelService {
           eq(languageModels.apiName, modelApiName),
           provider.type === "cloud"
             ? eq(languageModels.builtinProviderId, providerId)
-            : eq(languageModels.customProviderId, providerId)
-        )
+            : eq(languageModels.customProviderId, providerId),
+        ),
       );
   }
 }

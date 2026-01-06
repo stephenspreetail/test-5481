@@ -47,9 +47,13 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
           port: parseInt(url.port) || 2375,
         });
       } else if (dockerHost.startsWith("unix://")) {
-        this.docker = new Docker({ socketPath: dockerHost.replace("unix://", "") });
+        this.docker = new Docker({
+          socketPath: dockerHost.replace("unix://", ""),
+        });
       } else if (dockerHost.startsWith("npipe://")) {
-        this.docker = new Docker({ socketPath: dockerHost.replace("npipe://", "") });
+        this.docker = new Docker({
+          socketPath: dockerHost.replace("npipe://", ""),
+        });
       } else {
         this.docker = new Docker({ socketPath: dockerHost });
       }
@@ -63,14 +67,16 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
         "containers",
         "podman",
         "machine",
-        "machine"
+        "machine",
       );
 
       if (fs.existsSync(podmanKeyPath)) {
         // Use SSH connection to Podman machine
         // Default connection is to root@127.0.0.1:52853
         const sshPort = parseInt(process.env.PODMAN_SSH_PORT || "52853", 10);
-        console.log(`[PodmanOrchestrator] Using SSH connection on port ${sshPort}`);
+        console.log(
+          `[PodmanOrchestrator] Using SSH connection on port ${sshPort}`,
+        );
         this.docker = new Docker({
           protocol: "ssh",
           host: "127.0.0.1",
@@ -82,7 +88,9 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
         });
       } else {
         // Fallback to Docker's named pipe if no Podman SSH key found
-        console.log("[PodmanOrchestrator] Podman SSH key not found, trying Docker pipe");
+        console.log(
+          "[PodmanOrchestrator] Podman SSH key not found, trying Docker pipe",
+        );
         this.docker = new Docker({ socketPath: "//./pipe/docker_engine" });
       }
     } else {
@@ -98,7 +106,9 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
     // Verify connection to Docker/Podman
     try {
       const info = await this.docker.info();
-      console.log(`[PodmanOrchestrator] Connected to ${info.Name || "container engine"}`);
+      console.log(
+        `[PodmanOrchestrator] Connected to ${info.Name || "container engine"}`,
+      );
     } catch (error) {
       throw new Error(`Failed to connect to container engine: ${error}`);
     }
@@ -118,13 +128,17 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
     });
 
     if (networks.length === 0) {
-      console.log(`[PodmanOrchestrator] Creating network: ${this.config.networkName}`);
+      console.log(
+        `[PodmanOrchestrator] Creating network: ${this.config.networkName}`,
+      );
       await this.docker.createNetwork({
         Name: this.config.networkName,
         Driver: "bridge",
       });
     } else {
-      console.log(`[PodmanOrchestrator] Network exists: ${this.config.networkName}`);
+      console.log(
+        `[PodmanOrchestrator] Network exists: ${this.config.networkName}`,
+      );
     }
   }
 
@@ -141,7 +155,8 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
       if (!appIdLabel) continue;
 
       const appId = parseInt(appIdLabel, 10);
-      const containerName = containerData.Names[0]?.replace(/^\//, "") || `app-${appId}`;
+      const containerName =
+        containerData.Names[0]?.replace(/^\//, "") || `app-${appId}`;
 
       const state = this.mapContainerState(containerData.State);
 
@@ -154,7 +169,9 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
         lastActivityAt: Date.now(),
       });
 
-      console.log(`[PodmanOrchestrator] Discovered container: ${containerName} (${state})`);
+      console.log(
+        `[PodmanOrchestrator] Discovered container: ${containerName} (${state})`,
+      );
     }
   }
 
@@ -184,7 +201,9 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
     // Check if container already exists
     const existing = this.containers.get(config.appId);
     if (existing && existing.state === "running") {
-      console.log(`[PodmanOrchestrator] Container already running: ${containerName}`);
+      console.log(
+        `[PodmanOrchestrator] Container already running: ${containerName}`,
+      );
       existing.lastActivityAt = Date.now();
       return existing;
     }
@@ -200,7 +219,9 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
     }
 
     // Build environment array
-    const envArray = Object.entries(config.env).map(([key, value]) => `${key}=${value}`);
+    const envArray = Object.entries(config.env).map(
+      ([key, value]) => `${key}=${value}`,
+    );
 
     // Convert app path for bind mount
     const hostPath = toContainerPath(config.appPath);
@@ -219,7 +240,8 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
         "traefik.enable": "true",
         [`traefik.http.routers.${containerName}.rule`]: `Host(\`${containerName}.${this.config.previewDomain}\`)`,
         [`traefik.http.routers.${containerName}.entrypoints`]: "preview",
-        [`traefik.http.services.${containerName}.loadbalancer.server.port`]: this.config.devServerPort.toString(),
+        [`traefik.http.services.${containerName}.loadbalancer.server.port`]:
+          this.config.devServerPort.toString(),
       },
       HostConfig: {
         NetworkMode: this.config.networkName,
@@ -254,11 +276,16 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
     return containerInfo;
   }
 
-  private async waitForReady(containerInfo: ContainerInfo, timeoutMs = 30000): Promise<void> {
+  private async waitForReady(
+    containerInfo: ContainerInfo,
+    timeoutMs = 30000,
+  ): Promise<void> {
     const startTime = Date.now();
     const healthUrl = `${containerInfo.agentUrl}/health`;
 
-    console.log(`[PodmanOrchestrator] Waiting for container ready: ${healthUrl}`);
+    console.log(
+      `[PodmanOrchestrator] Waiting for container ready: ${healthUrl}`,
+    );
 
     while (Date.now() - startTime < timeoutMs) {
       try {
@@ -325,7 +352,10 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
       if (response.ok) {
         return { healthy: true };
       } else {
-        return { healthy: false, message: `Health check returned ${response.status}` };
+        return {
+          healthy: false,
+          message: `Health check returned ${response.status}`,
+        };
       }
     } catch (error) {
       return { healthy: false, message: `Health check failed: ${error}` };
@@ -346,14 +376,16 @@ export class PodmanOrchestrator implements ContainerOrchestrator {
       const idleTime = now - info.lastActivityAt;
       if (idleTime > maxIdleMs) {
         console.log(
-          `[PodmanOrchestrator] Cleaning up idle container: ${info.containerName} (idle ${Math.round(idleTime / 1000)}s)`
+          `[PodmanOrchestrator] Cleaning up idle container: ${info.containerName} (idle ${Math.round(idleTime / 1000)}s)`,
         );
 
         try {
           await this.stopContainer(info.containerId);
           cleanedCount++;
         } catch (error) {
-          console.error(`[PodmanOrchestrator] Failed to cleanup container: ${error}`);
+          console.error(
+            `[PodmanOrchestrator] Failed to cleanup container: ${error}`,
+          );
         }
       }
     }

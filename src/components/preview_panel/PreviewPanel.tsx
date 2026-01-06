@@ -87,11 +87,18 @@ export function PreviewPanel() {
 
   useEffect(() => {
     // DEBUG: Verify this is the fixed version with StrictMode handling
-    console.log("[PreviewPanel] useEffect running - BUILD-20260104-FIX-v3 - selectedAppId:", selectedAppId, "prevRef:", runningAppIdRef.current);
+    console.log(
+      "[PreviewPanel] useEffect running - BUILD-20260104-FIX-v3 - selectedAppId:",
+      selectedAppId,
+      "prevRef:",
+      runningAppIdRef.current,
+    );
 
     // Cancel any pending stop from a previous cleanup (handles StrictMode double-render)
     if (stopTimeoutRef.current) {
-      console.log("[PreviewPanel] Cancelling pending stop (StrictMode remount detected)");
+      console.log(
+        "[PreviewPanel] Cancelling pending stop (StrictMode remount detected)",
+      );
       clearTimeout(stopTimeoutRef.current);
       stopTimeoutRef.current = null;
     }
@@ -118,19 +125,33 @@ export function PreviewPanel() {
 
     // Cleanup function: Only runs on unmount now since selectedAppId is the only dep
     return () => {
-      console.log("[PreviewPanel] CLEANUP running - BUILD-20260104-FIX-v3 - currentRef:", runningAppIdRef.current, "selectedAppId at cleanup:", selectedAppId);
+      console.log(
+        "[PreviewPanel] CLEANUP running - BUILD-20260104-FIX-v3 - currentRef:",
+        runningAppIdRef.current,
+        "selectedAppId at cleanup:",
+        selectedAppId,
+      );
       const currentRunningApp = runningAppIdRef.current;
       if (currentRunningApp !== null) {
         // Delay the stop to handle React StrictMode's unmount/remount cycle
         // If component remounts quickly (StrictMode), the stop will be cancelled
-        console.debug("Scheduling app stop (will cancel if StrictMode remount):", currentRunningApp);
+        console.debug(
+          "Scheduling app stop (will cancel if StrictMode remount):",
+          currentRunningApp,
+        );
         stopTimeoutRef.current = setTimeout(() => {
           // Only stop if component is still unmounted after the delay
           if (!isMountedRef.current) {
-            console.debug("Component truly unmounted, stopping app", currentRunningApp);
+            console.debug(
+              "Component truly unmounted, stopping app",
+              currentRunningApp,
+            );
             stopAppRef.current(currentRunningApp);
           } else {
-            console.debug("Component remounted, skipping stop for app", currentRunningApp);
+            console.debug(
+              "Component remounted, skipping stop for app",
+              currentRunningApp,
+            );
           }
           stopTimeoutRef.current = null;
         }, 100); // 100ms delay to detect StrictMode remount

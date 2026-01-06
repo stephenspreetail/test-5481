@@ -1,7 +1,10 @@
 import { getClient } from "@/client/api/client_factory";
 import { useEffect, useState } from "react";
 
-export function useLoadAppFile(appId: number | null | undefined, filePath: string | null | undefined) {
+export function useLoadAppFile(
+  appId: number | null | undefined,
+  filePath: string | null | undefined,
+) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);

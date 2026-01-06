@@ -58,7 +58,9 @@ export const userSecrets = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [unique("user_secrets_user_key_unique").on(table.userId, table.key)]
+  (table) => [
+    unique("user_secrets_user_key_unique").on(table.userId, table.key),
+  ],
 );
 
 // =====================
@@ -136,7 +138,7 @@ export const appEnvVars = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [unique("app_env_vars_app_key_unique").on(table.appId, table.key)]
+  (table) => [unique("app_env_vars_app_key_unique").on(table.appId, table.key)],
 );
 
 // =====================
@@ -193,7 +195,7 @@ export const versions = pgTable(
   },
   (table) => [
     unique("versions_app_commit_unique").on(table.appId, table.commitHash),
-  ]
+  ],
 );
 
 // =====================
@@ -226,7 +228,7 @@ export const languageModels = pgTable("language_models", {
   builtinProviderId: varchar("builtin_provider_id", { length: 100 }),
   customProviderId: varchar("custom_provider_id", { length: 100 }).references(
     () => languageModelProviders.id,
-    { onDelete: "cascade" }
+    { onDelete: "cascade" },
   ),
   description: text("description"),
   maxOutputTokens: integer("max_output_tokens"),
@@ -273,9 +275,9 @@ export const mcpToolConsents = pgTable(
   (table) => [
     unique("mcp_tool_consents_server_tool_unique").on(
       table.serverId,
-      table.toolName
+      table.toolName,
     ),
-  ]
+  ],
 );
 
 // =====================
@@ -333,7 +335,7 @@ export const languageModelProvidersRelations = relations(
       references: [users.id],
     }),
     languageModels: many(languageModels),
-  })
+  }),
 );
 
 export const languageModelsRelations = relations(languageModels, ({ one }) => ({
@@ -362,5 +364,5 @@ export const mcpToolConsentsRelations = relations(
       fields: [mcpToolConsents.serverId],
       references: [mcpServers.id],
     }),
-  })
+  }),
 );

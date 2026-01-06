@@ -21,7 +21,9 @@ initializeClient({
   onUnauthorized: () => {
     // TODO: Implement login page and redirect
     // For now, log the error instead of redirecting to avoid loop
-    console.warn("Unauthorized - authentication required. Login page not yet implemented.");
+    console.warn(
+      "Unauthorized - authentication required. Login page not yet implemented.",
+    );
     // window.location.href = "/login";
   },
 });
@@ -31,21 +33,28 @@ console.log("Running in mode:", import.meta.env.MODE);
 
 // DIAGNOSTIC: Log page load time to detect full page reloads
 const PAGE_LOAD_ID = `page-load-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-console.log(`🔄 [PAGE_LOAD] NEW PAGE LOAD - ID: ${PAGE_LOAD_ID} - timestamp: ${new Date().toISOString()}`);
+console.log(
+  `🔄 [PAGE_LOAD] NEW PAGE LOAD - ID: ${PAGE_LOAD_ID} - timestamp: ${new Date().toISOString()}`,
+);
 
 // DIAGNOSTIC: Track Vite HMR events
 if (import.meta.hot) {
   console.log(`🔥 [VITE_HMR] HMR is enabled - PAGE_ID: ${PAGE_LOAD_ID}`);
 
-  import.meta.hot.on('vite:beforeFullReload', () => {
-    console.log(`🔥 [VITE_HMR] FULL RELOAD TRIGGERED by Vite - PAGE_ID: ${PAGE_LOAD_ID}`);
+  import.meta.hot.on("vite:beforeFullReload", () => {
+    console.log(
+      `🔥 [VITE_HMR] FULL RELOAD TRIGGERED by Vite - PAGE_ID: ${PAGE_LOAD_ID}`,
+    );
   });
 
-  import.meta.hot.on('vite:beforeUpdate', (payload) => {
-    console.log(`🔥 [VITE_HMR] Hot update incoming - PAGE_ID: ${PAGE_LOAD_ID}`, payload);
+  import.meta.hot.on("vite:beforeUpdate", (payload) => {
+    console.log(
+      `🔥 [VITE_HMR] Hot update incoming - PAGE_ID: ${PAGE_LOAD_ID}`,
+      payload,
+    );
   });
 
-  import.meta.hot.on('vite:error', (payload) => {
+  import.meta.hot.on("vite:error", (payload) => {
     console.log(`🔥 [VITE_HMR] Error - PAGE_ID: ${PAGE_LOAD_ID}`, payload);
   });
 }
@@ -53,22 +62,32 @@ window.__KOVA_PAGE_LOAD_ID = PAGE_LOAD_ID;
 window.__KOVA_PAGE_LOAD_TIME = Date.now();
 
 // DIAGNOSTIC: Track beforeunload events to detect navigation away
-window.addEventListener('beforeunload', (event) => {
-  console.log(`⚠️ [PAGE_UNLOAD] Page is being unloaded - PAGE_ID: ${PAGE_LOAD_ID} - timestamp: ${new Date().toISOString()}`);
+window.addEventListener("beforeunload", (event) => {
+  console.log(
+    `⚠️ [PAGE_UNLOAD] Page is being unloaded - PAGE_ID: ${PAGE_LOAD_ID} - timestamp: ${new Date().toISOString()}`,
+  );
 });
 
 // DIAGNOSTIC: Track visibility changes
-document.addEventListener('visibilitychange', () => {
-  console.log(`👁️ [VISIBILITY] Page visibility changed to: ${document.visibilityState} - PAGE_ID: ${PAGE_LOAD_ID}`);
+document.addEventListener("visibilitychange", () => {
+  console.log(
+    `👁️ [VISIBILITY] Page visibility changed to: ${document.visibilityState} - PAGE_ID: ${PAGE_LOAD_ID}`,
+  );
 });
 
 // DIAGNOSTIC: Track uncaught errors
-window.addEventListener('error', (event) => {
-  console.log(`❌ [ERROR] Uncaught error - PAGE_ID: ${PAGE_LOAD_ID}`, event.error);
+window.addEventListener("error", (event) => {
+  console.log(
+    `❌ [ERROR] Uncaught error - PAGE_ID: ${PAGE_LOAD_ID}`,
+    event.error,
+  );
 });
 
-window.addEventListener('unhandledrejection', (event) => {
-  console.log(`❌ [REJECTION] Unhandled promise rejection - PAGE_ID: ${PAGE_LOAD_ID}`, event.reason);
+window.addEventListener("unhandledrejection", (event) => {
+  console.log(
+    `❌ [REJECTION] Unhandled promise rejection - PAGE_ID: ${PAGE_LOAD_ID}`,
+    event.reason,
+  );
 });
 
 // Extend window type for diagnostic properties
@@ -154,17 +173,23 @@ function App() {
   useEffect(() => {
     // DIAGNOSTIC: Log all router events
     const unsubOnBeforeLoad = router.subscribe("onBeforeLoad", (navigation) => {
-      console.log(`🧭 [ROUTER] onBeforeLoad - from: ${navigation.fromLocation?.pathname} to: ${navigation.toLocation.pathname}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+      console.log(
+        `🧭 [ROUTER] onBeforeLoad - from: ${navigation.fromLocation?.pathname} to: ${navigation.toLocation.pathname}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+      );
     });
 
     const unsubOnLoad = router.subscribe("onLoad", (navigation) => {
-      console.log(`🧭 [ROUTER] onLoad - from: ${navigation.fromLocation?.pathname} to: ${navigation.toLocation.pathname}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+      console.log(
+        `🧭 [ROUTER] onLoad - from: ${navigation.fromLocation?.pathname} to: ${navigation.toLocation.pathname}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+      );
     });
 
     // Subscribe to navigation state changes
     const unsubscribe = router.subscribe("onResolved", (navigation) => {
       // DIAGNOSTIC: Log all navigation events
-      console.log(`🧭 [ROUTER] onResolved - from: ${navigation.fromLocation?.pathname} to: ${navigation.toLocation.pathname}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+      console.log(
+        `🧭 [ROUTER] onResolved - from: ${navigation.fromLocation?.pathname} to: ${navigation.toLocation.pathname}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+      );
 
       // Capture the navigation event in PostHog
       posthog.capture("navigation", {

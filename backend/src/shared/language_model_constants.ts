@@ -54,7 +54,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "gpt-5.1",
       displayName: "GPT 5.1",
-      description: "OpenAI's flagship model- smarter, faster, and more conversational",
+      description:
+        "OpenAI's flagship model- smarter, faster, and more conversational",
       maxOutputTokens: undefined,
       contextWindow: 400_000,
       temperature: 1,
@@ -110,7 +111,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "claude-opus-4-5",
       displayName: "Claude Opus 4.5",
-      description: "Anthropic's best model for coding (note: this model is very expensive!)",
+      description:
+        "Anthropic's best model for coding (note: this model is very expensive!)",
       maxOutputTokens: 32_000,
       contextWindow: 200_000,
       temperature: 0,
@@ -119,7 +121,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "claude-sonnet-4-5-20250929",
       displayName: "Claude Sonnet 4.5",
-      description: "Anthropic's best model for coding (note: >200k tokens is very expensive!)",
+      description:
+        "Anthropic's best model for coding (note: >200k tokens is very expensive!)",
       maxOutputTokens: 32_000,
       contextWindow: 1_000_000,
       temperature: 0,
@@ -378,7 +381,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
       displayName: "Claude 4.5 Sonnet",
-      description: "Anthropic's best model for coding (note: >200k tokens is very expensive!)",
+      description:
+        "Anthropic's best model for coding (note: >200k tokens is very expensive!)",
       maxOutputTokens: 32_000,
       contextWindow: 1_000_000,
       temperature: 0,

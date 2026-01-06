@@ -51,7 +51,7 @@ export async function chatsRoutes(app: FastifyInstance) {
    */
   async function verifyChatOwnership(
     chatId: number,
-    userId: number
+    userId: number,
   ): Promise<{ chat: typeof chats.$inferSelect } | null> {
     const result = await db
       .select({
@@ -163,7 +163,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         .orderBy(messages.createdAt);
 
       return result;
-    }
+    },
   );
 
   /**
@@ -192,7 +192,7 @@ export async function chatsRoutes(app: FastifyInstance) {
         .returning();
 
       reply.status(201).send(result[0]);
-    }
+    },
   );
 
   /**
@@ -226,8 +226,8 @@ export async function chatsRoutes(app: FastifyInstance) {
         .where(
           and(
             eq(messages.id, parseInt(messageId)),
-            eq(messages.chatId, parseInt(id))
-          )
+            eq(messages.chatId, parseInt(id)),
+          ),
         )
         .returning();
 
@@ -237,7 +237,7 @@ export async function chatsRoutes(app: FastifyInstance) {
       }
 
       return result[0];
-    }
+    },
   );
 
   /**
@@ -259,7 +259,7 @@ export async function chatsRoutes(app: FastifyInstance) {
       await db.delete(messages).where(eq(messages.chatId, parseInt(id)));
 
       return { success: true };
-    }
+    },
   );
 
   // =====================
@@ -289,18 +289,21 @@ export async function chatsRoutes(app: FastifyInstance) {
         .where(
           and(
             eq(messages.chatId, parseInt(id)),
-            eq(messages.role, "assistant")
-          )
+            eq(messages.role, "assistant"),
+          ),
         )
         .orderBy(desc(messages.createdAt))
         .limit(1);
 
-      if (proposalMessages.length === 0 || proposalMessages[0].approvalState !== null) {
+      if (
+        proposalMessages.length === 0 ||
+        proposalMessages[0].approvalState !== null
+      ) {
         return { proposal: null };
       }
 
       return { proposal: proposalMessages[0].content };
-    }
+    },
   );
 
   /**
@@ -330,8 +333,8 @@ export async function chatsRoutes(app: FastifyInstance) {
         .where(
           and(
             eq(messages.id, body.messageId),
-            eq(messages.chatId, parseInt(id))
-          )
+            eq(messages.chatId, parseInt(id)),
+          ),
         )
         .returning();
 
@@ -344,7 +347,7 @@ export async function chatsRoutes(app: FastifyInstance) {
       // This will be implemented in Phase C
 
       return { success: true };
-    }
+    },
   );
 
   /**
@@ -374,8 +377,8 @@ export async function chatsRoutes(app: FastifyInstance) {
         .where(
           and(
             eq(messages.id, body.messageId),
-            eq(messages.chatId, parseInt(id))
-          )
+            eq(messages.chatId, parseInt(id)),
+          ),
         )
         .returning();
 
@@ -385,6 +388,6 @@ export async function chatsRoutes(app: FastifyInstance) {
       }
 
       return { success: true };
-    }
+    },
   );
 }

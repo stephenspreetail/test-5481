@@ -1,9 +1,6 @@
 import { getClient } from "@/client/api/client_factory";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX } from "@/shared/texts";
-import {
-  ExternalLink as ExternalLinkIcon,
-  X,
-} from "lucide-react";
+import { ExternalLink as ExternalLinkIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 

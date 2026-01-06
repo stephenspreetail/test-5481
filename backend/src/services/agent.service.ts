@@ -94,7 +94,7 @@ class AgentService {
    */
   async *streamQuery(
     prompt: string,
-    options: AgentQueryOptions = {}
+    options: AgentQueryOptions = {},
   ): AsyncGenerator<AgentStreamEvent> {
     const startTime = Date.now();
     let sessionId: string | undefined;
@@ -103,14 +103,21 @@ class AgentService {
       // Ensure PATH includes node's directory for Windows compatibility
       const env = { ...process.env } as Record<string, string>;
       const nodePath = process.execPath;
-      const nodeDir = nodePath.substring(0, nodePath.lastIndexOf(process.platform === 'win32' ? '\\' : '/'));
+      const nodeDir = nodePath.substring(
+        0,
+        nodePath.lastIndexOf(process.platform === "win32" ? "\\" : "/"),
+      );
       if (env.PATH && !env.PATH.includes(nodeDir)) {
-        env.PATH = `${nodeDir}${process.platform === 'win32' ? ';' : ':'}${env.PATH}`;
+        env.PATH = `${nodeDir}${process.platform === "win32" ? ";" : ":"}${env.PATH}`;
       }
 
       const queryOptions: {
         allowedTools?: string[];
-        permissionMode?: "default" | "bypassPermissions" | "acceptEdits" | "plan";
+        permissionMode?:
+          | "default"
+          | "bypassPermissions"
+          | "acceptEdits"
+          | "plan";
         allowDangerouslySkipPermissions?: boolean;
         cwd?: string;
         resume?: string;
@@ -225,7 +232,8 @@ class AgentService {
     } catch (error) {
       yield {
         type: "error",
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       };
     }
   }
@@ -235,7 +243,7 @@ class AgentService {
    */
   async executeQuery(
     prompt: string,
-    options: AgentQueryOptions = {}
+    options: AgentQueryOptions = {},
   ): Promise<AgentQueryResult> {
     let sessionId = "";
     let result = "";
@@ -270,7 +278,7 @@ class AgentService {
   async *resumeSession(
     sessionId: string,
     prompt: string,
-    options: Omit<AgentQueryOptions, "sessionId"> = {}
+    options: Omit<AgentQueryOptions, "sessionId"> = {},
   ): AsyncGenerator<AgentStreamEvent> {
     yield* this.streamQuery(prompt, {
       ...options,
@@ -285,7 +293,7 @@ class AgentService {
   async *forkSession(
     _originalSessionId: string,
     prompt: string,
-    options: Omit<AgentQueryOptions, "sessionId"> = {}
+    options: Omit<AgentQueryOptions, "sessionId"> = {},
   ): AsyncGenerator<AgentStreamEvent> {
     // Note: True session forking would require SDK support
     // For now, we start a fresh session with a prompt that references the context

@@ -27,37 +27,40 @@ export async function authRoutes(app: FastifyInstance) {
    * POST /api/auth/register
    * Register a new user
    */
-  app.post("/register", async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = registerSchema.parse(request.body);
+  app.post(
+    "/register",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = registerSchema.parse(request.body);
 
-    try {
-      const user = await authService.register(body.email, body.password);
+      try {
+        const user = await authService.register(body.email, body.password);
 
-      // Generate tokens
-      const accessToken = app.jwt.sign({
-        userId: user.id,
-        email: user.email,
-      } as JWTPayload);
-
-      const refreshToken = authService.generateRefreshToken();
-      await authService.storeRefreshToken(user.id, refreshToken);
-
-      return {
-        user: {
-          id: user.id,
+        // Generate tokens
+        const accessToken = app.jwt.sign({
+          userId: user.id,
           email: user.email,
-        },
-        accessToken,
-        refreshToken,
-      };
-    } catch (error: any) {
-      if (error.message === "User already exists") {
-        reply.status(409).send({ error: "User already exists" });
-        return;
+        } as JWTPayload);
+
+        const refreshToken = authService.generateRefreshToken();
+        await authService.storeRefreshToken(user.id, refreshToken);
+
+        return {
+          user: {
+            id: user.id,
+            email: user.email,
+          },
+          accessToken,
+          refreshToken,
+        };
+      } catch (error: any) {
+        if (error.message === "User already exists") {
+          reply.status(409).send({ error: "User already exists" });
+          return;
+        }
+        throw error;
       }
-      throw error;
-    }
-  });
+    },
+  );
 
   /**
    * POST /api/auth/login
@@ -142,7 +145,7 @@ export async function authRoutes(app: FastifyInstance) {
       const user = request.user!;
       await authService.revokeAllRefreshTokens(user.userId);
       return { success: true };
-    }
+    },
   );
 
   /**
@@ -166,7 +169,7 @@ export async function authRoutes(app: FastifyInstance) {
         email: userData.email,
         createdAt: userData.createdAt,
       };
-    }
+    },
   );
 
   /**
@@ -184,7 +187,7 @@ export async function authRoutes(app: FastifyInstance) {
         await authService.updatePassword(
           user.userId,
           body.currentPassword,
-          body.newPassword
+          body.newPassword,
         );
         return { success: true };
       } catch (error: any) {
@@ -194,7 +197,7 @@ export async function authRoutes(app: FastifyInstance) {
         }
         throw error;
       }
-    }
+    },
   );
 
   /**
@@ -208,6 +211,6 @@ export async function authRoutes(app: FastifyInstance) {
       const user = request.user!;
       await authService.deleteAccount(user.userId);
       return { success: true };
-    }
+    },
   );
 }

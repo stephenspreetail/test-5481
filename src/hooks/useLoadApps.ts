@@ -27,13 +27,14 @@ export function useLoadApps() {
   }, [setApps, setError, setLoading]);
 
   // Handle app name update from WebSocket
-  const handleAppNameUpdate = useCallback((appId: number, name: string) => {
-    setApps((prev) =>
-      prev.map((app) =>
-        app.id === appId ? { ...app, name } : app
-      )
-    );
-  }, [setApps]);
+  const handleAppNameUpdate = useCallback(
+    (appId: number, name: string) => {
+      setApps((prev) =>
+        prev.map((app) => (app.id === appId ? { ...app, name } : app)),
+      );
+    },
+    [setApps],
+  );
 
   // Subscribe to app name updates
   useEffect(() => {

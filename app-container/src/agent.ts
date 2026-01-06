@@ -28,9 +28,11 @@ export interface AgentQueryOptions {
  * Check if verbose logging is enabled
  */
 function isVerbose(): boolean {
-  return process.env.VERBOSE_AGENT_LOGGING === "true" ||
-         process.env.DEBUG_CLAUDE_AGENT_SDK === "true" ||
-         true; // Always verbose for now during debugging
+  return (
+    process.env.VERBOSE_AGENT_LOGGING === "true" ||
+    process.env.DEBUG_CLAUDE_AGENT_SDK === "true" ||
+    true
+  ); // Always verbose for now during debugging
 }
 
 /**
@@ -51,8 +53,12 @@ function log(category: string, message: string, data?: unknown): void {
 /**
  * Check if systemPrompt is a preset config object
  */
-function isPresetConfig(prompt: SystemPromptConfig | string | undefined): prompt is SystemPromptConfig {
-  return typeof prompt === "object" && prompt !== null && prompt.type === "preset";
+function isPresetConfig(
+  prompt: SystemPromptConfig | string | undefined,
+): prompt is SystemPromptConfig {
+  return (
+    typeof prompt === "object" && prompt !== null && prompt.type === "preset"
+  );
 }
 
 /**
@@ -92,7 +98,7 @@ function logSdkMessage(message: unknown): void {
  */
 export async function* streamQuery(
   prompt: string,
-  options: AgentQueryOptions
+  options: AgentQueryOptions,
 ): AsyncGenerator<AgentStreamEvent> {
   const startTime = Date.now();
   let sessionId: string | undefined;
@@ -127,7 +133,8 @@ export async function* streamQuery(
       systemPrompt?: SystemPromptConfig | string;
       maxTurns?: number;
     } = {
-      allowedTools: options.allowedTools || (DEFAULT_TOOLS as unknown as string[]),
+      allowedTools:
+        options.allowedTools || (DEFAULT_TOOLS as unknown as string[]),
       permissionMode: "bypassPermissions" as const,
       allowDangerouslySkipPermissions: true,
       cwd: absoluteCwd,
@@ -147,9 +154,9 @@ export async function* streamQuery(
     log("QUERY", "Calling Claude Agent SDK with options:", {
       ...queryOptions,
       systemPrompt: queryOptions.systemPrompt
-        ? (isPresetConfig(queryOptions.systemPrompt)
-            ? `[preset: ${queryOptions.systemPrompt.preset}, append: ${queryOptions.systemPrompt.append.length} chars]`
-            : `[legacy string: ${queryOptions.systemPrompt.length} chars]`)
+        ? isPresetConfig(queryOptions.systemPrompt)
+          ? `[preset: ${queryOptions.systemPrompt.preset}, append: ${queryOptions.systemPrompt.append.length} chars]`
+          : `[legacy string: ${queryOptions.systemPrompt.length} chars]`
         : undefined,
     });
 
@@ -200,8 +207,14 @@ export async function* streamQuery(
                 const contentBlock = block as Record<string, unknown>;
                 if (contentBlock.type === "text" && contentBlock.text) {
                   const text = contentBlock.text as string;
-                  log("TEXT", `Text content (${text.length} chars)`,
-                    isVerbose() ? text.substring(0, 500) + (text.length > 500 ? "..." : "") : undefined);
+                  log(
+                    "TEXT",
+                    `Text content (${text.length} chars)`,
+                    isVerbose()
+                      ? text.substring(0, 500) +
+                          (text.length > 500 ? "..." : "")
+                      : undefined,
+                  );
                   yield {
                     type: "text",
                     text,
@@ -237,9 +250,10 @@ export async function* streamQuery(
                   const isError = contentBlock.is_error as boolean;
                   log("TOOL_RESULT", `Tool result for ${toolUseId}`, {
                     isError,
-                    contentPreview: typeof contentBlock.content === "string"
-                      ? (contentBlock.content as string).substring(0, 200)
-                      : "[complex content]",
+                    contentPreview:
+                      typeof contentBlock.content === "string"
+                        ? (contentBlock.content as string).substring(0, 200)
+                        : "[complex content]",
                   });
                   yield {
                     type: "tool_result",
@@ -270,9 +284,9 @@ export async function* streamQuery(
     }
 
     log("DONE", `Stream ended after ${messageCount} messages`);
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
     const errorStack = error instanceof Error ? error.stack : undefined;
 
     log("ERROR", `Query failed: ${errorMessage}`);
@@ -292,7 +306,7 @@ export async function* streamQuery(
  */
 export async function executeQuery(
   prompt: string,
-  options: AgentQueryOptions
+  options: AgentQueryOptions,
 ): Promise<{ sessionId: string; result: string; durationMs: number }> {
   let sessionId = "";
   let result = "";

@@ -47,10 +47,10 @@ export function HomeChatInput({
       "Let's make something awesome!",
       "Let's get building!",
     ],
-    65,     // typingSpeed (ms per char)
-    35,     // deletingSpeed (ms per char)
-    8000,  // pauseAfterType (10 seconds)
-    3000,   // pauseAfterDelete (5 seconds)
+    65, // typingSpeed (ms per char)
+    35, // deletingSpeed (ms per char)
+    8000, // pauseAfterType (10 seconds)
+    3000, // pauseAfterDelete (5 seconds)
   );
   const placeholder = typingText;
 

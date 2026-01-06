@@ -121,7 +121,9 @@ export function ModelPicker() {
     return null;
   }
   const selectedModel = settings?.selectedModel;
-  const modelDisplayName = selectedModel ? getModelDisplayName() : "Select model";
+  const modelDisplayName = selectedModel
+    ? getModelDisplayName()
+    : "Select model";
   // Split providers into primary and secondary groups (excluding auto)
   const providerEntries =
     !loading && modelsByProviders

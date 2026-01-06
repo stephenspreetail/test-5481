@@ -4,7 +4,11 @@ import { db } from "../../db/index.js";
 import { apps, chats, messages } from "../../db/schema.js";
 import { constructSystemPromptConfig } from "../../prompts/system_prompt.js";
 import { appContainerService } from "../../services/app-container.service.js";
-import { generateAppName, generateChatTitle, isRandomAppName } from "../../services/title-generator.service.js";
+import {
+  generateAppName,
+  generateChatTitle,
+  isRandomAppName,
+} from "../../services/title-generator.service.js";
 
 export interface ChatStreamMessage {
   type: "chat:stream";
@@ -87,9 +91,15 @@ function getStreamKey(userId: number, chatId: number): string {
 export async function handleChatStream(
   ws: WebSocket,
   userId: number,
-  message: ChatStreamMessage
+  message: ChatStreamMessage,
 ) {
-  const { chatId, prompt, attachments, redo, sessionId: providedSessionId } = message;
+  const {
+    chatId,
+    prompt,
+    attachments,
+    redo,
+    sessionId: providedSessionId,
+  } = message;
   const streamKey = getStreamKey(userId, chatId);
 
   // Cancel any existing stream for this chat
@@ -156,20 +166,27 @@ export async function handleChatStream(
     }
 
     // Start or get existing container for this app
-    console.log(`[CHAT] Starting container for app ${app.id} at path ${app.path}`);
+    console.log(
+      `[CHAT] Starting container for app ${app.id} at path ${app.path}`,
+    );
     const containerPorts = await appContainerService.startContainer({
       appId: app.id,
       userId,
       appPath: app.path,
     });
 
-    console.log(`[CHAT] Container ports for app ${app.id}:`, JSON.stringify(containerPorts));
+    console.log(
+      `[CHAT] Container ports for app ${app.id}:`,
+      JSON.stringify(containerPorts),
+    );
 
     // Record activity to reset idle timer
     appContainerService.recordActivity(app.id, "agent");
 
     // Wait for container to be ready
-    console.log(`[CHAT] Waiting for container ready at ${containerPorts.agentUrl}`);
+    console.log(
+      `[CHAT] Waiting for container ready at ${containerPorts.agentUrl}`,
+    );
     await waitForContainerReady(containerPorts.agentUrl);
     console.log(`[CHAT] Container ready for app ${app.id}`);
 
@@ -217,7 +234,10 @@ export async function handleChatStream(
       }
       console.log(`[CHAT] Health check passed for ${containerPorts.agentUrl}`);
     } catch (healthError: any) {
-      console.error(`[CHAT] Health check failed before query:`, healthError.message);
+      console.error(
+        `[CHAT] Health check failed before query:`,
+        healthError.message,
+      );
       throw new Error(`Container not responding: ${healthError.message}`);
     }
 
@@ -299,7 +319,12 @@ export async function handleChatStream(
 
               case "tool_use":
                 if (event.toolName) {
-                  sendDelta(ws, chatId, `\n[Using tool: ${event.toolName}]\n`, event.toolName);
+                  sendDelta(
+                    ws,
+                    chatId,
+                    `\n[Using tool: ${event.toolName}]\n`,
+                    event.toolName,
+                  );
                   // Track if files were modified
                   if (event.toolName === "Write" || event.toolName === "Edit") {
                     updatedFiles = true;
@@ -367,7 +392,14 @@ export async function handleChatStream(
     }
 
     // Send completion
-    sendEnd(ws, chatId, updatedFiles, newSessionId || sessionId, costUsd, durationMs);
+    sendEnd(
+      ws,
+      chatId,
+      updatedFiles,
+      newSessionId || sessionId,
+      costUsd,
+      durationMs,
+    );
 
     // Cleanup
     activeStreams.delete(streamKey);
@@ -385,7 +417,7 @@ export async function handleChatStream(
 async function waitForContainerReady(
   agentUrl: string,
   maxRetries = 30,
-  retryDelayMs = 1000
+  retryDelayMs = 1000,
 ): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -408,7 +440,7 @@ async function waitForContainerReady(
 export function handleChatCancel(
   ws: WebSocket,
   userId: number,
-  message: ChatCancelMessage
+  message: ChatCancelMessage,
 ) {
   const { chatId } = message;
   const streamKey = getStreamKey(userId, chatId);
@@ -423,7 +455,7 @@ export function handleChatCancel(
 function sendChunk(
   ws: WebSocket,
   chatId: number,
-  messages: ChatStreamChunk["messages"]
+  messages: ChatStreamChunk["messages"],
 ) {
   const chunk: ChatStreamChunk = {
     type: "chat:response:chunk",
@@ -437,7 +469,7 @@ function sendDelta(
   ws: WebSocket,
   chatId: number,
   delta: string,
-  toolName?: string
+  toolName?: string,
 ) {
   const deltaMsg: ChatStreamDelta = {
     type: "chat:response:delta",
@@ -454,7 +486,7 @@ function sendEnd(
   updatedFiles: boolean,
   sessionId?: string,
   costUsd?: number,
-  durationMs?: number
+  durationMs?: number,
 ) {
   const end: ChatStreamEnd = {
     type: "chat:response:end",
@@ -500,7 +532,7 @@ function sendAppNameUpdate(ws: WebSocket, appId: number, name: string) {
 async function generateAndUpdateAppName(
   ws: WebSocket,
   appId: number,
-  prompt: string
+  prompt: string,
 ): Promise<void> {
   try {
     const name = await generateAppName(prompt);
@@ -527,17 +559,14 @@ async function generateAndUpdateAppName(
 async function generateAndUpdateTitle(
   ws: WebSocket,
   chatId: number,
-  prompt: string
+  prompt: string,
 ): Promise<void> {
   try {
     const title = await generateChatTitle(prompt);
 
     if (title && title !== "New Chat") {
       // Update database
-      await db
-        .update(chats)
-        .set({ title })
-        .where(eq(chats.id, chatId));
+      await db.update(chats).set({ title }).where(eq(chats.id, chatId));
 
       // Notify frontend
       sendTitleUpdate(ws, chatId, title);

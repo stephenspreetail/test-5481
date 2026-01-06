@@ -117,9 +117,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
     } catch (error) {
       console.error("Failed to prepare bug report:", error);
       // Fallback to opening the regular GitHub issue page
-      getClient().openExternalUrl(
-        "https://github.com/kova-sh/kova/issues/new",
-      );
+      getClient().openExternalUrl("https://github.com/kova-sh/kova/issues/new");
     } finally {
       setIsLoading(false);
     }
@@ -134,8 +132,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
     setIsUploading(true);
     try {
       // Get chat logs (includes debug info, chat data, and codebase)
-      const chatLogs =
-        await getClient().getChatLogs(selectedChatId);
+      const chatLogs = await getClient().getChatLogs(selectedChatId);
 
       // Store data for review and switch to review mode
       setChatLogsData(chatLogs);

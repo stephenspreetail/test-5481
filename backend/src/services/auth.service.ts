@@ -136,7 +136,7 @@ class AuthService {
    * Validate and consume a refresh token
    */
   async validateRefreshToken(
-    token: string
+    token: string,
   ): Promise<{ userId: number } | null> {
     const result = await db
       .select()
@@ -153,7 +153,9 @@ class AuthService {
     // Check if expired
     if (new Date() > storedToken.expiresAt) {
       // Delete expired token
-      await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
+      await db
+        .delete(refreshTokens)
+        .where(eq(refreshTokens.id, storedToken.id));
       return null;
     }
 
@@ -195,7 +197,7 @@ class AuthService {
   async updatePassword(
     userId: number,
     currentPassword: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<void> {
     const result = await db
       .select()
@@ -208,7 +210,10 @@ class AuthService {
     }
 
     const user = result[0];
-    const validPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+    const validPassword = await bcrypt.compare(
+      currentPassword,
+      user.passwordHash,
+    );
 
     if (!validPassword) {
       throw new Error("Current password is incorrect");

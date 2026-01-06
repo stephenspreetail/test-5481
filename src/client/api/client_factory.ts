@@ -53,7 +53,8 @@ export function initializeClient(config?: {
   if (config) {
     ApiClient.initialize({
       baseUrl: config.baseUrl || getDefaultBaseUrl(),
-      getAccessToken: config.getAccessToken || (() => localStorage.getItem("accessToken")),
+      getAccessToken:
+        config.getAccessToken || (() => localStorage.getItem("accessToken")),
       onUnauthorized: config.onUnauthorized,
     });
   }

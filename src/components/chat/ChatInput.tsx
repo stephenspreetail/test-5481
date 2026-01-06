@@ -142,10 +142,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
   }, [chatId, setMessagesById]);
 
   const handleSubmit = async () => {
-    if (
-      (!inputValue.trim() && attachments.length === 0) ||
-      isStreaming
-    ) {
+    if ((!inputValue.trim() && attachments.length === 0) || isStreaming) {
       return;
     }
 
@@ -262,10 +259,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
   return (
     <>
       {error && showError && (
-        <ChatErrorBox
-          onDismiss={dismissError}
-          error={error}
-        />
+        <ChatErrorBox onDismiss={dismissError} error={error} />
       )}
       {/* Display loading or error state for proposal */}
       {isProposalLoading && (

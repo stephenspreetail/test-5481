@@ -66,9 +66,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
     } catch (err) {
       console.error("Failed to prepare bug report:", err);
       // Fallback to opening the regular GitHub issue page
-      getClient().openExternalUrl(
-        "https://github.com/kova-sh/kova/issues/new",
-      );
+      getClient().openExternalUrl("https://github.com/kova-sh/kova/issues/new");
     } finally {
       setIsLoading(false);
     }

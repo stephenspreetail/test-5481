@@ -48,23 +48,25 @@ export class WebSocketClient {
   private chatStreams: Map<number, ChatStreamCallbacks> = new Map();
   private appOutputCallbacks: Map<number, AppOutputCallbacks> = new Map();
   // Track streaming content for delta accumulation
-  private streamingContent: Map<number, { messages: Message[]; assistantContent: string }> = new Map();
-  private titleUpdateCallbacks: Set<(chatId: number, title: string) => void> = new Set();
-  private appNameUpdateCallbacks: Set<(appId: number, name: string) => void> = new Set();
+  private streamingContent: Map<
+    number,
+    { messages: Message[]; assistantContent: string }
+  > = new Map();
+  private titleUpdateCallbacks: Set<(chatId: number, title: string) => void> =
+    new Set();
+  private appNameUpdateCallbacks: Set<(appId: number, name: string) => void> =
+    new Set();
   private onConnected?: () => void;
   private onDisconnected?: () => void;
 
-  private constructor(
-    baseUrl: string,
-    getAccessToken: () => string | null
-  ) {
+  private constructor(baseUrl: string, getAccessToken: () => string | null) {
     this.baseUrl = baseUrl;
     this.getAccessToken = getAccessToken;
   }
 
   static initialize(
     baseUrl: string,
-    getAccessToken: () => string | null
+    getAccessToken: () => string | null,
   ): WebSocketClient {
     if (!WebSocketClient.instance) {
       WebSocketClient.instance = new WebSocketClient(baseUrl, getAccessToken);
@@ -75,7 +77,7 @@ export class WebSocketClient {
   static getInstance(): WebSocketClient {
     if (!WebSocketClient.instance) {
       throw new Error(
-        "WebSocketClient not initialized. Call initialize() first."
+        "WebSocketClient not initialized. Call initialize() first.",
       );
     }
     return WebSocketClient.instance;
@@ -109,15 +111,16 @@ export class WebSocketClient {
       }
 
       // Convert http(s) to ws(s)
-      const wsUrl = this.baseUrl
-        .replace(/^http/, "ws")
-        .replace(/\/api$/, "")
-        + `/ws?token=${encodeURIComponent(token)}`;
+      const wsUrl =
+        this.baseUrl.replace(/^http/, "ws").replace(/\/api$/, "") +
+        `/ws?token=${encodeURIComponent(token)}`;
 
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log(`🔌 [WS] WebSocket connected - PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+        console.log(
+          `🔌 [WS] WebSocket connected - PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+        );
         this.connectionState = "connected";
         this.reconnectAttempts = 0;
 
@@ -132,7 +135,9 @@ export class WebSocketClient {
       };
 
       this.ws.onclose = (event) => {
-        console.log(`🔌 [WS] WebSocket disconnected - code: ${event.code}, reason: ${event.reason}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+        console.log(
+          `🔌 [WS] WebSocket disconnected - code: ${event.code}, reason: ${event.reason}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+        );
         this.connectionState = "disconnected";
         this.onDisconnected?.();
 
@@ -165,7 +170,9 @@ export class WebSocketClient {
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
-    console.log(`Attempting reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    console.log(
+      `Attempting reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`,
+    );
 
     setTimeout(() => {
       this.connect().catch((err) => {
@@ -198,7 +205,10 @@ export class WebSocketClient {
           const callbacks = this.chatStreams.get(delta.chatId);
           if (callbacks) {
             // Accumulate delta content
-            const streaming = this.streamingContent.get(delta.chatId) || { messages: [], assistantContent: "" };
+            const streaming = this.streamingContent.get(delta.chatId) || {
+              messages: [],
+              assistantContent: "",
+            };
             streaming.assistantContent += delta.delta;
             this.streamingContent.set(delta.chatId, streaming);
 
@@ -345,7 +355,7 @@ export class WebSocketClient {
     options?: {
       attachments?: Array<{ type: string; data: string; fileName?: string }>;
       redo?: boolean;
-    }
+    },
   ): void {
     this.chatStreams.set(chatId, callbacks);
 

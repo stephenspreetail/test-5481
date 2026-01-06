@@ -33,7 +33,7 @@ export async function languageModelsRoutes(app: FastifyInstance) {
       const user = request.user!;
       const providers = await languageModelService.getProviders(user.userId);
       return providers;
-    }
+    },
   );
 
   /**
@@ -48,10 +48,10 @@ export async function languageModelsRoutes(app: FastifyInstance) {
 
       const provider = await languageModelService.createProvider(
         user.userId,
-        body
+        body,
       );
       reply.status(201).send(provider);
-    }
+    },
   );
 
   /**
@@ -70,7 +70,7 @@ export async function languageModelsRoutes(app: FastifyInstance) {
         ...body,
       });
       return provider;
-    }
+    },
   );
 
   /**
@@ -85,7 +85,7 @@ export async function languageModelsRoutes(app: FastifyInstance) {
 
       await languageModelService.deleteProvider(user.userId, id);
       return { success: true };
-    }
+    },
   );
 
   /**
@@ -96,10 +96,11 @@ export async function languageModelsRoutes(app: FastifyInstance) {
     "/by-providers",
     async (request: FastifyRequest, reply: FastifyReply) => {
       const user = request.user!;
-      const modelsByProviders =
-        await languageModelService.getModelsByProviders(user.userId);
+      const modelsByProviders = await languageModelService.getModelsByProviders(
+        user.userId,
+      );
       return modelsByProviders;
-    }
+    },
   );
 
   /**
@@ -114,10 +115,10 @@ export async function languageModelsRoutes(app: FastifyInstance) {
 
       const models = await languageModelService.getModels(
         user.userId,
-        providerId
+        providerId,
       );
       return models;
-    }
+    },
   );
 
   /**
@@ -144,7 +145,7 @@ export async function languageModelsRoutes(app: FastifyInstance) {
 
       await languageModelService.deleteModelByApiName(user.userId, modelId);
       return { success: true };
-    }
+    },
   );
 
   /**
@@ -163,9 +164,9 @@ export async function languageModelsRoutes(app: FastifyInstance) {
       await languageModelService.deleteModel(
         user.userId,
         providerId,
-        modelApiName
+        modelApiName,
       );
       return { success: true };
-    }
+    },
   );
 }

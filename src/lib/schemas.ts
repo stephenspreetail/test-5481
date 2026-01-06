@@ -136,7 +136,6 @@ export type RegularProviderSetting = z.infer<
 export type AzureProviderSetting = z.infer<typeof AzureProviderSettingSchema>;
 export type VertexProviderSetting = z.infer<typeof VertexProviderSettingSchema>;
 
-
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
@@ -168,7 +167,6 @@ export const NeonSchema = z.object({
   tokenTimestamp: z.number().optional(),
 });
 export type Neon = z.infer<typeof NeonSchema>;
-
 
 export const GlobPathSchema = z.object({
   globPath: z.string(),

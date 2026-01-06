@@ -91,7 +91,7 @@ export interface ContainerPorts {
   devPort: number;
   agentUrl: string;
   devUrl: string;
-  previewUrl: string;  // Traefik URL: http://app-{id}.localhost:8081
+  previewUrl: string; // Traefik URL: http://app-{id}.localhost:8081
 }
 
 class AppContainerService {
@@ -118,13 +118,23 @@ class AppContainerService {
    * Initialize the service (start idle check interval)
    */
   async initialize(): Promise<void> {
-    console.log(`[${new Date().toLocaleString()}] [AppContainerService] initializing...`);
+    console.log(
+      `[${new Date().toLocaleString()}] [AppContainerService] initializing...`,
+    );
 
     const timestamp = new Date().toLocaleString();
-    console.log(`[${timestamp}] [AppContainerService] config: apps base path: ${appsBasePath}`);
-    console.log(`[${timestamp}] [AppContainerService] config: container image: ${this.containerImage}`);
-    console.log(`[${timestamp}] [AppContainerService] config: container scan interval: ${this.containerScanIntervalMs}ms`);
-    console.log(`[${timestamp}] [AppContainerService] config: idle timeout interval (${this.idleTimeoutMs}ms)`);
+    console.log(
+      `[${timestamp}] [AppContainerService] config: apps base path: ${appsBasePath}`,
+    );
+    console.log(
+      `[${timestamp}] [AppContainerService] config: container image: ${this.containerImage}`,
+    );
+    console.log(
+      `[${timestamp}] [AppContainerService] config: container scan interval: ${this.containerScanIntervalMs}ms`,
+    );
+    console.log(
+      `[${timestamp}] [AppContainerService] config: idle timeout interval (${this.idleTimeoutMs}ms)`,
+    );
 
     if (idleCheckInterval) {
       clearInterval(idleCheckInterval);
@@ -155,7 +165,9 @@ class AppContainerService {
    *  - Remove stale entries from appContainers for containers no longer running
    */
   private async scanExistingContainers(): Promise<void> {
-    console.log(`[${new Date().toLocaleString()}] [AppContainerService] scanning containers...`);
+    console.log(
+      `[${new Date().toLocaleString()}] [AppContainerService] scanning containers...`,
+    );
 
     try {
       const containers = await docker.listContainers({
@@ -183,7 +195,8 @@ class AppContainerService {
         }
 
         const userId = userIdStr ? parseInt(userIdStr, 10) : 0;
-        const containerName = containerInfo.Names?.[0]?.replace(/^\//, "") || `app-${appId}`;
+        const containerName =
+          containerInfo.Names?.[0]?.replace(/^\//, "") || `app-${appId}`;
 
         // Find the agent port from port bindings (may be 0 if not exposed)
         let agentPort = 0;
@@ -210,7 +223,9 @@ class AppContainerService {
           lastActivityAt: Date.now(),
         });
 
-        console.log(`[${ new Date().toLocaleString()}] [AppContainerService] discovered container ${containerName} (appId: ${appId}, agentPort: ${agentPort || "none"})`);
+        console.log(
+          `[${new Date().toLocaleString()}] [AppContainerService] discovered container ${containerName} (appId: ${appId}, agentPort: ${agentPort || "none"})`,
+        );
       }
 
       // Remove stale entries for containers no longer running
@@ -219,10 +234,14 @@ class AppContainerService {
         if (!runningAppIds.has(appId)) {
           if (info.state === "starting") {
             // Container is still starting, don't remove it yet
-            console.log(`[${ new Date().toLocaleString()}] [AppContainerService] Skipping stale check for app-${appId} (still in starting state)`);
+            console.log(
+              `[${new Date().toLocaleString()}] [AppContainerService] Skipping stale check for app-${appId} (still in starting state)`,
+            );
             continue;
           }
-          console.log(`[${ new Date().toLocaleString()}] [AppContainerService] Removing stale container entry: app-${appId} (state: ${info.state})`);
+          console.log(
+            `[${new Date().toLocaleString()}] [AppContainerService] Removing stale container entry: app-${appId} (state: ${info.state})`,
+          );
           if (info.agentPort > 0) {
             allocatedAgentPorts.delete(info.agentPort);
           }
@@ -230,9 +249,14 @@ class AppContainerService {
         }
       }
 
-      console.log(`[${ new Date().toLocaleString()}] [AppContainerService] found ${appContainers.size} active container(s)`);
+      console.log(
+        `[${new Date().toLocaleString()}] [AppContainerService] found ${appContainers.size} active container(s)`,
+      );
     } catch (error) {
-      console.error("[AppContainerService] Failed to scan existing containers:", error);
+      console.error(
+        "[AppContainerService] Failed to scan existing containers:",
+        error,
+      );
     }
   }
 
@@ -295,16 +319,22 @@ class AppContainerService {
     // Use mutex to prevent concurrent container operations for the same app
     const existingLock = containerOperationLocks.get(appId);
     if (existingLock) {
-      console.log(`[AppContainerService] Waiting for existing operation on app ${appId} to complete`);
+      console.log(
+        `[AppContainerService] Waiting for existing operation on app ${appId} to complete`,
+      );
       try {
         const result = await existingLock;
         // Previous operation succeeded, return its result
-        console.log(`[AppContainerService] Previous operation succeeded, reusing container on port ${result.agentPort}`);
+        console.log(
+          `[AppContainerService] Previous operation succeeded, reusing container on port ${result.agentPort}`,
+        );
         this.recordActivity(appId, "agent");
         return result;
       } catch {
         // Previous operation failed, continue with new operation
-        console.log(`[AppContainerService] Previous operation failed, starting new operation`);
+        console.log(
+          `[AppContainerService] Previous operation failed, starting new operation`,
+        );
       }
     }
 
@@ -315,7 +345,9 @@ class AppContainerService {
         const container = docker.getContainer(existing.containerId);
         const info = await container.inspect();
         if (info.State.Running) {
-          console.log(`[AppContainerService] Container ${containerName} is now running (after lock wait), reusing`);
+          console.log(
+            `[AppContainerService] Container ${containerName} is now running (after lock wait), reusing`,
+          );
           this.recordActivity(appId, "agent");
           return {
             agentPort: existing.agentPort,
@@ -345,25 +377,44 @@ class AppContainerService {
   /**
    * Internal implementation of startContainer
    */
-  private async _startContainerImpl(cfg: StartContainerConfig): Promise<ContainerPorts> {
+  private async _startContainerImpl(
+    cfg: StartContainerConfig,
+  ): Promise<ContainerPorts> {
     const { appId, userId, appPath } = cfg;
     const containerName = `app-${appId}`;
     const previewUrl = `http://${containerName}.${config.PREVIEW_DOMAIN}:${config.PREVIEW_PORT}`;
 
     // Check if container is already running
     const existing = appContainers.get(appId);
-    console.log(`[AppContainerService] startContainer for ${containerName}: existing entry =`, existing ? JSON.stringify({ containerId: existing.containerId?.slice(0, 12), agentPort: existing.agentPort, state: existing.state }) : 'none');
+    console.log(
+      `[AppContainerService] startContainer for ${containerName}: existing entry =`,
+      existing
+        ? JSON.stringify({
+            containerId: existing.containerId?.slice(0, 12),
+            agentPort: existing.agentPort,
+            state: existing.state,
+          })
+        : "none",
+    );
 
-    if (existing && (existing.state === "running" || existing.state === "starting") && existing.containerId) {
+    if (
+      existing &&
+      (existing.state === "running" || existing.state === "starting") &&
+      existing.containerId
+    ) {
       // Verify the container is actually running in Docker
       try {
         const container = docker.getContainer(existing.containerId);
         const info = await container.inspect();
-        console.log(`[AppContainerService] Container ${containerName} inspect: Running=${info.State.Running}, Status=${info.State.Status}`);
+        console.log(
+          `[AppContainerService] Container ${containerName} inspect: Running=${info.State.Running}, Status=${info.State.Status}`,
+        );
         if (info.State.Running) {
           // Container is actually running, return existing
           this.recordActivity(appId, "agent");
-          console.log(`[AppContainerService] Reusing existing container ${containerName} on port ${existing.agentPort}`);
+          console.log(
+            `[AppContainerService] Reusing existing container ${containerName} on port ${existing.agentPort}`,
+          );
           return {
             agentPort: existing.agentPort,
             devPort: existing.devPort,
@@ -373,20 +424,28 @@ class AppContainerService {
           };
         } else {
           // Container exists but not running, clean up and recreate
-          console.log(`[AppContainerService] Container ${containerName} not running (Status=${info.State.Status}), will recreate`);
+          console.log(
+            `[AppContainerService] Container ${containerName} not running (Status=${info.State.Status}), will recreate`,
+          );
           this.releasePorts(existing.agentPort, existing.devPort);
           appContainers.delete(appId);
           // Also try to remove the stopped container
           try {
             await container.remove({ force: true });
-            console.log(`[AppContainerService] Removed stopped container ${containerName}`);
+            console.log(
+              `[AppContainerService] Removed stopped container ${containerName}`,
+            );
           } catch (removeErr) {
-            console.log(`[AppContainerService] Failed to remove stopped container: ${removeErr}`);
+            console.log(
+              `[AppContainerService] Failed to remove stopped container: ${removeErr}`,
+            );
           }
         }
       } catch (inspectError: any) {
         // Container doesn't exist, clean up stale entry
-        console.log(`[AppContainerService] Container ${containerName} inspect failed: ${inspectError.message}`);
+        console.log(
+          `[AppContainerService] Container ${containerName} inspect failed: ${inspectError.message}`,
+        );
         this.releasePorts(existing.agentPort, existing.devPort);
         appContainers.delete(appId);
       }
@@ -402,7 +461,9 @@ class AppContainerService {
     // Ensure the app directory exists
     if (!existsSync(fullAppPath)) {
       mkdirSync(fullAppPath, { recursive: true });
-      console.log(`[AppContainerService] Created app directory: ${fullAppPath}`);
+      console.log(
+        `[AppContainerService] Created app directory: ${fullAppPath}`,
+      );
     }
 
     // Convert to Docker-compatible path for volume mount
@@ -430,8 +491,12 @@ class AppContainerService {
 
     try {
       console.log(`\n========== START CONTAINER DEBUG ==========`);
-      console.log(`[AppContainerService] Starting container ${containerName} for app ${appId}`);
-      console.log(`[AppContainerService] Timestamp: ${new Date().toISOString()}`);
+      console.log(
+        `[AppContainerService] Starting container ${containerName} for app ${appId}`,
+      );
+      console.log(
+        `[AppContainerService] Timestamp: ${new Date().toISOString()}`,
+      );
       console.log(`[AppContainerService] Agent port: ${agentPort}`);
       console.log(`[AppContainerService] App path: ${fullAppPath}`);
       console.log(`[AppContainerService] Docker path: ${dockerAppPath}`);
@@ -441,13 +506,19 @@ class AppContainerService {
       // Remove existing container with same name if any
       try {
         const existingContainer = docker.getContainer(containerName);
-        console.log(`[AppContainerService] Found existing container ${containerName}, removing with force=true (will send SIGKILL)`);
+        console.log(
+          `[AppContainerService] Found existing container ${containerName}, removing with force=true (will send SIGKILL)`,
+        );
         await existingContainer.remove({ force: true });
-        console.log(`[AppContainerService] Removed existing container: ${containerName}`);
+        console.log(
+          `[AppContainerService] Removed existing container: ${containerName}`,
+        );
       } catch (removeError: any) {
         // Container doesn't exist, which is fine
         if (removeError.statusCode !== 404) {
-          console.log(`[AppContainerService] Remove container ${containerName} error: ${removeError.message}`);
+          console.log(
+            `[AppContainerService] Remove container ${containerName} error: ${removeError.message}`,
+          );
         }
       }
 
@@ -502,7 +573,9 @@ class AppContainerService {
       // Monitor container for exit
       this.monitorContainer(appId, container);
 
-      console.log(`[AppContainerService] Container started: ${containerName} (agent: ${agentPort}, preview: ${previewUrl})`);
+      console.log(
+        `[AppContainerService] Container started: ${containerName} (agent: ${agentPort}, preview: ${previewUrl})`,
+      );
 
       return {
         agentPort,
@@ -515,7 +588,10 @@ class AppContainerService {
       // Cleanup on error
       this.releasePorts(agentPort, devPort);
       appContainers.delete(appId);
-      console.error(`[AppContainerService] Failed to start container for app ${appId}:`, error);
+      console.error(
+        `[AppContainerService] Failed to start container for app ${appId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -523,13 +599,22 @@ class AppContainerService {
   /**
    * Monitor container for exit
    */
-  private async monitorContainer(appId: number, container: Docker.Container): Promise<void> {
+  private async monitorContainer(
+    appId: number,
+    container: Docker.Container,
+  ): Promise<void> {
     try {
       const result = await container.wait();
-      console.log(`[AppContainerService] Container exited for app ${appId}:`, result);
+      console.log(
+        `[AppContainerService] Container exited for app ${appId}:`,
+        result,
+      );
       this.handleContainerExit(appId);
     } catch (error) {
-      console.error(`[AppContainerService] Error monitoring container for app ${appId}:`, error);
+      console.error(
+        `[AppContainerService] Error monitoring container for app ${appId}:`,
+        error,
+      );
     }
   }
 
@@ -550,51 +635,73 @@ class AppContainerService {
   async stopContainer(appId: number, reason?: string): Promise<void> {
     // CRITICAL DEBUG: This MUST appear before "Container stopped"
     // Build ID: 20260104-2130
-    console.log(`\n\n\n*************************************************************`);
+    console.log(
+      `\n\n\n*************************************************************`,
+    );
     console.log(`***** STOP CONTAINER CALLED - BUILD 20260104-2130 *****`);
-    console.log(`***** App ID: ${appId}, Reason: ${reason || 'NONE'} *****`);
-    console.log(`*************************************************************\n`);
+    console.log(`***** App ID: ${appId}, Reason: ${reason || "NONE"} *****`);
+    console.log(
+      `*************************************************************\n`,
+    );
 
     // Log call stack to trace who's calling stopContainer
     const stack = new Error().stack;
     console.log(`\n========== STOP CONTAINER DEBUG ==========`);
     console.log(`[AppContainerService] stopContainer called for app ${appId}`);
-    console.log(`[AppContainerService] Reason: ${reason || 'UNKNOWN - NOT PROVIDED'}`);
+    console.log(
+      `[AppContainerService] Reason: ${reason || "UNKNOWN - NOT PROVIDED"}`,
+    );
     console.log(`[AppContainerService] Timestamp: ${new Date().toISOString()}`);
     console.log(`[AppContainerService] Call stack:`);
-    console.log(stack?.split('\n').slice(1, 8).join('\n'));
+    console.log(stack?.split("\n").slice(1, 8).join("\n"));
     console.log(`===========================================\n`);
 
     const containerInfo = appContainers.get(appId);
 
     if (!containerInfo || containerInfo.state === "none") {
-      console.log(`[AppContainerService] stopContainer: app ${appId} already stopped (no entry or state=none)`);
+      console.log(
+        `[AppContainerService] stopContainer: app ${appId} already stopped (no entry or state=none)`,
+      );
       return; // Already stopped
     }
 
     if (containerInfo.state === "stopping") {
-      console.log(`[AppContainerService] stopContainer: app ${appId} already stopping`);
+      console.log(
+        `[AppContainerService] stopContainer: app ${appId} already stopping`,
+      );
       return; // Already stopping
     }
 
     if (containerInfo.state === "starting") {
-      console.log(`[AppContainerService] stopContainer: app ${appId} is still starting, will not stop`);
+      console.log(
+        `[AppContainerService] stopContainer: app ${appId} is still starting, will not stop`,
+      );
       return; // Don't stop containers that are still starting
     }
 
-    console.log(`[AppContainerService] stopContainer: transitioning app ${appId} from ${containerInfo.state} to stopping`);
+    console.log(
+      `[AppContainerService] stopContainer: transitioning app ${appId} from ${containerInfo.state} to stopping`,
+    );
     containerInfo.state = "stopping";
 
     try {
-      const containerHandle = containerInfo.containerId ?? containerInfo.containerName;
-      console.log(`[AppContainerService] Stopping container ${containerHandle} (will send SIGTERM, wait 10s)`);
+      const containerHandle =
+        containerInfo.containerId ?? containerInfo.containerName;
+      console.log(
+        `[AppContainerService] Stopping container ${containerHandle} (will send SIGTERM, wait 10s)`,
+      );
       const container = docker.getContainer(containerHandle);
       await container.stop({ t: 10 }); // 10 second timeout
-      console.log(`[AppContainerService] Container stopped for app ${appId} [BUILD-20260104-2130]`);
+      console.log(
+        `[AppContainerService] Container stopped for app ${appId} [BUILD-20260104-2130]`,
+      );
     } catch (error: any) {
       // Container might already be stopped
       if (!error.message?.includes("is not running")) {
-        console.error(`[AppContainerService] Error stopping container for app ${appId}:`, error);
+        console.error(
+          `[AppContainerService] Error stopping container for app ${appId}:`,
+          error,
+        );
       }
     }
 
@@ -690,8 +797,13 @@ class AppContainerService {
 
       const idleTime = now - containerInfo.lastActivityAt;
       if (idleTime > this.idleTimeoutMs) {
-        console.log(`[${ new Date().toLocaleString()}] [AppContainerService] stopping idle container for app ${appId} (idle for ${Math.round(idleTime / 1000)}s)`);
-        await this.stopContainer(appId, `idle for ${Math.round(idleTime / 1000)}s`);
+        console.log(
+          `[${new Date().toLocaleString()}] [AppContainerService] stopping idle container for app ${appId} (idle for ${Math.round(idleTime / 1000)}s)`,
+        );
+        await this.stopContainer(
+          appId,
+          `idle for ${Math.round(idleTime / 1000)}s`,
+        );
       }
     }
   }
@@ -701,11 +813,13 @@ class AppContainerService {
    */
   async stopUserContainers(userId: number): Promise<void> {
     const userContainers = Array.from(appContainers.entries()).filter(
-      ([_, info]) => info.userId === userId
+      ([_, info]) => info.userId === userId,
     );
 
     await Promise.all(
-      userContainers.map(([appId]) => this.stopContainer(appId, `user ${userId} containers cleanup`))
+      userContainers.map(([appId]) =>
+        this.stopContainer(appId, `user ${userId} containers cleanup`),
+      ),
     );
   }
 
@@ -714,7 +828,9 @@ class AppContainerService {
    */
   async stopAllContainers(): Promise<void> {
     const allAppIds = Array.from(appContainers.keys());
-    await Promise.all(allAppIds.map((appId) => this.stopContainer(appId, 'shutdown')));
+    await Promise.all(
+      allAppIds.map((appId) => this.stopContainer(appId, "shutdown")),
+    );
   }
 
   /**
@@ -726,9 +842,11 @@ class AppContainerService {
       console.log(`[AppContainerService] Image ${this.containerImage} exists`);
     } catch (error: any) {
       if (error.statusCode === 404) {
-        console.log(`[AppContainerService] Image ${this.containerImage} not found, please build it first`);
+        console.log(
+          `[AppContainerService] Image ${this.containerImage} not found, please build it first`,
+        );
         throw new Error(
-          `Docker image ${this.containerImage} not found. Run 'docker-compose build app-container' first.`
+          `Docker image ${this.containerImage} not found. Run 'docker-compose build app-container' first.`,
         );
       }
       throw error;

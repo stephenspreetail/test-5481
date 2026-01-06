@@ -42,12 +42,12 @@ export interface ContainerInfo {
  * Container lifecycle states
  */
 export type ContainerState =
-  | "pending"    // Container creation requested
-  | "starting"   // Container is starting up
-  | "running"    // Container is healthy and running
-  | "stopping"   // Container is shutting down
-  | "stopped"    // Container has stopped
-  | "failed";    // Container failed to start or crashed
+  | "pending" // Container creation requested
+  | "starting" // Container is starting up
+  | "running" // Container is healthy and running
+  | "stopping" // Container is shutting down
+  | "stopped" // Container has stopped
+  | "failed"; // Container failed to start or crashed
 
 /**
  * Health check result

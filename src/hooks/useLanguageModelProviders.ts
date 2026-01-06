@@ -20,7 +20,8 @@ export function useLanguageModelProviders() {
   });
 
   const isProviderSetup = (provider: string) => {
-    const providerSettings = settings?.providerSettings && settings?.providerSettings[provider];
+    const providerSettings =
+      settings?.providerSettings && settings?.providerSettings[provider];
     if (queryResult.isLoading) {
       return false;
     }

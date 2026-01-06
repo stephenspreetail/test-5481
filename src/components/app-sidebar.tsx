@@ -2,13 +2,7 @@ import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAtom } from "jotai";
-import {
-  BookOpen,
-  HelpCircle,
-  Home,
-  Settings,
-  Store,
-} from "lucide-react";
+import { BookOpen, HelpCircle, Home, Settings, Store } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {

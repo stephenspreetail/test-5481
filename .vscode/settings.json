@@ -1,16 +1,16 @@
 {
-	"typescript.tsdk": "node_modules/typescript/lib",
-	"typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
 
-	"files.exclude": {
-		"**/node_modules": false
-	},
-	"search.exclude": {
-		"**/node_modules": true,
-		"**/.vite": true,
-		"**/out": true,
-		"**/dist": true
-	},
+  "files.exclude": {
+    "**/node_modules": false
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.vite": true,
+    "**/out": true,
+    "**/dist": true
+  },
 
-	"typescript.preferences.importModuleSpecifier": "non-relative"
+  "typescript.preferences.importModuleSpecifier": "non-relative"
 }

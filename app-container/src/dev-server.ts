@@ -52,7 +52,9 @@ export class DevServerManager {
     if (hasPackageJson) {
       const nodeModulesPath = join(projectDir, "node_modules");
       if (!existsSync(nodeModulesPath)) {
-        console.log("[DevServer] node_modules not found, running npm install...");
+        console.log(
+          "[DevServer] node_modules not found, running npm install...",
+        );
         await this.runNpmInstall(projectDir);
       }
     }
@@ -66,7 +68,9 @@ export class DevServerManager {
       let cmd: string;
       let args: string[];
 
-      const devCommand = hasPackageJson ? this.detectDevCommand(projectDir) : null;
+      const devCommand = hasPackageJson
+        ? this.detectDevCommand(projectDir)
+        : null;
 
       if (devCommand) {
         cmd = devCommand.cmd;
@@ -104,8 +108,8 @@ export class DevServerManager {
           output.includes("ready in") ||
           output.includes("listening on") ||
           output.includes("started server") ||
-          output.includes("Accepting connections") ||  // serve
-          output.includes("Serving!")  // serve
+          output.includes("Accepting connections") || // serve
+          output.includes("Serving!") // serve
         ) {
           this.status = "running";
           console.log("[DevServer] Server is running");
@@ -121,7 +125,9 @@ export class DevServerManager {
         this.process = null;
 
         if (this.status === "running" && this.restartCount < this.maxRestarts) {
-          console.log(`[DevServer] Restarting (attempt ${this.restartCount + 1}/${this.maxRestarts})...`);
+          console.log(
+            `[DevServer] Restarting (attempt ${this.restartCount + 1}/${this.maxRestarts})...`,
+          );
           this.restartCount++;
           setTimeout(() => this.start(), this.restartDelay);
         } else {
@@ -173,7 +179,9 @@ export class DevServerManager {
    * Detect the framework used by the project
    * Returns the dev server command and args to use
    */
-  private detectDevCommand(projectDir: string): { cmd: string; args: string[] } | null {
+  private detectDevCommand(
+    projectDir: string,
+  ): { cmd: string; args: string[] } | null {
     const packageJsonPath = join(projectDir, "package.json");
 
     // If no package.json, this might be a static HTML site
@@ -192,7 +200,13 @@ export class DevServerManager {
         // Run vite directly via node to avoid .bin symlink issues on Windows bind mounts
         return {
           cmd: "node",
-          args: ["node_modules/vite/bin/vite.js", "--port", String(this.port), "--host", "0.0.0.0"],
+          args: [
+            "node_modules/vite/bin/vite.js",
+            "--port",
+            String(this.port),
+            "--host",
+            "0.0.0.0",
+          ],
         };
       }
 
@@ -201,7 +215,14 @@ export class DevServerManager {
         // Run next directly via node to avoid .bin symlink issues
         return {
           cmd: "node",
-          args: ["node_modules/next/dist/bin/next", "dev", "--port", String(this.port), "--hostname", "0.0.0.0"],
+          args: [
+            "node_modules/next/dist/bin/next",
+            "dev",
+            "--port",
+            String(this.port),
+            "--hostname",
+            "0.0.0.0",
+          ],
         };
       }
 
@@ -210,7 +231,14 @@ export class DevServerManager {
         // Run ng directly via node to avoid .bin symlink issues
         return {
           cmd: "node",
-          args: ["node_modules/@angular/cli/bin/ng.js", "serve", "--port", String(this.port), "--host", "0.0.0.0"],
+          args: [
+            "node_modules/@angular/cli/bin/ng.js",
+            "serve",
+            "--port",
+            String(this.port),
+            "--host",
+            "0.0.0.0",
+          ],
         };
       }
 
@@ -228,7 +256,15 @@ export class DevServerManager {
         console.log("[DevServer] Found dev script, using npm run dev");
         return {
           cmd: "npm",
-          args: ["run", "dev", "--", "--port", String(this.port), "--host", "0.0.0.0"],
+          args: [
+            "run",
+            "dev",
+            "--",
+            "--port",
+            String(this.port),
+            "--host",
+            "0.0.0.0",
+          ],
         };
       }
 
@@ -281,12 +317,16 @@ export class DevServerManager {
           if (statSync(entryPath).isDirectory()) {
             // Check for package.json in subdirectory
             if (existsSync(join(entryPath, "package.json"))) {
-              console.log(`[DevServer] Found package.json in subdirectory: ${entry}`);
+              console.log(
+                `[DevServer] Found package.json in subdirectory: ${entry}`,
+              );
               return entryPath;
             }
             // Check for static site in subdirectory
             if (staticFiles.some((file) => existsSync(join(entryPath, file)))) {
-              console.log(`[DevServer] Found static site in subdirectory: ${entry}`);
+              console.log(
+                `[DevServer] Found static site in subdirectory: ${entry}`,
+              );
               return entryPath;
             }
           }

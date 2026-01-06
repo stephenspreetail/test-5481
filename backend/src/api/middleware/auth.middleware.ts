@@ -18,7 +18,7 @@ declare module "@fastify/jwt" {
  */
 export async function authMiddleware(
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
   try {
     const decoded = await request.jwtVerify<JWTPayload>();
@@ -33,7 +33,7 @@ export async function authMiddleware(
  */
 export async function optionalAuthMiddleware(
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
   try {
     const decoded = await request.jwtVerify<JWTPayload>();

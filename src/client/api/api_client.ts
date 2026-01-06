@@ -1,4 +1,9 @@
-import type { AppChatContext, ChatSummary, ContextPathResults, UserSettings } from "@/lib/schemas";
+import type {
+  AppChatContext,
+  ChatSummary,
+  ContextPathResults,
+  UserSettings,
+} from "@/lib/schemas";
 import type {
   App,
   AppOutput,
@@ -23,7 +28,11 @@ import type {
   LoginRequest,
   RegisterRequest,
 } from "./types";
-import { type AppOutputCallbacks, type ChatStreamCallbacks, WebSocketClient } from "./websocket_client";
+import {
+  type AppOutputCallbacks,
+  type ChatStreamCallbacks,
+  WebSocketClient,
+} from "./websocket_client";
 
 /**
  * ApiClient - HTTP/WebSocket client for web-based Kova
@@ -35,7 +44,8 @@ export class ApiClient {
   private refreshToken: string | null = null;
   private onUnauthorized?: () => void;
   private wsClient: WebSocketClient | null = null;
-  private appOutputCallbacks: Map<number, (output: AppOutput) => void> = new Map();
+  private appOutputCallbacks: Map<number, (output: AppOutput) => void> =
+    new Map();
 
   private constructor(config: ApiClientConfig) {
     this.baseUrl = config.baseUrl;
@@ -53,7 +63,7 @@ export class ApiClient {
       // Initialize WebSocket client
       ApiClient.instance.wsClient = WebSocketClient.initialize(
         config.baseUrl,
-        () => ApiClient.instance?.accessToken || null
+        () => ApiClient.instance?.accessToken || null,
       );
     }
     return ApiClient.instance;
@@ -72,7 +82,7 @@ export class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: HeadersInit = {
@@ -85,7 +95,8 @@ export class ApiClient {
     }
 
     if (this.accessToken) {
-      (headers as Record<string, string>)["Authorization"] = `Bearer ${this.accessToken}`;
+      (headers as Record<string, string>)["Authorization"] =
+        `Bearer ${this.accessToken}`;
     }
 
     const response = await fetch(url, {
@@ -98,7 +109,8 @@ export class ApiClient {
       const refreshed = await this.tryRefreshToken();
       if (refreshed) {
         // Retry request with new token
-        (headers as Record<string, string>)["Authorization"] = `Bearer ${this.accessToken}`;
+        (headers as Record<string, string>)["Authorization"] =
+          `Bearer ${this.accessToken}`;
         const retryResponse = await fetch(url, { ...options, headers });
         if (!retryResponse.ok) {
           throw new Error(await retryResponse.text());
@@ -210,23 +222,36 @@ export class ApiClient {
     await this.request(`/api/apps/${appId}`, { method: "DELETE" });
   }
 
-  async renameApp(params: { appId: number; appName: string; appPath: string }): Promise<void> {
+  async renameApp(params: {
+    appId: number;
+    appName: string;
+    appPath: string;
+  }): Promise<void> {
     await this.request(`/api/apps/${params.appId}`, {
       method: "PUT",
       body: JSON.stringify({ name: params.appName, path: params.appPath }),
     });
   }
 
-  async copyApp(params: { appId: number; newAppName?: string; withHistory?: boolean }): Promise<{ app: App }> {
+  async copyApp(params: {
+    appId: number;
+    newAppName?: string;
+    withHistory?: boolean;
+  }): Promise<{ app: App }> {
     const app = await this.request<App>(`/api/apps/${params.appId}/copy`, {
       method: "POST",
-      body: JSON.stringify({ name: params.newAppName, withHistory: params.withHistory }),
+      body: JSON.stringify({
+        name: params.newAppName,
+        withHistory: params.withHistory,
+      }),
     });
     return { app };
   }
 
   async addAppToFavorite(appId: number): Promise<{ isFavorite: boolean }> {
-    const app = await this.request<App>(`/api/apps/${appId}/favorite`, { method: "POST" });
+    const app = await this.request<App>(`/api/apps/${appId}/favorite`, {
+      method: "POST",
+    });
     return { isFavorite: app.isFavorite ?? true };
   }
 
@@ -238,7 +263,10 @@ export class ApiClient {
   // App Execution
   // =====================
 
-  async runApp(appId: number, onOutput: (output: AppOutput) => void): Promise<void> {
+  async runApp(
+    appId: number,
+    onOutput: (output: AppOutput) => void,
+  ): Promise<void> {
     // Subscribe to app output via WebSocket
     this.appOutputCallbacks.set(appId, onOutput);
     await this.wsClient?.connect();
@@ -277,7 +305,7 @@ export class ApiClient {
   async restartApp(
     appId: number,
     onOutput: (output: AppOutput) => void,
-    removeNodeModules?: boolean
+    removeNodeModules?: boolean,
   ): Promise<{ success: boolean }> {
     // Update callback
     this.appOutputCallbacks.set(appId, onOutput);
@@ -380,29 +408,36 @@ export class ApiClient {
       onUpdate: (messages: Message[]) => void;
       onEnd: (response: ChatResponseEnd) => void;
       onError: (error: string) => void;
-    }
+    },
   ): void {
     const { chatId, redo, attachments, onUpdate, onEnd, onError } = options;
 
     // Convert FileAttachment[] to the format expected by WebSocket
-    const processAttachments = async (): Promise<Array<{ type: string; data: string; fileName?: string }> | undefined> => {
+    const processAttachments = async (): Promise<
+      Array<{ type: string; data: string; fileName?: string }> | undefined
+    > => {
       if (!attachments || attachments.length === 0) return undefined;
 
       return Promise.all(
         attachments.map(async (attachment) => {
-          return new Promise<{ type: string; data: string; fileName?: string }>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              resolve({
-                type: attachment.file.type,
-                data: reader.result as string,
-                fileName: attachment.file.name,
-              });
-            };
-            reader.onerror = () => reject(new Error(`Failed to read file: ${attachment.file.name}`));
-            reader.readAsDataURL(attachment.file);
-          });
-        })
+          return new Promise<{ type: string; data: string; fileName?: string }>(
+            (resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                resolve({
+                  type: attachment.file.type,
+                  data: reader.result as string,
+                  fileName: attachment.file.name,
+                });
+              };
+              reader.onerror = () =>
+                reject(
+                  new Error(`Failed to read file: ${attachment.file.name}`),
+                );
+              reader.readAsDataURL(attachment.file);
+            },
+          );
+        }),
       );
     };
 
@@ -428,7 +463,7 @@ export class ApiClient {
             {
               attachments: processedAttachments,
               redo,
-            }
+            },
           );
         });
       })
@@ -449,14 +484,20 @@ export class ApiClient {
     return this.request(`/api/chats/${chatId}/proposal`);
   }
 
-  async approveProposal(params: { chatId: number; messageId: number }): Promise<{ success: boolean }> {
+  async approveProposal(params: {
+    chatId: number;
+    messageId: number;
+  }): Promise<{ success: boolean }> {
     return this.request(`/api/chats/${params.chatId}/proposal/approve`, {
       method: "POST",
       body: JSON.stringify({ messageId: params.messageId }),
     });
   }
 
-  async rejectProposal(params: { chatId: number; messageId: number }): Promise<void> {
+  async rejectProposal(params: {
+    chatId: number;
+    messageId: number;
+  }): Promise<void> {
     await this.request(`/api/chats/${params.chatId}/proposal/reject`, {
       method: "POST",
       body: JSON.stringify({ messageId: params.messageId }),
@@ -471,7 +512,9 @@ export class ApiClient {
     return this.request("/api/settings");
   }
 
-  async setUserSettings(settings: Partial<UserSettings>): Promise<UserSettings> {
+  async setUserSettings(
+    settings: Partial<UserSettings>,
+  ): Promise<UserSettings> {
     return this.request("/api/settings", {
       method: "PATCH",
       body: JSON.stringify(settings),
@@ -508,11 +551,20 @@ export class ApiClient {
   // App Files
   // =====================
 
-  async readAppFile(params: { appId: number; filePath: string }): Promise<{ content: string }> {
-    return this.request(`/api/apps/${params.appId}/files?path=${encodeURIComponent(params.filePath)}`);
+  async readAppFile(params: {
+    appId: number;
+    filePath: string;
+  }): Promise<{ content: string }> {
+    return this.request(
+      `/api/apps/${params.appId}/files?path=${encodeURIComponent(params.filePath)}`,
+    );
   }
 
-  async editAppFile(params: { appId: number; filePath: string; content: string }): Promise<{ success: boolean }> {
+  async editAppFile(params: {
+    appId: number;
+    filePath: string;
+    content: string;
+  }): Promise<{ success: boolean }> {
     return this.request(`/api/apps/${params.appId}/files`, {
       method: "PUT",
       body: JSON.stringify({ path: params.filePath, content: params.content }),
@@ -527,32 +579,51 @@ export class ApiClient {
     return this.request(`/api/apps/${params.appId}/versions`);
   }
 
-  async getCurrentBranch(appId: number): Promise<{ name: string; isDetached: boolean }> {
+  async getCurrentBranch(
+    appId: number,
+  ): Promise<{ name: string; isDetached: boolean }> {
     return this.request(`/api/apps/${appId}/branch`);
   }
 
-  async revertVersion(params: { appId: number; previousVersionId: string }): Promise<{ successMessage: string } | { warningMessage: string }> {
-    await this.request(`/api/apps/${params.appId}/versions/${params.previousVersionId}/revert`, {
-      method: "POST",
-    });
+  async revertVersion(params: {
+    appId: number;
+    previousVersionId: string;
+  }): Promise<{ successMessage: string } | { warningMessage: string }> {
+    await this.request(
+      `/api/apps/${params.appId}/versions/${params.previousVersionId}/revert`,
+      {
+        method: "POST",
+      },
+    );
     return { successMessage: "Version reverted successfully" };
   }
 
-  async checkoutVersion(params: { appId: number; versionId: string }): Promise<void> {
-    await this.request(`/api/apps/${params.appId}/versions/${params.versionId}/checkout`, {
-      method: "POST",
-    });
+  async checkoutVersion(params: {
+    appId: number;
+    versionId: string;
+  }): Promise<void> {
+    await this.request(
+      `/api/apps/${params.appId}/versions/${params.versionId}/checkout`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   // =====================
   // Environment Variables
   // =====================
 
-  async getAppEnvVars(params: { appId: number }): Promise<{ key: string; value: string }[]> {
+  async getAppEnvVars(params: {
+    appId: number;
+  }): Promise<{ key: string; value: string }[]> {
     return this.request(`/api/apps/${params.appId}/env`);
   }
 
-  async setAppEnvVars(params: { appId: number; envVars: { key: string; value: string }[] }): Promise<void> {
+  async setAppEnvVars(params: {
+    appId: number;
+    envVars: { key: string; value: string }[];
+  }): Promise<void> {
     await this.request(`/api/apps/${params.appId}/env`, {
       method: "PUT",
       body: JSON.stringify({ envVars: params.envVars }),
@@ -560,7 +631,9 @@ export class ApiClient {
   }
 
   async getAppEnvVarKeys(appId: number): Promise<string[]> {
-    const result = await this.request<{ keys: string[] }>(`/api/apps/${appId}/env/keys`);
+    const result = await this.request<{ keys: string[] }>(
+      `/api/apps/${appId}/env/keys`,
+    );
     return result.keys;
   }
 
@@ -594,7 +667,7 @@ export class ApiClient {
 
   async hasProviderApiKey(providerId: string): Promise<boolean> {
     const result = await this.request<{ hasApiKey: boolean }>(
-      `/api/settings/providers/${providerId}/has-api-key`
+      `/api/settings/providers/${providerId}/has-api-key`,
     );
     return result.hasApiKey;
   }
@@ -606,7 +679,7 @@ export class ApiClient {
   async getEnvVars(): Promise<Record<string, string | undefined>> {
     try {
       return await this.request<Record<string, string | undefined>>(
-        "/api/settings/env-vars"
+        "/api/settings/env-vars",
       );
     } catch {
       // If the endpoint fails, return empty object
@@ -626,7 +699,9 @@ export class ApiClient {
     return this.request(`/api/language-models/${providerId}`);
   }
 
-  async getLanguageModelsByProviders(): Promise<Record<string, LanguageModel[]>> {
+  async getLanguageModelsByProviders(): Promise<
+    Record<string, LanguageModel[]>
+  > {
     return this.request("/api/language-models/by-providers");
   }
 
@@ -644,7 +719,10 @@ export class ApiClient {
     });
   }
 
-  async deleteCustomModel(providerId: string, modelApiName: string): Promise<void> {
+  async deleteCustomModel(
+    providerId: string,
+    modelApiName: string,
+  ): Promise<void> {
     await this.request(`/api/language-models/${providerId}/${modelApiName}`, {
       method: "DELETE",
     });
@@ -664,7 +742,7 @@ export class ApiClient {
 
   async updateCustomProvider(
     id: string,
-    provider: { name: string; apiBaseUrl: string; envVarName?: string }
+    provider: { name: string; apiBaseUrl: string; envVarName?: string },
   ): Promise<LanguageModelProvider> {
     return this.request(`/api/language-models/providers/${id}`, {
       method: "PUT",
@@ -685,7 +763,7 @@ export class ApiClient {
   async checkProviderEnvKey(providerId: string): Promise<boolean> {
     try {
       const result = await this.request<{ hasEnvKey: boolean }>(
-        `/api/settings/providers/${providerId}/env-key`
+        `/api/settings/providers/${providerId}/env-key`,
       );
       return result.hasEnvKey;
     } catch {
@@ -714,7 +792,9 @@ export class ApiClient {
   // =====================
 
   async getAppVersion(): Promise<string> {
-    return this.request<{ version: string }>("/health").then((r) => r.version || "1.0.0");
+    return this.request<{ version: string }>("/health").then(
+      (r) => r.version || "1.0.0",
+    );
   }
 
   openExternalUrl(url: string): void {

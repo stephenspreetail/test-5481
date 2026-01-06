@@ -25,7 +25,7 @@ export function AppsGrid() {
     // Sort by updatedAt descending (most recent first)
     result.sort(
       (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
 
     return result;
@@ -114,7 +114,15 @@ export function AppsGrid() {
   );
 }
 
-function AppCard({ app, onClick, onChatClick }: { app: App; onClick: () => void; onChatClick: (chatId: number) => void }) {
+function AppCard({
+  app,
+  onClick,
+  onChatClick,
+}: {
+  app: App;
+  onClick: () => void;
+  onChatClick: (chatId: number) => void;
+}) {
   return (
     <div
       className="cursor-pointer rounded-2xl bg-[#dce4ed] p-5 min-h-[180px] flex flex-col transition-all hover:shadow-md"
@@ -153,8 +161,14 @@ function AppCard({ app, onClick, onChatClick }: { app: App; onClick: () => void;
       {/* Footer with dates */}
       <div className="mt-auto pt-2 border-t border-gray-300/50">
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Created {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}</span>
-          <span>Updated {formatDistanceToNow(new Date(app.updatedAt), { addSuffix: true })}</span>
+          <span>
+            Created{" "}
+            {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}
+          </span>
+          <span>
+            Updated{" "}
+            {formatDistanceToNow(new Date(app.updatedAt), { addSuffix: true })}
+          </span>
         </div>
       </div>
     </div>

@@ -9,10 +9,7 @@ import {
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { showExtraFilesToast } from "@/lib/toast";
-import type {
-  FileAttachment,
-  Message,
-} from "@/types";
+import type { FileAttachment, Message } from "@/types";
 import type { ChatResponseEnd } from "@/types";
 import { useSearch } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -99,7 +96,9 @@ export function useStreamChat({
       });
 
       let hasIncrementedStreamCount = false;
-      console.log(`💬 [STREAM] Starting stream - chatId: ${chatId}, prompt length: ${prompt.length}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+      console.log(
+        `💬 [STREAM] Starting stream - chatId: ${chatId}, prompt length: ${prompt.length}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+      );
       try {
         getClient().streamMessage(prompt, {
           chatId,
@@ -122,9 +121,13 @@ export function useStreamChat({
             });
           },
           onEnd: (response: ChatResponseEnd) => {
-            console.log(`💬 [STREAM] onEnd called - chatId: ${chatId}, updatedFiles: ${response.updatedFiles}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+            console.log(
+              `💬 [STREAM] onEnd called - chatId: ${chatId}, updatedFiles: ${response.updatedFiles}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+            );
             if (response.updatedFiles) {
-              console.log(`💬 [STREAM] Setting preview open and refreshing iframe - PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+              console.log(
+                `💬 [STREAM] Setting preview open and refreshing iframe - PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
+              );
               setIsPreviewOpen(true);
               refreshAppIframe();
               if (settings?.enableAutoFixProblems) {

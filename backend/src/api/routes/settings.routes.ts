@@ -139,7 +139,7 @@ export async function settingsRoutes(app: FastifyInstance) {
       }
 
       return { key, value };
-    }
+    },
   );
 
   /**
@@ -154,7 +154,7 @@ export async function settingsRoutes(app: FastifyInstance) {
 
       await secretService.deleteUserSecret(user.userId, key);
       return { success: true };
-    }
+    },
   );
 
   // =====================
@@ -176,11 +176,11 @@ export async function settingsRoutes(app: FastifyInstance) {
       await secretService.setUserSecret(
         user.userId,
         `provider:${providerId}:apiKey`,
-        body.apiKey
+        body.apiKey,
       );
 
       return { success: true };
-    }
+    },
   );
 
   /**
@@ -195,11 +195,11 @@ export async function settingsRoutes(app: FastifyInstance) {
 
       await secretService.deleteUserSecret(
         user.userId,
-        `provider:${providerId}:apiKey`
+        `provider:${providerId}:apiKey`,
       );
 
       return { success: true };
-    }
+    },
   );
 
   /**
@@ -214,11 +214,11 @@ export async function settingsRoutes(app: FastifyInstance) {
 
       const value = await secretService.getUserSecret(
         user.userId,
-        `provider:${providerId}:apiKey`
+        `provider:${providerId}:apiKey`,
       );
 
       return { hasApiKey: value !== null };
-    }
+    },
   );
 
   /**
@@ -237,7 +237,7 @@ export async function settingsRoutes(app: FastifyInstance) {
 
       const hasEnvKey = !!process.env[envVarName];
       return { hasEnvKey };
-    }
+    },
   );
 
   /**
@@ -245,22 +245,19 @@ export async function settingsRoutes(app: FastifyInstance) {
    * Get environment variable status for all providers (masked values)
    * Returns which env vars are set, but not their actual values for security
    */
-  app.get(
-    "/env-vars",
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const result: Record<string, string | undefined> = {};
+  app.get("/env-vars", async (request: FastifyRequest, reply: FastifyReply) => {
+    const result: Record<string, string | undefined> = {};
 
-      for (const [providerId, envVarName] of Object.entries(PROVIDER_ENV_VARS)) {
-        const value = process.env[envVarName];
-        if (value) {
-          // Return masked value to indicate it's set
-          result[envVarName] = maskApiKey(value);
-        }
+    for (const [providerId, envVarName] of Object.entries(PROVIDER_ENV_VARS)) {
+      const value = process.env[envVarName];
+      if (value) {
+        // Return masked value to indicate it's set
+        result[envVarName] = maskApiKey(value);
       }
-
-      return result;
     }
-  );
+
+    return result;
+  });
 }
 
 // Map provider IDs to their environment variable names
@@ -280,7 +277,11 @@ const PROVIDER_ENV_VARS: Record<string, string> = {
 };
 
 // Azure-specific env vars
-const AZURE_ENV_VARS = ["AZURE_API_KEY", "AZURE_RESOURCE_NAME", "AZURE_DEPLOYMENT_NAME"];
+const AZURE_ENV_VARS = [
+  "AZURE_API_KEY",
+  "AZURE_RESOURCE_NAME",
+  "AZURE_DEPLOYMENT_NAME",
+];
 
 function maskApiKey(key: string): string {
   if (key.length < 8) return "****";

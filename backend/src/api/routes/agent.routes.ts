@@ -118,7 +118,7 @@ export async function agentRoutes(app: FastifyInstance) {
         for await (const event of agentService.resumeSession(
           body.sessionId,
           body.prompt,
-          { cwd, allowedTools: body.allowedTools }
+          { cwd, allowedTools: body.allowedTools },
         )) {
           if (event.type === "result") {
             result = event.result || "";
@@ -142,7 +142,7 @@ export async function agentRoutes(app: FastifyInstance) {
           error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    }
+    },
   );
 
   /**
@@ -180,7 +180,7 @@ export async function agentRoutes(app: FastifyInstance) {
         for await (const event of agentService.forkSession(
           body.sessionId,
           body.prompt,
-          { cwd, allowedTools: body.allowedTools }
+          { cwd, allowedTools: body.allowedTools },
         )) {
           if (event.type === "session_init") {
             newSessionId = event.sessionId;
@@ -208,7 +208,7 @@ export async function agentRoutes(app: FastifyInstance) {
           error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    }
+    },
   );
 
   /**

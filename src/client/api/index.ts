@@ -6,10 +6,20 @@
  */
 
 // Main entry points
-export { getClient, initializeClient, isWeb, getPlatform, resetClient } from "./client_factory";
+export {
+  getClient,
+  initializeClient,
+  isWeb,
+  getPlatform,
+  resetClient,
+} from "./client_factory";
 
 // Client interface
-export type { IApiClient, ChatStreamCallbacks, AppStreamCallbacks } from "./client_interface";
+export type {
+  IApiClient,
+  ChatStreamCallbacks,
+  AppStreamCallbacks,
+} from "./client_interface";
 
 // Concrete implementations (use sparingly - prefer getClient())
 export { ApiClient } from "./api_client";

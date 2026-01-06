@@ -18,12 +18,8 @@ import {
 } from "./ui/tooltip";
 
 export function ContextFilesPicker() {
-  const {
-    contextPaths,
-    excludePaths,
-    updateContextPaths,
-    updateExcludePaths,
-  } = useContextPaths();
+  const { contextPaths, excludePaths, updateContextPaths, updateExcludePaths } =
+    useContextPaths();
   const [isOpen, setIsOpen] = useState(false);
   const [newPath, setNewPath] = useState("");
   const [newExcludePath, setNewExcludePath] = useState("");

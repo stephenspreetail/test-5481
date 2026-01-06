@@ -2,7 +2,14 @@
  * IApiClient - API client interface for the web application
  */
 
-import type { AppChatContext, AppSearchResult, ChatSearchResult, ChatSummary, ContextPathResults, UserSettings } from "@/lib/schemas";
+import type {
+  AppChatContext,
+  AppSearchResult,
+  ChatSearchResult,
+  ChatSummary,
+  ContextPathResults,
+  UserSettings,
+} from "@/lib/schemas";
 import type { Template } from "@/shared/templates";
 import type {
   App,
@@ -75,7 +82,6 @@ export interface AppStreamCallbacks {
   onOutput: (output: AppOutput) => void;
 }
 
-
 /**
  * Core API client interface - methods required for basic app functionality
  */
@@ -87,7 +93,11 @@ export interface IApiClient {
   getApp(appId: number): Promise<App>;
   listApps(): Promise<ListAppsResponse>;
   deleteApp(appId: number): Promise<void>;
-  renameApp(params: { appId: number; appName: string; appPath: string }): Promise<void>;
+  renameApp(params: {
+    appId: number;
+    appName: string;
+    appPath: string;
+  }): Promise<void>;
   copyApp(params: { appId: number; newName?: string }): Promise<{ app: App }>;
   addAppToFavorite(appId: number): Promise<{ isFavorite: boolean }>;
   searchApps(query: string): Promise<App[]>;
@@ -104,7 +114,7 @@ export interface IApiClient {
   restartApp(
     appId: number,
     onOutput: (output: AppOutput) => void,
-    removeNodeModules?: boolean
+    removeNodeModules?: boolean,
   ): Promise<{ success: boolean }>;
   respondToAppInput(params: RespondToAppInputParams): Promise<void>;
   clearSessionData(appId: number): Promise<void>;
@@ -112,14 +122,24 @@ export interface IApiClient {
   // =====================
   // App Files
   // =====================
-  readAppFile(params: { appId: number; filePath: string }): Promise<{ content: string }>;
-  editAppFile(params: { appId: number; filePath: string; content: string }): Promise<EditAppFileReturnType>;
+  readAppFile(params: {
+    appId: number;
+    filePath: string;
+  }): Promise<{ content: string }>;
+  editAppFile(params: {
+    appId: number;
+    filePath: string;
+    content: string;
+  }): Promise<EditAppFileReturnType>;
 
   // =====================
   // App Upgrades
   // =====================
   getAppUpgrades(params: { appId: number }): Promise<AppUpgrade[]>;
-  executeAppUpgrade(params: { appId: number; upgradeId: string }): Promise<void>;
+  executeAppUpgrade(params: {
+    appId: number;
+    upgradeId: string;
+  }): Promise<void>;
 
   // =====================
   // Chats
@@ -144,21 +164,31 @@ export interface IApiClient {
       onUpdate: (messages: Message[]) => void;
       onEnd: (response: ChatResponseEnd) => void;
       onError: (error: string) => void;
-    }
+    },
   ): void;
   cancelChatStream(chatId: number): void;
 
   // =====================
   // Chat Context
   // =====================
-  getChatContextResults(params: { appId: number; chatId: number }): Promise<ContextPathResults>;
-  setChatContext(params: { appId: number; chatId: number; context: AppChatContext }): Promise<void>;
+  getChatContextResults(params: {
+    appId: number;
+    chatId: number;
+  }): Promise<ContextPathResults>;
+  setChatContext(params: {
+    appId: number;
+    chatId: number;
+    context: AppChatContext;
+  }): Promise<void>;
 
   // =====================
   // Proposals
   // =====================
   getProposal(chatId: number): Promise<{ proposal: string | null }>;
-  approveProposal(params: { chatId: number; messageId: number }): Promise<ApproveProposalResult>;
+  approveProposal(params: {
+    chatId: number;
+    messageId: number;
+  }): Promise<ApproveProposalResult>;
   rejectProposal(params: { chatId: number; messageId: number }): Promise<void>;
 
   // =====================
@@ -198,19 +228,32 @@ export interface IApiClient {
   // =====================
   // Environment Variables
   // =====================
-  getAppEnvVars(params: { appId: number }): Promise<{ key: string; value: string }[]>;
-  setAppEnvVars(params: { appId: number; envVars: { key: string; value: string }[] }): Promise<void>;
+  getAppEnvVars(params: {
+    appId: number;
+  }): Promise<{ key: string; value: string }[]>;
+  setAppEnvVars(params: {
+    appId: number;
+    envVars: { key: string; value: string }[];
+  }): Promise<void>;
 
   // =====================
   // Language Models
   // =====================
   getLanguageModelProviders(): Promise<LanguageModelProvider[]>;
   getLanguageModels(providerId: string): Promise<LanguageModel[]>;
-  getLanguageModelsByProviders(): Promise<{ providers: { provider: LanguageModelProvider; models: LanguageModel[] }[] }>;
-  createCustomLanguageModelProvider(params: CreateCustomLanguageModelProviderParams): Promise<void>;
-  editCustomLanguageModelProvider(params: { providerId: string } & CreateCustomLanguageModelProviderParams): Promise<void>;
+  getLanguageModelsByProviders(): Promise<{
+    providers: { provider: LanguageModelProvider; models: LanguageModel[] }[];
+  }>;
+  createCustomLanguageModelProvider(
+    params: CreateCustomLanguageModelProviderParams,
+  ): Promise<void>;
+  editCustomLanguageModelProvider(
+    params: { providerId: string } & CreateCustomLanguageModelProviderParams,
+  ): Promise<void>;
   deleteCustomLanguageModelProvider(providerId: string): Promise<void>;
-  createCustomLanguageModel(params: CreateCustomLanguageModelParams): Promise<void>;
+  createCustomLanguageModel(
+    params: CreateCustomLanguageModelParams,
+  ): Promise<void>;
   deleteCustomModel(modelId: number): Promise<void>;
 
   // =====================
@@ -232,7 +275,10 @@ export interface IApiClient {
   // =====================
   // Help Bot
   // =====================
-  startHelpChat(params: { sessionId: string; message: string }, onDelta: (delta: string) => void): Promise<void>;
+  startHelpChat(
+    params: { sessionId: string; message: string },
+    onDelta: (delta: string) => void,
+  ): Promise<void>;
 
   // =====================
   // MCP (Model Context Protocol)
@@ -243,16 +289,35 @@ export interface IApiClient {
   createMcpServer(server: CreateMcpServer): Promise<McpServer>;
   updateMcpServer(server: McpServerUpdate): Promise<McpServer>;
   deleteMcpServer(serverId: number): Promise<void>;
-  setMcpToolConsent(params: { serverId: number; toolName: string; consent: McpToolConsentType }): Promise<void>;
+  setMcpToolConsent(params: {
+    serverId: number;
+    toolName: string;
+    consent: McpToolConsentType;
+  }): Promise<void>;
 
   // =====================
   // GitHub Integration
   // =====================
   listGithubRepos(): Promise<GithubRepository[]>;
-  getGithubRepoBranches(params: { owner: string; repo: string }): Promise<{ branches: string[] }>;
-  checkGithubRepoAvailable(params: { owner: string; repo: string }): Promise<{ available: boolean }>;
-  createGithubRepo(params: { appId: number; repoName: string; isPrivate: boolean }): Promise<void>;
-  connectToExistingGithubRepo(params: { appId: number; owner: string; repo: string; branch: string }): Promise<void>;
+  getGithubRepoBranches(params: {
+    owner: string;
+    repo: string;
+  }): Promise<{ branches: string[] }>;
+  checkGithubRepoAvailable(params: {
+    owner: string;
+    repo: string;
+  }): Promise<{ available: boolean }>;
+  createGithubRepo(params: {
+    appId: number;
+    repoName: string;
+    isPrivate: boolean;
+  }): Promise<void>;
+  connectToExistingGithubRepo(params: {
+    appId: number;
+    owner: string;
+    repo: string;
+    branch: string;
+  }): Promise<void>;
   disconnectGithubRepo(appId: number): Promise<void>;
   syncGithubRepo(appId: number): Promise<{ success: boolean }>;
   cloneRepoFromUrl(params: CloneRepoParams): Promise<CloneRepoReturnType>;
@@ -278,11 +343,17 @@ export interface IApiClient {
   // =====================
   listVercelProjects(): Promise<VercelProject[]>;
   saveVercelAccessToken(params: SaveVercelAccessTokenParams): Promise<void>;
-  isVercelProjectAvailable(params: { name: string }): Promise<IsVercelProjectAvailableResponse>;
+  isVercelProjectAvailable(params: {
+    name: string;
+  }): Promise<IsVercelProjectAvailableResponse>;
   createVercelProject(params: CreateVercelProjectParams): Promise<void>;
-  connectToExistingVercelProject(params: ConnectToExistingVercelProjectParams): Promise<void>;
+  connectToExistingVercelProject(
+    params: ConnectToExistingVercelProjectParams,
+  ): Promise<void>;
   disconnectVercelProject(params: DisconnectVercelProjectParams): Promise<void>;
-  getVercelDeployments(params: GetVercelDeploymentsParams): Promise<VercelDeployment[]>;
+  getVercelDeployments(
+    params: GetVercelDeploymentsParams,
+  ): Promise<VercelDeployment[]>;
 
   // =====================
   // System & Debug
@@ -291,7 +362,6 @@ export interface IApiClient {
   getSystemDebugInfo(): Promise<SystemDebugInfo>;
   getChatLogs(chatId: number): Promise<ChatLogsData>;
   uploadToSignedUrl(params: { url: string; data: string }): Promise<void>;
-
 
   // =====================
   // User Budget (Pro)
@@ -316,12 +386,10 @@ export interface IApiClient {
   // =====================
   portalMigrateCreate(appId: number): Promise<{ success: boolean }>;
 
-
   // =====================
   // Screenshots
   // =====================
   takeScreenshot(): Promise<string>;
-
 
   // =====================
   // Utility

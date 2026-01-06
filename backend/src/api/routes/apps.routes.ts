@@ -83,7 +83,7 @@ export async function appsRoutes(app: FastifyInstance) {
           chatCount: chatCountResult[0]?.count || 0,
           messageCount: messageCountResult[0]?.count || 0,
         };
-      })
+      }),
     );
 
     return appsWithDetails;
@@ -216,56 +216,61 @@ export async function appsRoutes(app: FastifyInstance) {
    * Copy an app
    * Path format: {userId}/{appId}-{timestamp}
    */
-  app.post("/:id/copy", async (request: FastifyRequest, reply: FastifyReply) => {
-    const user = request.user!;
-    const { id } = request.params as { id: string };
-    const body = z.object({ name: z.string().optional() }).parse(request.body);
+  app.post(
+    "/:id/copy",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const user = request.user!;
+      const { id } = request.params as { id: string };
+      const body = z
+        .object({ name: z.string().optional() })
+        .parse(request.body);
 
-    // Get original app
-    const original = await db
-      .select()
-      .from(apps)
-      .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId)))
-      .limit(1);
+      // Get original app
+      const original = await db
+        .select()
+        .from(apps)
+        .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId)))
+        .limit(1);
 
-    if (original.length === 0) {
-      reply.status(404).send({ error: "App not found" });
-      return;
-    }
+      if (original.length === 0) {
+        reply.status(404).send({ error: "App not found" });
+        return;
+      }
 
-    const originalApp = original[0];
-    const newName = body.name || `${originalApp.name} (Copy)`;
-    const timestamp = Date.now();
-    // Insert with temporary path first to get the app ID
-    const tempPath = `${user.userId}/temp-${timestamp}`;
+      const originalApp = original[0];
+      const newName = body.name || `${originalApp.name} (Copy)`;
+      const timestamp = Date.now();
+      // Insert with temporary path first to get the app ID
+      const tempPath = `${user.userId}/temp-${timestamp}`;
 
-    // Create new app with temporary path
-    const insertResult = await db
-      .insert(apps)
-      .values({
-        userId: user.userId,
-        name: newName,
-        path: tempPath,
-        installCommand: originalApp.installCommand,
-        startCommand: originalApp.startCommand,
-        chatContext: originalApp.chatContext,
-      })
-      .returning();
+      // Create new app with temporary path
+      const insertResult = await db
+        .insert(apps)
+        .values({
+          userId: user.userId,
+          name: newName,
+          path: tempPath,
+          installCommand: originalApp.installCommand,
+          startCommand: originalApp.startCommand,
+          chatContext: originalApp.chatContext,
+        })
+        .returning();
 
-    const insertedApp = insertResult[0];
+      const insertedApp = insertResult[0];
 
-    // Update path to use the actual app ID: {userId}/{appId}-{timestamp}
-    const finalPath = `${user.userId}/${insertedApp.id}-${timestamp}`;
-    const result = await db
-      .update(apps)
-      .set({ path: finalPath })
-      .where(eq(apps.id, insertedApp.id))
-      .returning();
+      // Update path to use the actual app ID: {userId}/{appId}-{timestamp}
+      const finalPath = `${user.userId}/${insertedApp.id}-${timestamp}`;
+      const result = await db
+        .update(apps)
+        .set({ path: finalPath })
+        .where(eq(apps.id, insertedApp.id))
+        .returning();
 
-    // TODO: Also copy app files
+      // TODO: Also copy app files
 
-    reply.status(201).send(result[0]);
-  });
+      reply.status(201).send(result[0]);
+    },
+  );
 
   /**
    * POST /api/apps/:id/favorite
@@ -300,7 +305,7 @@ export async function appsRoutes(app: FastifyInstance) {
         .returning();
 
       return result[0];
-    }
+    },
   );
 
   // =====================
@@ -380,7 +385,7 @@ export async function appsRoutes(app: FastifyInstance) {
 
       await secretService.deleteAppEnvVar(parseInt(id), key);
       return { success: true };
-    }
+    },
   );
 
   // =====================
@@ -416,7 +421,7 @@ export async function appsRoutes(app: FastifyInstance) {
         .orderBy(desc(chats.createdAt));
 
       return result;
-    }
+    },
   );
 
   /**
@@ -457,7 +462,7 @@ export async function appsRoutes(app: FastifyInstance) {
         .returning();
 
       reply.status(201).send(result[0]);
-    }
+    },
   );
 
   // =====================
@@ -489,7 +494,7 @@ export async function appsRoutes(app: FastifyInstance) {
       // TODO: Implement git version history
       // For now, return empty array - git operations will be added in Phase C
       return [];
-    }
+    },
   );
 
   /**
@@ -517,7 +522,7 @@ export async function appsRoutes(app: FastifyInstance) {
       // TODO: Implement git branch detection
       // For now, return default branch - git operations will be added in Phase C
       return { name: "main", isDetached: false };
-    }
+    },
   );
 
   // =====================
@@ -562,7 +567,7 @@ export async function appsRoutes(app: FastifyInstance) {
       // TODO: Implement file reading from app storage
       // For now, return empty content - file operations will be added in Phase C
       return { content: "" };
-    }
+    },
   );
 
   /**
@@ -596,6 +601,6 @@ export async function appsRoutes(app: FastifyInstance) {
       // TODO: Implement file writing to app storage
       // For now, return success - file operations will be added in Phase C
       return { success: true };
-    }
+    },
   );
 }

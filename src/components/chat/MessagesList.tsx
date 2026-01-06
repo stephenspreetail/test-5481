@@ -107,9 +107,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                             versionId: previousAssistantMessage.commitHash,
                           });
                           const chat =
-                            await getClient().getChat(
-                              selectedChatId,
-                            );
+                            await getClient().getChat(selectedChatId);
                           setMessagesById((prev) => {
                             const next = new Map(prev);
                             next.set(selectedChatId, chat.messages);
@@ -117,16 +115,13 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                           });
                         }
                       } else {
-                        const chat =
-                          await getClient().getChat(selectedChatId);
+                        const chat = await getClient().getChat(selectedChatId);
                         if (chat.initialCommitHash) {
                           await revertVersion({
                             versionId: chat.initialCommitHash,
                           });
                           try {
-                            await getClient().deleteMessages(
-                              selectedChatId,
-                            );
+                            await getClient().deleteMessages(selectedChatId);
                             setMessagesById((prev) => {
                               const next = new Map(prev);
                               next.set(selectedChatId, []);
@@ -192,8 +187,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                         });
                         shouldRedo = false;
                       } else {
-                        const chat =
-                          await getClient().getChat(selectedChatId);
+                        const chat = await getClient().getChat(selectedChatId);
                         if (chat.initialCommitHash) {
                           console.debug(
                             "Reverting to initial commit hash",

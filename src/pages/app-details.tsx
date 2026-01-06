@@ -90,14 +90,14 @@ export default function AppDetailsPage() {
     if (chatSearchQuery.trim()) {
       const query = chatSearchQuery.toLowerCase();
       result = result.filter((chat) =>
-        (chat.title || "New Chat").toLowerCase().includes(query)
+        (chat.title || "New Chat").toLowerCase().includes(query),
       );
     }
 
     // Sort by createdAt descending (most recent first)
     result.sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     return result;
@@ -280,7 +280,9 @@ export default function AppDetailsPage() {
       {/* App Info Section */}
       <div className="w-full max-w-2xl mx-auto mt-10 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm relative text-gray-900 dark:text-gray-100">
         <div className="flex items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedApp.name}</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            {selectedApp.name}
+          </h2>
           <Button
             variant="ghost"
             size="sm"
@@ -341,20 +343,26 @@ export default function AppDetailsPage() {
             <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
               Created
             </span>
-            <span className="text-gray-900 dark:text-gray-200">{selectedApp.createdAt.toString()}</span>
+            <span className="text-gray-900 dark:text-gray-200">
+              {selectedApp.createdAt.toString()}
+            </span>
           </div>
           <div>
             <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
               Last Updated
             </span>
-            <span className="text-gray-900 dark:text-gray-200">{selectedApp.updatedAt.toString()}</span>
+            <span className="text-gray-900 dark:text-gray-200">
+              {selectedApp.updatedAt.toString()}
+            </span>
           </div>
           <div className="col-span-2">
             <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
               Path
             </span>
             <div className="flex items-center gap-1">
-              <span className="text-sm break-all text-gray-900 dark:text-gray-200">{fullAppPath}</span>
+              <span className="text-sm break-all text-gray-900 dark:text-gray-200">
+                {fullAppPath}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -393,7 +401,9 @@ export default function AppDetailsPage() {
 
       {/* Integrations Section */}
       <div className="w-full max-w-2xl mx-auto mt-4 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-gray-900 dark:text-gray-100">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Integrations</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Integrations
+        </h3>
         <div className="space-y-4">
           <GitHubConnector appId={appId} folderName={selectedApp.path} />
           {appId && <SupabaseConnector appId={appId} />}
@@ -403,396 +413,391 @@ export default function AppDetailsPage() {
       {/* Chats Section */}
       <div className="w-full max-w-2xl mx-auto mt-4 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-gray-900 dark:text-gray-100">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Chats</h3>
-            <Button
-              onClick={handleNewChat}
-              disabled={isCreatingChat}
-              size="sm"
-              className="gap-2"
-            >
-              <PlusCircle size={14} />
-              <span>New Chat</span>
-            </Button>
-          </div>
-
-          {/* Chat search */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <Input
-              placeholder="Search chats..."
-              value={chatSearchQuery}
-              onChange={(e) => setChatSearchQuery(e.target.value)}
-              className="pl-9 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-            />
-          </div>
-
-          {/* Chat list */}
-          {chatsLoading ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Loading chats...
-            </div>
-          ) : filteredChats.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              {chatSearchQuery ? "No chats match your search" : "No chats yet"}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredChats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className="cursor-pointer p-3 border border-gray-200 dark:border-gray-500 rounded-lg flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleChatClick(chat.id)}
-                >
-                  <span className="font-medium truncate text-gray-800 dark:text-white">
-                    {chat.title || "New Chat"}
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap ml-2">
-                    {formatDistanceToNow(new Date(chat.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Chats
+          </h3>
+          <Button
+            onClick={handleNewChat}
+            disabled={isCreatingChat}
+            size="sm"
+            className="gap-2"
+          >
+            <PlusCircle size={14} />
+            <span>New Chat</span>
+          </Button>
         </div>
 
-        {/* Rename Dialog */}
-        <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-          <DialogContent className="max-w-sm p-4">
-            <DialogHeader className="pb-2">
-              <DialogTitle>Rename App</DialogTitle>
-            </DialogHeader>
-            <Input
-              value={newAppName}
-              onChange={(e) => setNewAppName(e.target.value)}
-              placeholder="Enter new app name"
-              className="my-2"
-              autoFocus
-            />
-            <DialogFooter className="pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsRenameDialogOpen(false)}
-                disabled={isRenaming}
-                size="sm"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setIsRenameDialogOpen(false);
-                  setIsRenameConfirmDialogOpen(true);
-                }}
-                disabled={isRenaming || !newAppName.trim()}
-                size="sm"
-              >
-                Continue
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Chat search */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <Input
+            placeholder="Search chats..."
+            value={chatSearchQuery}
+            onChange={(e) => setChatSearchQuery(e.target.value)}
+            className="pl-9 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+          />
+        </div>
 
-        {/* Rename Folder Dialog */}
-        <Dialog
-          open={isRenameFolderDialogOpen}
-          onOpenChange={setIsRenameFolderDialogOpen}
-        >
-          <DialogContent className="max-w-sm p-4">
+        {/* Chat list */}
+        {chatsLoading ? (
+          <div className="py-8 text-center text-muted-foreground">
+            Loading chats...
+          </div>
+        ) : filteredChats.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground">
+            {chatSearchQuery ? "No chats match your search" : "No chats yet"}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredChats.map((chat) => (
+              <div
+                key={chat.id}
+                className="cursor-pointer p-3 border border-gray-200 dark:border-gray-500 rounded-lg flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                onClick={() => handleChatClick(chat.id)}
+              >
+                <span className="font-medium truncate text-gray-800 dark:text-white">
+                  {chat.title || "New Chat"}
+                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap ml-2">
+                  {formatDistanceToNow(new Date(chat.createdAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogContent className="max-w-sm p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle>Rename App</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newAppName}
+            onChange={(e) => setNewAppName(e.target.value)}
+            placeholder="Enter new app name"
+            className="my-2"
+            autoFocus
+          />
+          <DialogFooter className="pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsRenameDialogOpen(false)}
+              disabled={isRenaming}
+              size="sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsRenameDialogOpen(false);
+                setIsRenameConfirmDialogOpen(true);
+              }}
+              disabled={isRenaming || !newAppName.trim()}
+              size="sm"
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Folder Dialog */}
+      <Dialog
+        open={isRenameFolderDialogOpen}
+        onOpenChange={setIsRenameFolderDialogOpen}
+      >
+        <DialogContent className="max-w-sm p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle>Rename app folder</DialogTitle>
+            <DialogDescription className="text-xs">
+              This will change only the folder name, not the app name.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="Enter new folder name"
+            className="my-2"
+            autoFocus
+          />
+          <DialogFooter className="pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsRenameFolderDialogOpen(false)}
+              disabled={isRenamingFolder}
+              size="sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameFolderOnly}
+              disabled={isRenamingFolder || !newFolderName.trim()}
+              size="sm"
+            >
+              {isRenamingFolder ? (
+                <>
+                  <svg
+                    className="animate-spin h-3 w-3 mr-1"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Renaming...
+                </>
+              ) : (
+                "Rename Folder"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Confirmation Dialog */}
+      <Dialog
+        open={isRenameConfirmDialogOpen}
+        onOpenChange={setIsRenameConfirmDialogOpen}
+      >
+        <DialogContent className="max-w-sm p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-base">
+              How would you like to rename "{selectedApp.name}"?
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Choose an option:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 my-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start p-2 h-auto relative text-sm"
+              onClick={() => handleRenameApp(true)}
+              disabled={isRenaming}
+            >
+              <div className="absolute top-1 right-1">
+                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
+                  Recommended
+                </span>
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-xs">Rename app and folder</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Renames the folder to match the new app name.
+                </p>
+              </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-start p-2 h-auto text-sm"
+              onClick={() => handleRenameApp(false)}
+              disabled={isRenaming}
+            >
+              <div className="text-left">
+                <p className="font-medium text-xs">Rename app only</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  The folder name will remain the same.
+                </p>
+              </div>
+            </Button>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsRenameConfirmDialogOpen(false)}
+              disabled={isRenaming}
+              size="sm"
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy App Dialog */}
+      {selectedApp && (
+        <Dialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
+          <DialogContent className="max-w-md p-4">
             <DialogHeader className="pb-2">
-              <DialogTitle>Rename app folder</DialogTitle>
-              <DialogDescription className="text-xs">
-                This will change only the folder name, not the app name.
+              <DialogTitle>Copy "{selectedApp.name}"</DialogTitle>
+              <DialogDescription className="text-sm">
+                <p>Create a copy of this app.</p>
+                <p>
+                  Note: this does not copy over the Supabase project or GitHub
+                  project.
+                </p>
               </DialogDescription>
             </DialogHeader>
-            <Input
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="Enter new folder name"
-              className="my-2"
-              autoFocus
-            />
-            <DialogFooter className="pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsRenameFolderDialogOpen(false)}
-                disabled={isRenamingFolder}
-                size="sm"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRenameFolderOnly}
-                disabled={isRenamingFolder || !newFolderName.trim()}
-                size="sm"
-              >
-                {isRenamingFolder ? (
-                  <>
-                    <svg
-                      className="animate-spin h-3 w-3 mr-1"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Renaming...
-                  </>
-                ) : (
-                  "Rename Folder"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Rename Confirmation Dialog */}
-        <Dialog
-          open={isRenameConfirmDialogOpen}
-          onOpenChange={setIsRenameConfirmDialogOpen}
-        >
-          <DialogContent className="max-w-sm p-4">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="text-base">
-                How would you like to rename "{selectedApp.name}"?
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Choose an option:
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 my-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start p-2 h-auto relative text-sm"
-                onClick={() => handleRenameApp(true)}
-                disabled={isRenaming}
-              >
-                <div className="absolute top-1 right-1">
-                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
-                    Recommended
-                  </span>
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-xs">Rename app and folder</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Renames the folder to match the new app name.
-                  </p>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full justify-start p-2 h-auto text-sm"
-                onClick={() => handleRenameApp(false)}
-                disabled={isRenaming}
-              >
-                <div className="text-left">
-                  <p className="font-medium text-xs">Rename app only</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    The folder name will remain the same.
-                  </p>
-                </div>
-              </Button>
-            </div>
-            <DialogFooter className="pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsRenameConfirmDialogOpen(false)}
-                disabled={isRenaming}
-                size="sm"
-              >
-                Cancel
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Copy App Dialog */}
-        {selectedApp && (
-          <Dialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
-            <DialogContent className="max-w-md p-4">
-              <DialogHeader className="pb-2">
-                <DialogTitle>Copy "{selectedApp.name}"</DialogTitle>
-                <DialogDescription className="text-sm">
-                  <p>Create a copy of this app.</p>
-                  <p>
-                    Note: this does not copy over the Supabase project or GitHub
-                    project.
-                  </p>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 my-2">
-                <div>
-                  <Label htmlFor="newAppName">New app name</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="newAppName"
-                      value={newCopyAppName}
-                      onChange={handleAppNameChange}
-                      placeholder="Enter new app name"
-                      className="pr-8"
-                      disabled={copyAppMutation.isPending}
-                    />
-                    {isCheckingName && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-
-                  {nameExists && (
-                    <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
-                      An app with this name already exists. Please choose
-                      another name.
-                    </p>
+            <div className="space-y-3 my-2">
+              <div>
+                <Label htmlFor="newAppName">New app name</Label>
+                <div className="relative mt-1">
+                  <Input
+                    id="newAppName"
+                    value={newCopyAppName}
+                    onChange={handleAppNameChange}
+                    placeholder="Enter new app name"
+                    className="pr-8"
+                    disabled={copyAppMutation.isPending}
+                  />
+                  {isCheckingName && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start p-2 h-auto relative text-sm"
-                    onClick={() =>
-                      copyAppMutation.mutate({ withHistory: true })
-                    }
-                    disabled={
-                      copyAppMutation.isPending ||
-                      nameExists ||
-                      !newCopyAppName.trim() ||
-                      isCheckingName
-                    }
-                  >
-                    {copyAppMutation.isPending &&
-                      copyAppMutation.variables?.withHistory === true && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                    <div className="absolute top-1 right-1">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
-                        Recommended
-                      </span>
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-xs">
-                        Copy app with history
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Copies the entire app, including the Git version
-                        history.
-                      </p>
-                    </div>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start p-2 h-auto text-sm"
-                    onClick={() =>
-                      copyAppMutation.mutate({ withHistory: false })
-                    }
-                    disabled={
-                      copyAppMutation.isPending ||
-                      nameExists ||
-                      !newCopyAppName.trim() ||
-                      isCheckingName
-                    }
-                  >
-                    {copyAppMutation.isPending &&
-                      copyAppMutation.variables?.withHistory === false && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                    <div className="text-left">
-                      <p className="font-medium text-xs">
-                        Copy app without history
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Useful if the current app has a Git-related issue.
-                      </p>
-                    </div>
-                  </Button>
-                </div>
+                {nameExists && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+                    An app with this name already exists. Please choose another
+                    name.
+                  </p>
+                )}
               </div>
-              <DialogFooter className="pt-2">
+
+              <div className="space-y-2">
                 <Button
                   variant="outline"
-                  onClick={() => setIsCopyDialogOpen(false)}
-                  disabled={copyAppMutation.isPending}
-                  size="sm"
+                  className="w-full justify-start p-2 h-auto relative text-sm"
+                  onClick={() => copyAppMutation.mutate({ withHistory: true })}
+                  disabled={
+                    copyAppMutation.isPending ||
+                    nameExists ||
+                    !newCopyAppName.trim() ||
+                    isCheckingName
+                  }
                 >
-                  Cancel
+                  {copyAppMutation.isPending &&
+                    copyAppMutation.variables?.withHistory === true && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                  <div className="absolute top-1 right-1">
+                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
+                      Recommended
+                    </span>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-xs">Copy app with history</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Copies the entire app, including the Git version history.
+                    </p>
+                  </div>
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent className="max-w-sm p-4">
-            <DialogHeader className="pb-2">
-              <DialogTitle>Delete "{selectedApp.name}"?</DialogTitle>
-              <DialogDescription className="text-xs">
-                This action is irreversible. All app files and chat history will
-                be permanently deleted.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start p-2 h-auto text-sm"
+                  onClick={() => copyAppMutation.mutate({ withHistory: false })}
+                  disabled={
+                    copyAppMutation.isPending ||
+                    nameExists ||
+                    !newCopyAppName.trim() ||
+                    isCheckingName
+                  }
+                >
+                  {copyAppMutation.isPending &&
+                    copyAppMutation.variables?.withHistory === false && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                  <div className="text-left">
+                    <p className="font-medium text-xs">
+                      Copy app without history
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Useful if the current app has a Git-related issue.
+                    </p>
+                  </div>
+                </Button>
+              </div>
+            </div>
+            <DialogFooter className="pt-2">
               <Button
                 variant="outline"
-                onClick={() => setIsDeleteDialogOpen(false)}
-                disabled={isDeleting}
+                onClick={() => setIsCopyDialogOpen(false)}
+                disabled={copyAppMutation.isPending}
                 size="sm"
               >
                 Cancel
               </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteApp}
-                disabled={isDeleting}
-                className="flex items-center gap-1"
-                size="sm"
-              >
-                {isDeleting ? (
-                  <>
-                    <svg
-                      className="animate-spin h-3 w-3 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete App"
-                )}
-              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-sm p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle>Delete "{selectedApp.name}"?</DialogTitle>
+            <DialogDescription className="text-xs">
+              This action is irreversible. All app files and chat history will
+              be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+              size="sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteApp}
+              disabled={isDeleting}
+              className="flex items-center gap-1"
+              size="sm"
+            >
+              {isDeleting ? (
+                <>
+                  <svg
+                    className="animate-spin h-3 w-3 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Deleting...
+                </>
+              ) : (
+                "Delete App"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
