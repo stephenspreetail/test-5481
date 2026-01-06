@@ -1,0 +1,11 @@
+node_modules
+dist
+.vite
+backend
+app-container
+e2e-tests
+testing
+*.log
+.env
+.env.local
+.git

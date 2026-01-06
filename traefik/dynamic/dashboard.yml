@@ -1,0 +1,8 @@
+# Traefik dashboard route
+http:
+  routers:
+    dashboard:
+      rule: "Host(`traefik.localhost`)"
+      entryPoints:
+        - preview
+      service: api@internal

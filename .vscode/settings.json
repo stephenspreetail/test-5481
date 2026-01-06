@@ -1,0 +1,13 @@
+// {
+//   "typescript.tsdk": "node_modules/typescript/lib",
+//   "files.exclude": {
+//     "**/node_modules": true
+//   },
+//   "search.exclude": {
+//     "**/node_modules": true,
+//     "**/.vite": true,
+//     "**/out": true,
+//     "**/dist": true
+//   },
+//   "typescript.preferences.importModuleSpecifier": "relative"
+// }

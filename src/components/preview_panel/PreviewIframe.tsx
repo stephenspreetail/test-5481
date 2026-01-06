@@ -1,0 +1,629 @@
+import {
+  appOutputAtom,
+  appUrlAtom,
+  previewErrorMessageAtom,
+  selectedAppIdAtom,
+} from "@/atoms/appAtoms";
+import { selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { getClient } from "@/client/api/client_factory";
+import { CopyErrorMessage } from "@/components/CopyErrorMessage";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Lightbulb,
+  Loader2,
+  Monitor,
+  MonitorSmartphone,
+  Power,
+  RefreshCw,
+  Smartphone,
+  Sparkles,
+  Tablet,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { previewIframeRefAtom } from "@/atoms/previewAtoms";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useParseRouter } from "@/hooks/useParseRouter";
+import { useRunApp } from "@/hooks/useRunApp";
+import { useStreamChat } from "@/hooks/useStreamChat";
+import { cn } from "@/lib/utils";
+
+interface ErrorBannerProps {
+  error: { message: string; source: "preview-app" | "kova-app" } | undefined;
+  onDismiss: () => void;
+  onAIFix: () => void;
+}
+
+const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const { isStreaming } = useStreamChat();
+  if (!error) return null;
+  const isDockerError = error.message.includes("Cannot connect to the Docker");
+
+  const getTruncatedError = () => {
+    const firstLine = error.message.split("\n")[0];
+    const snippetLength = 250;
+    const snippet = error.message.substring(0, snippetLength);
+    return firstLine.length < snippet.length
+      ? firstLine
+      : snippet + (snippet.length === snippetLength ? "..." : "");
+  };
+
+  return (
+    <div
+      className="absolute top-2 left-2 right-2 z-10 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md shadow-sm p-2"
+      data-testid="preview-error-banner"
+    >
+      {/* Close button in top left */}
+      <button
+        onClick={onDismiss}
+        className="absolute top-1 left-1 p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded"
+      >
+        <X size={14} className="text-red-500 dark:text-red-400" />
+      </button>
+
+      {/* Add a little chip that says "Internal error" if source is "kova-app" */}
+      {error.source === "kova-app" && (
+        <div className="absolute top-1 right-1 p-1 bg-red-100 dark:bg-red-900 rounded-md text-xs font-medium text-red-700 dark:text-red-300">
+          Internal Kova error
+        </div>
+      )}
+
+      {/* Error message in the middle */}
+      <div
+        className={cn(
+          "px-6 py-1 text-sm",
+          error.source === "kova-app" && "pt-6",
+        )}
+      >
+        <div
+          className="text-red-700 dark:text-red-300 text-wrap font-mono whitespace-pre-wrap break-words text-xs cursor-pointer flex gap-1 items-start"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <ChevronRight
+            size={14}
+            className={`mt-0.5 transform transition-transform ${
+              isCollapsed ? "" : "rotate-90"
+            }`}
+          />
+          {isCollapsed ? getTruncatedError() : error.message}
+        </div>
+      </div>
+
+      {/* Tip message */}
+      <div className="mt-2 px-6">
+        <div className="relative p-2 bg-red-100 dark:bg-red-900 rounded-sm flex gap-1 items-center">
+          <div>
+            <Lightbulb size={16} className=" text-red-800 dark:text-red-300" />
+          </div>
+          <span className="text-sm text-red-700 dark:text-red-200">
+            <span className="font-medium">Tip: </span>
+            {isDockerError
+              ? "Make sure Docker Desktop is running and try restarting the app."
+              : error.source === "kova-app"
+                ? "Try restarting the Kova app or restarting your computer to see if that fixes the error."
+                : "Check if restarting the app fixes the error."}
+          </span>
+        </div>
+      </div>
+
+      {/* Action buttons at the bottom */}
+      {!isDockerError && error.source === "preview-app" && (
+        <div className="mt-3 px-6 flex justify-end gap-2">
+          <CopyErrorMessage errorMessage={error.message} />
+          <button
+            disabled={isStreaming}
+            onClick={onAIFix}
+            className="cursor-pointer flex items-center space-x-1 px-2 py-1 bg-red-500 dark:bg-red-600 text-white rounded text-sm hover:bg-red-600 dark:hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Sparkles size={14} />
+            <span>Fix error with AI</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Preview iframe component
+export const PreviewIframe = ({ loading }: { loading: boolean }) => {
+  const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const { appUrl, originalUrl } = useAtomValue(appUrlAtom);
+
+  // DIAGNOSTIC: Track PreviewIframe mount/unmount
+  useEffect(() => {
+    console.log(`🖼️ [PreviewIframe] MOUNTED - selectedAppId: ${selectedAppId}, appUrl: ${appUrl}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    return () => {
+      console.log(`🖼️ [PreviewIframe] UNMOUNTED - selectedAppId: ${selectedAppId}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+    };
+  }, []);
+
+  // DIAGNOSTIC: Track appUrl changes
+  useEffect(() => {
+    console.log(`🖼️ [PreviewIframe] appUrl changed to: ${appUrl}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || 'unknown'}`);
+  }, [appUrl]);
+  const setAppOutput = useSetAtom(appOutputAtom);
+  // State to trigger iframe reload
+  const [reloadKey, setReloadKey] = useState(0);
+  const [errorMessage, setErrorMessage] = useAtom(previewErrorMessageAtom);
+  const selectedChatId = useAtomValue(selectedChatIdAtom);
+  const { streamMessage } = useStreamChat();
+  const { routes: availableRoutes } = useParseRouter(selectedAppId);
+  const { restartApp } = useRunApp();
+
+  // Navigation state
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [canGoForward, setCanGoForward] = useState(false);
+  const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
+  const [currentHistoryPosition, setCurrentHistoryPosition] = useState(0);
+  const setPreviewIframeRef = useSetAtom(previewIframeRefAtom);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Device mode state
+  type DeviceMode = "desktop" | "tablet" | "mobile";
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
+  const [isDevicePopoverOpen, setIsDevicePopoverOpen] = useState(false);
+
+  // Device configurations
+  const deviceWidthConfig = {
+    tablet: 768,
+    mobile: 375,
+  };
+
+  // Update iframe ref atom
+  useEffect(() => {
+    setPreviewIframeRef(iframeRef.current);
+  }, [iframeRef.current, setPreviewIframeRef]);
+
+  // Add message listener for iframe errors and navigation events
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Only handle messages from our iframe
+      if (event.source !== iframeRef.current?.contentWindow) {
+        return;
+      }
+
+      const { type, payload } = event.data as {
+        type:
+          | "window-error"
+          | "unhandled-rejection"
+          | "iframe-sourcemapped-error"
+          | "build-error-report"
+          | "pushState"
+          | "replaceState";
+        payload?: {
+          message?: string;
+          stack?: string;
+          reason?: string;
+          newUrl?: string;
+          file?: string;
+          frame?: string;
+        };
+      };
+
+      if (
+        type === "window-error" ||
+        type === "unhandled-rejection" ||
+        type === "iframe-sourcemapped-error"
+      ) {
+        const stack =
+          type === "iframe-sourcemapped-error"
+            ? payload?.stack?.split("\n").slice(0, 1).join("\n")
+            : payload?.stack;
+        const errorMessage = `Error ${
+          payload?.message || payload?.reason
+        }\nStack trace: ${stack}`;
+        console.error("Iframe error:", errorMessage);
+        setErrorMessage({ message: errorMessage, source: "preview-app" });
+        setAppOutput((prev) => [
+          ...prev,
+          {
+            message: `Iframe error: ${errorMessage}`,
+            type: "client-error",
+            appId: selectedAppId!,
+            timestamp: Date.now(),
+          },
+        ]);
+      } else if (type === "build-error-report") {
+        console.debug(`Build error report: ${payload}`);
+        const errorMessage = `${payload?.message} from file ${payload?.file}.\n\nSource code:\n${payload?.frame}`;
+        setErrorMessage({ message: errorMessage, source: "preview-app" });
+        setAppOutput((prev) => [
+          ...prev,
+          {
+            message: `Build error report: ${JSON.stringify(payload)}`,
+            type: "client-error",
+            appId: selectedAppId!,
+            timestamp: Date.now(),
+          },
+        ]);
+      } else if (type === "pushState" || type === "replaceState") {
+        console.debug(`Navigation event: ${type}`, payload);
+
+        // Update navigation history based on the type of state change
+        if (type === "pushState" && payload?.newUrl) {
+          // For pushState, we trim any forward history and add the new URL
+          const newHistory = [
+            ...navigationHistory.slice(0, currentHistoryPosition + 1),
+            payload.newUrl,
+          ];
+          setNavigationHistory(newHistory);
+          setCurrentHistoryPosition(newHistory.length - 1);
+        } else if (type === "replaceState" && payload?.newUrl) {
+          // For replaceState, we replace the current URL
+          const newHistory = [...navigationHistory];
+          newHistory[currentHistoryPosition] = payload.newUrl;
+          setNavigationHistory(newHistory);
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [
+    navigationHistory,
+    currentHistoryPosition,
+    selectedAppId,
+    errorMessage,
+    setErrorMessage,
+  ]);
+
+  useEffect(() => {
+    // Update navigation buttons state
+    setCanGoBack(currentHistoryPosition > 0);
+    setCanGoForward(currentHistoryPosition < navigationHistory.length - 1);
+  }, [navigationHistory, currentHistoryPosition]);
+
+  // Initialize navigation history when iframe loads
+  useEffect(() => {
+    if (appUrl) {
+      setNavigationHistory([appUrl]);
+      setCurrentHistoryPosition(0);
+      setCanGoBack(false);
+      setCanGoForward(false);
+    }
+  }, [appUrl]);
+
+  // Function to navigate back
+  const handleNavigateBack = () => {
+    if (canGoBack && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "navigate",
+          payload: { direction: "backward" },
+        },
+        "*",
+      );
+
+      // Update our local state
+      setCurrentHistoryPosition((prev) => prev - 1);
+      setCanGoBack(currentHistoryPosition - 1 > 0);
+      setCanGoForward(true);
+    }
+  };
+
+  // Function to navigate forward
+  const handleNavigateForward = () => {
+    if (canGoForward && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "navigate",
+          payload: { direction: "forward" },
+        },
+        "*",
+      );
+
+      // Update our local state
+      setCurrentHistoryPosition((prev) => prev + 1);
+      setCanGoBack(true);
+      setCanGoForward(
+        currentHistoryPosition + 1 < navigationHistory.length - 1,
+      );
+    }
+  };
+
+  // Function to handle reload
+  const handleReload = () => {
+    setReloadKey((prevKey) => prevKey + 1);
+    setErrorMessage(undefined);
+    console.debug("Reloading iframe preview for app", selectedAppId);
+  };
+
+  // Function to navigate to a specific route
+  const navigateToRoute = (path: string) => {
+    if (iframeRef.current?.contentWindow && appUrl) {
+      // Create the full URL by combining the base URL with the path
+      const baseUrl = new URL(appUrl).origin;
+      const newUrl = `${baseUrl}${path}`;
+
+      // Navigate to the URL
+      iframeRef.current.contentWindow.location.href = newUrl;
+
+      // Update navigation history
+      const newHistory = [
+        ...navigationHistory.slice(0, currentHistoryPosition + 1),
+        newUrl,
+      ];
+      setNavigationHistory(newHistory);
+      setCurrentHistoryPosition(newHistory.length - 1);
+      setCanGoBack(true);
+      setCanGoForward(false);
+    }
+  };
+
+  // Display loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full relative">
+        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
+          <div className="relative w-5 h-5 animate-spin">
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-primary rounded-full"></div>
+            <div className="absolute bottom-0 left-0 w-2 h-2 bg-primary rounded-full opacity-80"></div>
+            <div className="absolute bottom-0 right-0 w-2 h-2 bg-primary rounded-full opacity-60"></div>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300">
+            Preparing app preview...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Display message if no app is selected
+  if (selectedAppId === null) {
+    return (
+      <div className="p-4 text-gray-500 dark:text-gray-400">
+        Select an app to see the preview.
+      </div>
+    );
+  }
+
+  const onRestart = () => {
+    restartApp();
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Browser-style header */}
+      <div className="flex items-center p-2 border-b space-x-2 ">
+        {/* Navigation Buttons */}
+        <div className="flex space-x-1">
+          <button
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+            disabled={!canGoBack || loading || !selectedAppId}
+            onClick={handleNavigateBack}
+            data-testid="preview-navigate-back-button"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <button
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+            disabled={!canGoForward || loading || !selectedAppId}
+            onClick={handleNavigateForward}
+            data-testid="preview-navigate-forward-button"
+          >
+            <ArrowRight size={16} />
+          </button>
+          <button
+            onClick={handleReload}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+            disabled={loading || !selectedAppId}
+            data-testid="preview-refresh-button"
+          >
+            <RefreshCw size={16} />
+          </button>
+        </div>
+
+        {/* Address Bar with Routes Dropdown - using shadcn/ui dropdown-menu */}
+        <div className="relative flex-grow min-w-20">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0">
+                <span className="truncate flex-1 mr-2 min-w-0">
+                  {navigationHistory[currentHistoryPosition]
+                    ? new URL(navigationHistory[currentHistoryPosition])
+                        .pathname
+                    : "/"}
+                </span>
+                <ChevronDown size={14} className="flex-shrink-0" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-full">
+              {availableRoutes.length > 0 ? (
+                availableRoutes.map((route) => (
+                  <DropdownMenuItem
+                    key={route.path}
+                    onClick={() => navigateToRoute(route.path)}
+                    className="flex justify-between"
+                  >
+                    <span>{route.label}</span>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs">
+                      {route.path}
+                    </span>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>Loading routes...</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex space-x-1">
+          <button
+            onClick={onRestart}
+            className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
+            title="Restart App"
+          >
+            <Power size={16} />
+            <span>Restart</span>
+          </button>
+          <button
+            data-testid="preview-open-browser-button"
+            onClick={() => {
+              if (originalUrl) {
+                getClient().openExternalUrl(originalUrl);
+              }
+            }}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+          >
+            <ExternalLink size={16} />
+          </button>
+
+          {/* Device Mode Button */}
+          <Popover open={isDevicePopoverOpen} modal={false}>
+            <PopoverTrigger asChild>
+              <button
+                data-testid="device-mode-button"
+                onClick={() => {
+                  // Toggle popover open/close
+                  if (isDevicePopoverOpen) setDeviceMode("desktop");
+                  setIsDevicePopoverOpen(!isDevicePopoverOpen);
+                }}
+                className={cn(
+                  "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300",
+                  deviceMode !== "desktop" && "bg-gray-200 dark:bg-gray-700",
+                )}
+                title="Device Mode"
+              >
+                <MonitorSmartphone size={16} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-auto p-2"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              onInteractOutside={(e) => e.preventDefault()}
+            >
+              <TooltipProvider>
+                <ToggleGroup
+                  type="single"
+                  value={deviceMode}
+                  onValueChange={(value) => {
+                    if (value) {
+                      setDeviceMode(value as DeviceMode);
+                      setIsDevicePopoverOpen(false);
+                    }
+                  }}
+                  variant="outline"
+                >
+                  {/* Tooltips placed inside items instead of wrapping
+                  to avoid asChild prop merging that breaks highlighting */}
+                  <ToggleGroupItem value="desktop" aria-label="Desktop view">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center justify-center">
+                          <Monitor size={16} />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Desktop</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="tablet" aria-label="Tablet view">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center justify-center">
+                          <Tablet size={16} className="scale-x-130" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Tablet</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="mobile" aria-label="Mobile view">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center justify-center">
+                          <Smartphone size={16} />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Mobile</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </TooltipProvider>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      <div className="relative flex-grow ">
+        <ErrorBanner
+          error={errorMessage}
+          onDismiss={() => setErrorMessage(undefined)}
+          onAIFix={() => {
+            if (selectedChatId) {
+              streamMessage({
+                prompt: `Fix error: ${errorMessage?.message}`,
+                chatId: selectedChatId,
+              });
+            }
+          }}
+        />
+
+        {!appUrl ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
+            <p className="text-gray-600 dark:text-gray-300">
+              Starting your app server...
+            </p>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "w-full h-full",
+              deviceMode !== "desktop" && "flex justify-center",
+            )}
+          >
+            <iframe
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-downloads"
+              data-testid="preview-iframe-element"
+              onLoad={() => {
+                setErrorMessage(undefined);
+              }}
+              ref={iframeRef}
+              key={reloadKey}
+              title={`Preview for App ${selectedAppId}`}
+              className="w-full h-full border-none bg-white dark:bg-gray-950"
+              style={
+                deviceMode == "desktop"
+                  ? {}
+                  : { width: `${deviceWidthConfig[deviceMode]}px` }
+              }
+              src={appUrl}
+              allow="clipboard-read; clipboard-write; fullscreen; microphone; camera; display-capture; geolocation; autoplay; picture-in-picture"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
