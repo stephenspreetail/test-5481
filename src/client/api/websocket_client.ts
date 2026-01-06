@@ -118,9 +118,6 @@ export class WebSocketClient {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log(
-          `🔌 [WS] WebSocket connected - PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
-        );
         this.connectionState = "connected";
         this.reconnectAttempts = 0;
 
@@ -135,9 +132,6 @@ export class WebSocketClient {
       };
 
       this.ws.onclose = (event) => {
-        console.log(
-          `🔌 [WS] WebSocket disconnected - code: ${event.code}, reason: ${event.reason}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
-        );
         this.connectionState = "disconnected";
         this.onDisconnected?.();
 

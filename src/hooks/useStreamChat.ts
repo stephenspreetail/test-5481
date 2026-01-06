@@ -96,9 +96,6 @@ export function useStreamChat({
       });
 
       let hasIncrementedStreamCount = false;
-      console.log(
-        `💬 [STREAM] Starting stream - chatId: ${chatId}, prompt length: ${prompt.length}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
-      );
       try {
         getClient().streamMessage(prompt, {
           chatId,
@@ -121,13 +118,7 @@ export function useStreamChat({
             });
           },
           onEnd: (response: ChatResponseEnd) => {
-            console.log(
-              `💬 [STREAM] onEnd called - chatId: ${chatId}, updatedFiles: ${response.updatedFiles}, PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
-            );
             if (response.updatedFiles) {
-              console.log(
-                `💬 [STREAM] Setting preview open and refreshing iframe - PAGE_ID: ${window.__KOVA_PAGE_LOAD_ID || "unknown"}`,
-              );
               setIsPreviewOpen(true);
               refreshAppIframe();
               if (settings?.enableAutoFixProblems) {

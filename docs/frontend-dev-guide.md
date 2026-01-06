@@ -37,6 +37,10 @@ Lint with auto-fixes (standard):
 
 - `npm run lint`
 
+Lint but allow specific rules (example: allow unused vars):
+
+- `npm run lint -- -A eslint/no-unused-vars`
+
 Lint with more aggressive fixes:
 
 - `npm run lint:fix`
