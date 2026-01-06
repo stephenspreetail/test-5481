@@ -81,6 +81,92 @@ const client = getClient();
 const apps = await client.listApps();
 ```
 
+### Data Fetching & Caching Architecture
+
+The frontend uses TanStack Query for data fetching with automatic caching and request deduplication. This prevents redundant API calls when multiple components need the same data.
+
+**How it works:**
+
+```
+Component A calls useLoadApps()  ──┐
+                                   ├──► Same queryKey ["apps"]
+Component B calls useLoadApps()  ──┤         │
+                                   │         ▼
+Component C calls useLoadApps()  ──┘    Single API call
+                                              │
+                                              ▼
+                                    All 3 components get
+                                    the same cached result
+```
+
+**Key hooks and their cache configuration:**
+
+| Hook | Query Key | staleTime | Purpose |
+|------|-----------|-----------|---------|
+| `useLoadApps()` | `["apps"]` | 2 min | App list |
+| `useSettings()` | `["settings"]` | 5 min | User settings |
+| `useChats(appId)` | `["chats", appId]` | 1 min | Chat list |
+
+**Cache behavior:**
+
+- `staleTime`: How long data is considered "fresh" (no refetch on access)
+- `gcTime`: How long unused data stays in cache (default 30 min)
+- Multiple hook instances share the same cached data via matching query keys
+
+**Real-time updates via WebSocket:**
+
+WebSocket handlers update the cache directly for instant UI updates:
+
+```
+                    ┌─────────────────────────────────┐
+                    │         TanStack Query          │
+                    │            Cache                │
+                    └─────────────────────────────────┘
+                           ▲                 │
+        setQueryData       │                 │  staleTime controls
+        (WebSocket push)   │                 │  when this happens
+                           │                 ▼
+                    ┌──────┴──────┐   ┌──────────────┐
+                    │  WebSocket  │   │  HTTP fetch  │
+                    └─────────────┘   └──────────────┘
+```
+
+- `staleTime` controls *outbound* requests ("don't poll server for X minutes")
+- `setQueryData` handles *inbound* updates ("server pushed new data, update cache now")
+
+These work together: WebSocket pushes provide instant updates, while staleTime prevents redundant polling.
+
+**Example: App name update via WebSocket**
+
+```typescript
+// In useLoadApps.ts
+const handleAppNameUpdate = useCallback(
+  (appId: number, name: string) => {
+    queryClient.setQueryData(appsQueryKey, (oldData) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        apps: oldData.apps.map((app) =>
+          app.id === appId ? { ...app, name } : app
+        ),
+      };
+    });
+  },
+  [queryClient],
+);
+
+// Subscribe to WebSocket updates
+useEffect(() => {
+  const wsClient = WebSocketClient.getInstance();
+  return wsClient.onAppNameUpdate(handleAppNameUpdate);
+}, [handleAppNameUpdate]);
+```
+
+**State management split:**
+
+- **TanStack Query**: Server state (apps, chats, settings) - cached, deduped, synced
+- **Jotai atoms**: Client state (selected app ID, UI state) - local, ephemeral
+
 ## Life of a request
 
 The core workflow of Kova is that a user sends a prompt to the AI which edits the code and is reflected in the preview. We'll break this down step-by-step.

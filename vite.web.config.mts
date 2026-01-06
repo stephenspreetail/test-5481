@@ -60,6 +60,7 @@ export default defineConfig({
         "**/dist/**",
         "**/backend/**",
         "**/app-container/**",
+        "**/docs/**",
         "**/drizzle/**",
         "**/testing/**",
         "**/tools/**",
