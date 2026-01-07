@@ -1,41 +1,45 @@
-import { chatsAtom, chatsLoadingAtom } from "@/atoms/chatAtoms";
 import { WebSocketClient } from "@/client/api/websocket_client";
 import { getAllChats } from "@/lib/chat";
 import type { ChatSummary } from "@/lib/schemas";
-import { useAtom } from "jotai";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 
-export function useChats(appId: number | null) {
-  const [chats, setChats] = useAtom(chatsAtom);
-  const [loading, setLoading] = useAtom(chatsLoadingAtom);
+// Query key factory for chats
+export const chatsQueryKey = (appId: number | null | undefined) =>
+  ["chats", appId ?? "all"] as const;
 
-  // Handle title updates from WebSocket
+export function useChats(appId: number | null) {
+  const queryClient = useQueryClient();
+
+  // Fetch chats with TanStack Query caching
+  const {
+    data: chats = [],
+    isLoading: loading,
+  } = useQuery({
+    queryKey: chatsQueryKey(appId),
+    queryFn: async () => {
+      return getAllChats(appId || undefined);
+    },
+    staleTime: 1 * 60 * 1000, // Consider fresh for 1 minute
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+  });
+
+  // Handle title updates from WebSocket - update cache
   const handleTitleUpdate = useCallback(
     (chatId: number, title: string) => {
-      setChats((prevChats) =>
-        prevChats.map((chat) =>
-          chat.id === chatId ? { ...chat, title } : chat,
-        ),
+      // Update TanStack Query cache for all chat queries
+      queryClient.setQueriesData<ChatSummary[]>(
+        { queryKey: ["chats"] },
+        (oldData) => {
+          if (!oldData) return oldData;
+          return oldData.map((chat) =>
+            chat.id === chatId ? { ...chat, title } : chat
+          );
+        }
       );
     },
-    [setChats],
+    [queryClient],
   );
-
-  useEffect(() => {
-    const fetchChats = async () => {
-      try {
-        setLoading(true);
-        const chatList = await getAllChats(appId || undefined);
-        setChats(chatList);
-      } catch (error) {
-        console.error("Failed to load chats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchChats();
-  }, [appId, setChats, setLoading]);
 
   // Subscribe to title updates
   useEffect(() => {
@@ -49,19 +53,10 @@ export function useChats(appId: number | null) {
     }
   }, [handleTitleUpdate]);
 
-  const refreshChats = async () => {
-    try {
-      setLoading(true);
-      const chatList = await getAllChats(appId || undefined);
-      setChats(chatList);
-      return chatList;
-    } catch (error) {
-      console.error("Failed to refresh chats:", error);
-      return [] as ChatSummary[];
-    } finally {
-      setLoading(false);
-    }
-  };
+  const refreshChats = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: chatsQueryKey(appId) });
+    return chats;
+  }, [queryClient, appId, chats]);
 
   return { chats, loading, refreshChats };
 }

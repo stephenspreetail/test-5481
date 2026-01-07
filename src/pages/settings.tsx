@@ -8,12 +8,9 @@ import { SupabaseIntegration } from "@/components/SupabaseIntegration";
 import { TelemetrySwitch } from "@/components/TelemetrySwitch";
 import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
 import { VercelIntegration } from "@/components/VercelIntegration";
-import { Button } from "@/components/ui/button";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { useSettings } from "@/hooks/useSettings";
 import { showError, showSuccess } from "@/lib/toast";
-import { useRouter } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -32,7 +29,6 @@ export default function SettingsPage() {
   const [isResetting, setIsResetting] = useState(false);
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
-  const router = useRouter();
   const setActiveSettingsSection = useSetAtom(activeSettingsSectionAtom);
 
   useEffect(() => {
@@ -59,19 +55,8 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen px-8 py-4">
       <div className="max-w-5xl mx-auto">
-        <Button
-          onClick={() => router.history.back()}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2 mb-4 bg-(--background-lightest) py-5"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Go Back
-        </Button>
-        <div className="flex justify-between mb-4">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Settings
-          </h1>
+        <div className="flex justify-between mb-6">
+          <h1 className="text-3xl font-bold">Settings</h1>
         </div>
 
         <div className="space-y-6">

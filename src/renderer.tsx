@@ -5,26 +5,30 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
+import { getDefaultStore } from "jotai";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { authStateAtom, currentUserAtom } from "./atoms/authAtoms";
 import { initializeClient } from "./client/api/client_factory";
 import { getTelemetryUserId, isTelemetryOptedIn } from "./hooks/useSettings";
 import { showError } from "./lib/toast";
 import { router } from "./router";
+
+// Get Jotai's default store for use outside React
+const jotaiStore = getDefaultStore();
 
 // Initialize web client
 initializeClient({
   baseUrl: (import.meta as any).env?.VITE_API_URL || window.location.origin,
   getAccessToken: () => localStorage.getItem("accessToken"),
   onUnauthorized: () => {
-    // TODO: Implement login page and redirect
-    // For now, log the error instead of redirecting to avoid loop
-    console.warn(
-      "Unauthorized - authentication required. Login page not yet implemented.",
-    );
-    // window.location.href = "/login";
+    // Clear tokens and set auth state to unauthenticated
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    jotaiStore.set(authStateAtom, "unauthenticated");
+    jotaiStore.set(currentUserAtom, null);
   },
 });
 

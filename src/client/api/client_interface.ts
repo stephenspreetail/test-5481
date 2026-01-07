@@ -87,6 +87,14 @@ export interface AppStreamCallbacks {
  */
 export interface IApiClient {
   // =====================
+  // Authentication
+  // =====================
+  login(email: string, password: string): Promise<{ accessToken: string; refreshToken: string }>;
+  register(email: string, password: string): Promise<{ accessToken: string; refreshToken: string }>;
+  logout(): Promise<void>;
+  getCurrentUser(): Promise<{ id: number; email: string }>;
+
+  // =====================
   // Apps
   // =====================
   createApp(params: CreateAppParams): Promise<CreateAppResult>;

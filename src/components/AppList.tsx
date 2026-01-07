@@ -73,10 +73,9 @@ export function AppList({ show }: { show?: boolean }) {
   return (
     <>
       <SidebarGroup
-        className="overflow-y-auto h-[calc(100vh-112px)]"
+        className="overflow-y-auto h-[calc(100vh-112px)] pt-8"
         data-testid="app-list-container"
       >
-        <SidebarGroupLabel>Your Apps</SidebarGroupLabel>
         <SidebarGroupContent>
           <div className="flex flex-col space-y-2">
             <Button

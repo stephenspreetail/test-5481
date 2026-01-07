@@ -192,6 +192,10 @@ export class ApiClient {
     this.wsClient?.disconnect();
   }
 
+  async getCurrentUser(): Promise<{ id: number; email: string }> {
+    return this.request("/api/auth/me", { method: "GET" });
+  }
+
   setTokens(accessToken: string, refreshToken: string): void {
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);

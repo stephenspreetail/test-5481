@@ -1,8 +1,4 @@
-import {
-  appBasePathAtom,
-  appsListAtom,
-  selectedAppIdAtom,
-} from "@/atoms/appAtoms";
+import { appBasePathAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { GitHubConnector } from "@/components/GitHubConnector";
 import { SupabaseConnector } from "@/components/SupabaseConnector";
@@ -31,7 +27,7 @@ import { showError } from "@/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   ArrowLeft,
   Copy,
@@ -47,8 +43,7 @@ import { useMemo, useState } from "react";
 export default function AppDetailsPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/app-details" as const });
-  const [appsList] = useAtom(appsListAtom);
-  const { refreshApps } = useLoadApps();
+  const { apps: appsList, refreshApps } = useLoadApps();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
@@ -244,15 +239,6 @@ export default function AppDetailsPage() {
   if (!selectedApp) {
     return (
       <div className="relative min-h-screen p-8">
-        <Button
-          onClick={() => navigate({ to: "/" })}
-          variant="outline"
-          size="sm"
-          className="absolute top-4 left-4 flex items-center gap-1 bg-(--background-lightest) py-5"
-        >
-          <ArrowLeft className="h-3 w-4" />
-          Apps
-        </Button>
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="text-xl font-bold">App not found</h2>
         </div>
@@ -267,16 +253,6 @@ export default function AppDetailsPage() {
       className="relative min-h-screen p-4 w-full"
       data-testid="app-details-page"
     >
-      <Button
-        onClick={() => navigate({ to: "/" })}
-        variant="outline"
-        size="sm"
-        className="absolute top-4 left-4 flex items-center gap-1 bg-(--background-lightest) py-2"
-      >
-        <ArrowLeft className="h-3 w-4" />
-        Apps
-      </Button>
-
       {/* App Info Section */}
       <div className="w-full max-w-2xl mx-auto mt-10 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm relative text-gray-900 dark:text-gray-100">
         <div className="flex items-center mb-4">

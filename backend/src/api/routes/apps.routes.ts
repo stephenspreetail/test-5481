@@ -1,4 +1,4 @@
-import { and, count, desc, eq, like, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, sql } from "drizzle-orm";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../../db/index.js";
@@ -37,9 +37,9 @@ export async function appsRoutes(app: FastifyInstance) {
     const user = request.user!;
     const query = request.query as { search?: string };
 
-    // Build base query with search filter
+    // Build base query with search filter (case-insensitive)
     const whereClause = query.search
-      ? and(eq(apps.userId, user.userId), like(apps.name, `%${query.search}%`))
+      ? and(eq(apps.userId, user.userId), ilike(apps.name, `%${query.search}%`))
       : eq(apps.userId, user.userId);
 
     // Get all apps

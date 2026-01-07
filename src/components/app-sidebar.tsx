@@ -1,10 +1,29 @@
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
-import { Link, useRouterState } from "@tanstack/react-router";
-import { useAtom } from "jotai";
-import { BookOpen, HelpCircle, Home, Settings, Store } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useAtom, useSetAtom } from "jotai";
+import {
+  BookOpen,
+  HelpCircle,
+  Home,
+  LogOut,
+  Settings,
+  Store,
+  User,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -45,84 +64,102 @@ const items = [
   },
 ];
 
-// Hover state types
-type HoverState =
-  | "start-hover:app"
-  | "start-hover:settings"
-  | "start-hover:library"
-  | "clear-hover"
-  | "no-hover";
+// Selected flyout panel
+type SelectedPanel = "Apps" | "Settings" | null;
+
+// Determine initial panel based on route
+function getInitialPanel(pathname: string): SelectedPanel {
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/app-details") ||
+    pathname === "/chat"
+  ) {
+    return "Apps";
+  }
+  if (pathname.startsWith("/settings")) {
+    return "Settings";
+  }
+  return null;
+}
 
 export function AppSidebar() {
-  const { state, toggleSidebar } = useSidebar(); // retrieve current sidebar state
-  const [hoverState, setHoverState] = useState<HoverState>("no-hover");
-  const expandedByHover = useRef(false);
-  const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false); // State for dialog
-  const [isDropdownOpen] = useAtom(dropdownOpenAtom);
-
-  useEffect(() => {
-    if (hoverState.startsWith("start-hover") && state === "collapsed") {
-      expandedByHover.current = true;
-      toggleSidebar();
-    }
-    if (
-      hoverState === "clear-hover" &&
-      state === "expanded" &&
-      expandedByHover.current &&
-      !isDropdownOpen
-    ) {
-      toggleSidebar();
-      expandedByHover.current = false;
-      setHoverState("no-hover");
-    }
-  }, [hoverState, toggleSidebar, state, setHoverState, isDropdownOpen]);
-
+  const { state, toggleSidebar } = useSidebar();
   const routerState = useRouterState();
-  const isAppRoute =
-    routerState.location.pathname === "/" ||
-    routerState.location.pathname.startsWith("/app-details") ||
-    routerState.location.pathname === "/chat";
-  const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
+  const pathname = routerState.location.pathname;
 
-  let selectedItem: string | null = null;
-  if (hoverState === "start-hover:app") {
-    selectedItem = "Apps";
-  } else if (hoverState === "start-hover:settings") {
-    selectedItem = "Settings";
-  } else if (hoverState === "start-hover:library") {
-    selectedItem = "Library";
-  } else if (state === "expanded") {
-    if (isAppRoute) {
-      selectedItem = "Apps";
-    } else if (isSettingsRoute) {
-      selectedItem = "Settings";
+  const isAppRoute =
+    pathname === "/" ||
+    pathname.startsWith("/app-details") ||
+    pathname === "/chat";
+  const isSettingsRoute = pathname.startsWith("/settings");
+
+  const [selectedPanel, setSelectedPanel] = useState<SelectedPanel>(() =>
+    getInitialPanel(pathname)
+  );
+  const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
+  const [isDropdownOpen] = useAtom(dropdownOpenAtom);
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
+  const hasExpandedOnMount = useRef(false);
+  const setSelectedAppId = useSetAtom(selectedAppIdAtom);
+  const setSelectedChatId = useSetAtom(selectedChatIdAtom);
+
+  // Clear app selection when clicking on Apps menu
+  const handleClearAppSelection = () => {
+    setSelectedAppId(null);
+    setSelectedChatId(null);
+  };
+
+  // Expand sidebar on initial mount if there's a panel to show
+  useEffect(() => {
+    if (!hasExpandedOnMount.current && selectedPanel && state === "collapsed") {
+      toggleSidebar();
+      hasExpandedOnMount.current = true;
     }
-  }
+  }, [selectedPanel, state, toggleSidebar]);
+
+  // Handle clicking on a menu item - switch to that panel
+  const handleMenuClick = (panel: SelectedPanel) => {
+    setSelectedPanel(panel);
+    if (state === "collapsed") {
+      toggleSidebar();
+    }
+  };
+
+  // Handle toggle button - update panel state (SidebarTrigger handles the actual toggle)
+  const handleToggleSidebar = () => {
+    if (state === "expanded") {
+      // Closing - clear the panel
+      setSelectedPanel(null);
+    } else {
+      // Opening - default to the appropriate panel based on current route
+      if (isAppRoute) {
+        setSelectedPanel("Apps");
+      } else if (isSettingsRoute) {
+        setSelectedPanel("Settings");
+      } else {
+        setSelectedPanel("Apps");
+      }
+    }
+  };
 
   return (
-    <Sidebar
-      collapsible="icon"
-      onMouseLeave={() => {
-        if (!isDropdownOpen) {
-          setHoverState("clear-hover");
-        }
-      }}
-    >
+    <Sidebar collapsible="icon">
       <SidebarContent className="overflow-hidden">
         <div className="flex mt-8">
           {/* Left Column: Menu items */}
           <div className="">
-            <SidebarTrigger
-              onMouseEnter={() => {
-                setHoverState("clear-hover");
-              }}
+            <SidebarTrigger onClick={handleToggleSidebar} />
+            <AppIcons
+              selectedPanel={selectedPanel}
+              onPanelClick={handleMenuClick}
+              onClearAppSelection={handleClearAppSelection}
             />
-            <AppIcons onHoverChange={setHoverState} />
           </div>
           {/* Right Column: App List Section */}
           <div className="w-[240px]">
-            <AppList show={selectedItem === "Apps"} />
-            <SettingsList show={selectedItem === "Settings"} />
+            <AppList show={selectedPanel === "Apps"} />
+            <SettingsList show={selectedPanel === "Settings"} />
           </div>
         </div>
       </SidebarContent>
@@ -130,15 +167,44 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* Change button to open dialog instead of linking */}
-            <SidebarMenuButton
-              size="sm"
-              className="font-medium w-14 flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl"
-              onClick={() => setIsHelpDialogOpen(true)} // Open dialog on click
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span className={"text-xs"}>Help</span>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="sm"
+                  className="font-medium w-14 flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl"
+                >
+                  <User className="h-5 w-5" />
+                  <span className="text-xs">User</span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="end" className="w-56">
+                {currentUser && (
+                  <>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {currentUser.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsHelpDialogOpen(true)}>
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  Help
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => logout()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <HelpDialog
               isOpen={isHelpDialogOpen}
               onClose={() => setIsHelpDialogOpen(false)}
@@ -153,18 +219,19 @@ export function AppSidebar() {
 }
 
 function AppIcons({
-  onHoverChange,
+  selectedPanel,
+  onPanelClick,
+  onClearAppSelection,
 }: {
-  onHoverChange: (state: HoverState) => void;
+  selectedPanel: SelectedPanel;
+  onPanelClick: (panel: SelectedPanel) => void;
+  onClearAppSelection: () => void;
 }) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
   return (
-    // When collapsed: only show the main menu
     <SidebarGroup className="pr-0">
-      {/* <SidebarGroupLabel>Kova</SidebarGroupLabel> */}
-
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
@@ -175,6 +242,9 @@ function AppIcons({
                   pathname.startsWith("/app-details") ||
                   pathname === "/chat")) ||
               (item.to !== "/" && pathname.startsWith(item.to));
+
+            // Items with flyout panels
+            const hasFlyout = item.title === "Apps" || item.title === "Settings";
 
             return (
               <SidebarMenuItem key={item.title}>
@@ -188,19 +258,22 @@ function AppIcons({
                     className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
                       isActive ? "bg-sidebar-accent" : ""
                     }`}
-                    onMouseEnter={() => {
+                    onClick={() => {
+                      // Open flyout panel for items that have one, close for others
+                      if (hasFlyout) {
+                        onPanelClick(item.title as SelectedPanel);
+                      } else {
+                        onPanelClick(null);
+                      }
+                      // Clear app selection when clicking Apps
                       if (item.title === "Apps") {
-                        onHoverChange("start-hover:app");
-                      } else if (item.title === "Settings") {
-                        onHoverChange("start-hover:settings");
-                      } else if (item.title === "Library") {
-                        onHoverChange("start-hover:library");
+                        onClearAppSelection();
                       }
                     }}
                   >
                     <div className="flex flex-col items-center gap-1">
                       <item.icon className="h-5 w-5" />
-                      <span className={"text-xs"}>{item.title}</span>
+                      <span className="text-xs">{item.title}</span>
                     </div>
                   </Link>
                 </SidebarMenuButton>

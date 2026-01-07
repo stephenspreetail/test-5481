@@ -55,12 +55,9 @@ export function SettingsList({ show }: { show: boolean }) {
   const handleScrollAndNavigateTo = scrollAndNavigateTo;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 p-4">
-        <h2 className="text-lg font-semibold tracking-tight">Settings</h2>
-      </div>
+    <div className="flex flex-col h-full pt-8">
       <ScrollArea className="flex-grow">
-        <div className="space-y-1 p-4 pt-0">
+        <div className="space-y-1 px-4 pb-4">
           {SETTINGS_SECTIONS.map((section) => (
             <button
               key={section.id}

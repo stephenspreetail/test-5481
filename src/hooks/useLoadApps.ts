@@ -1,39 +1,44 @@
-import { appBasePathAtom, appsListAtom } from "@/atoms/appAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { WebSocketClient } from "@/client/api/websocket_client";
-import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect } from "react";
+
+// Query key for cache management
+export const appsQueryKey = ["apps"] as const;
 
 export function useLoadApps() {
-  const [apps, setApps] = useAtom(appsListAtom);
-  const [, setAppBasePath] = useAtom(appBasePathAtom);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
-  const refreshApps = useCallback(async () => {
-    setLoading(true);
-    try {
+  // Fetch apps with TanStack Query caching
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: appsQueryKey,
+    queryFn: async () => {
       const client = getClient();
-      const appListResponse = await client.listApps();
-      setApps(appListResponse.apps);
-      setAppBasePath(appListResponse.appBasePath);
-      setError(null);
-    } catch (error) {
-      console.error("Error refreshing apps:", error);
-      setError(error instanceof Error ? error : new Error(String(error)));
-    } finally {
-      setLoading(false);
-    }
-  }, [setApps, setError, setLoading]);
+      return client.listApps();
+    },
+    staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+  });
 
-  // Handle app name update from WebSocket
+  // Handle app name update from WebSocket - update cache
   const handleAppNameUpdate = useCallback(
     (appId: number, name: string) => {
-      setApps((prev) =>
-        prev.map((app) => (app.id === appId ? { ...app, name } : app)),
-      );
+      // Update TanStack Query cache
+      queryClient.setQueryData(appsQueryKey, (oldData: typeof data) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          apps: oldData.apps.map((app) =>
+            app.id === appId ? { ...app, name } : app
+          ),
+        };
+      });
     },
-    [setApps],
+    [queryClient],
   );
 
   // Subscribe to app name updates
@@ -48,9 +53,14 @@ export function useLoadApps() {
     }
   }, [handleAppNameUpdate]);
 
-  useEffect(() => {
-    refreshApps();
-  }, [refreshApps]);
+  const refreshApps = useCallback(() => {
+    return queryClient.invalidateQueries({ queryKey: appsQueryKey });
+  }, [queryClient]);
 
-  return { apps, loading, error, refreshApps };
+  return {
+    apps: data?.apps ?? [],
+    loading,
+    error: error instanceof Error ? error : null,
+    refreshApps,
+  };
 }

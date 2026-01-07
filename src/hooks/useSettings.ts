@@ -1,9 +1,8 @@
-import { envVarsAtom, userSettingsAtom } from "@/atoms/appAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { type UserSettings } from "@/lib/schemas";
-import { useAtom } from "jotai";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePostHog } from "posthog-js/react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useAppVersion } from "./useAppVersion";
 
 const TELEMETRY_CONSENT_KEY = "kovaTelemetryConsent";
@@ -17,76 +16,85 @@ export function getTelemetryUserId(): string | null {
   return window.localStorage.getItem(TELEMETRY_USER_ID_KEY);
 }
 
-let isInitialLoad = false;
+// Query keys for cache management
+export const settingsQueryKey = ["settings"] as const;
+export const envVarsQueryKey = ["envVars"] as const;
 
 export function useSettings() {
   const posthog = usePostHog();
-  const [settings, setSettingsAtom] = useAtom(userSettingsAtom);
-  const [envVars, setEnvVarsAtom] = useAtom(envVarsAtom);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
   const appVersion = useAppVersion();
-  const loadInitialData = useCallback(async () => {
-    setLoading(true);
-    try {
+  const hasLoggedInitialLoad = useRef(false);
+
+  // Fetch settings with TanStack Query caching
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    error: settingsError,
+  } = useQuery({
+    queryKey: settingsQueryKey,
+    queryFn: async () => {
       const client = getClient();
-      // Fetch settings and env vars concurrently
-      const [userSettings, fetchedEnvVars] = await Promise.all([
-        client.getUserSettings(),
-        (client as any).getEnvVars?.() ?? {},
-      ]);
+      const userSettings = await client.getUserSettings();
       processSettingsForTelemetry(userSettings);
-      if (!isInitialLoad && appVersion) {
-        posthog.capture("app:initial-load", {
-          isPro: Boolean(userSettings.providerSettings?.auto?.apiKey?.value),
-          appVersion,
-        });
-        isInitialLoad = true;
-      }
-      setSettingsAtom(userSettings);
-      setEnvVarsAtom(fetchedEnvVars);
-      setError(null);
-    } catch (error) {
-      console.error("Error loading initial data:", error);
-      setError(error instanceof Error ? error : new Error(String(error)));
-    } finally {
-      setLoading(false);
-    }
-  }, [setSettingsAtom, setEnvVarsAtom, appVersion]);
+      return userSettings;
+    },
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+  });
 
+  // Fetch env vars with TanStack Query caching
+  const {
+    data: envVars,
+    isLoading: envVarsLoading,
+  } = useQuery({
+    queryKey: envVarsQueryKey,
+    queryFn: async () => {
+      const client = getClient();
+      return (client as any).getEnvVars?.() ?? {};
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  // Log initial load event once
   useEffect(() => {
-    // Only run once on mount, dependencies are stable getters/setters
-    loadInitialData();
-  }, [loadInitialData]);
+    if (settings && appVersion && !hasLoggedInitialLoad.current) {
+      posthog.capture("app:initial-load", {
+        isPro: Boolean(settings.providerSettings?.auto?.apiKey?.value),
+        appVersion,
+      });
+      hasLoggedInitialLoad.current = true;
+    }
+  }, [settings, appVersion, posthog]);
 
-  const updateSettings = async (newSettings: Partial<UserSettings>) => {
-    setLoading(true);
-    try {
+  // Mutation for updating settings
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (newSettings: Partial<UserSettings>) => {
       const client = getClient();
       const updatedSettings = await client.setUserSettings(newSettings);
-      setSettingsAtom(updatedSettings);
       processSettingsForTelemetry(updatedSettings);
-
-      setError(null);
       return updatedSettings;
-    } catch (error) {
-      console.error("Error updating settings:", error);
-      setError(error instanceof Error ? error : new Error(String(error)));
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    },
+    onSuccess: (updatedSettings) => {
+      // Update the cache with new data
+      queryClient.setQueryData(settingsQueryKey, updatedSettings);
+    },
+  });
+
+  const updateSettings = async (newSettings: Partial<UserSettings>) => {
+    return updateSettingsMutation.mutateAsync(newSettings);
   };
 
   return {
-    settings,
-    envVars,
-    loading,
-    error,
+    settings: settings ?? null,
+    envVars: envVars ?? {},
+    loading: settingsLoading || envVarsLoading,
+    error: settingsError instanceof Error ? settingsError : null,
     updateSettings,
-
     refreshSettings: () => {
-      return loadInitialData();
+      queryClient.invalidateQueries({ queryKey: settingsQueryKey });
+      queryClient.invalidateQueries({ queryKey: envVarsQueryKey });
     },
   };
 }
