@@ -22,14 +22,20 @@ export function AppsGrid() {
       result = result.filter((app) => app.name.toLowerCase().includes(query));
     }
 
-    // Sort by updatedAt descending (most recent first)
-    result.sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+    // Sort by most recent chat activity descending (most recent first)
+    result.sort((a, b) => {
+      const aTime = new Date(a.mostRecentChatActivity || a.updatedAt).getTime();
+      const bTime = new Date(b.mostRecentChatActivity || b.updatedAt).getTime();
+      return bTime - aTime;
+    });
 
     return result;
   }, [apps, searchQuery]);
+
+  // Calculate total chat count across all apps
+  const totalChats = useMemo(() => {
+    return apps.reduce((sum, app) => sum + (app.chatCount || 0), 0);
+  }, [apps]);
 
   const handleAppClick = (appId: number) => {
     navigate({
@@ -73,19 +79,24 @@ export function AppsGrid() {
           <h1 className="text-2xl font-semibold text-foreground">Your Apps</h1>
           <Button onClick={handleNewApp} variant="outline" className="gap-2">
             <Plus size={16} />
-            <span>New App</span>
+            <span>New app</span>
           </Button>
         </div>
 
         {/* Search bar - full width */}
-        <div className="relative mb-8">
+        <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search apps..."
+            placeholder="Search your apps..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-11 w-full h-12"
           />
+        </div>
+
+        {/* Status line */}
+        <div className="text-xs text-muted-foreground mt-2 mb-6 pl-4">
+          {totalChats} {totalChats === 1 ? "chat" : "chats"} with Kova
         </div>
 
         {/* Apps grid */}
@@ -129,46 +140,40 @@ function AppCard({
       onClick={onClick}
     >
       {/* App name */}
-      <h3 className="font-medium text-foreground text-lg mb-2">{app.name}</h3>
-
-      {/* Stats row */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-        <span>{app.chatCount || 0} chats</span>
-        <span>{app.messageCount || 0} messages</span>
-      </div>
+      <h3 className="font-medium text-foreground text-lg mb-3">{app.name}</h3>
 
       {/* Recent chats */}
       {app.recentChats && app.recentChats.length > 0 && (
         <div className="flex-1 mb-3">
-          <p className="text-xs text-muted-foreground mb-1">Recent chats:</p>
-          <div className="space-y-1">
+          <p className="text-xs text-muted-foreground mb-2">
+            Recent chats ({app.chatCount || 0}):
+          </p>
+          <ul className="space-y-1">
             {app.recentChats.map((chat) => (
-              <div
+              <li
                 key={chat.id}
-                className="text-sm text-foreground hover:text-primary truncate cursor-pointer"
+                className="text-sm text-foreground hover:text-primary truncate cursor-pointer flex items-center gap-2"
                 onClick={(e) => {
                   e.stopPropagation();
                   onChatClick(chat.id);
                 }}
               >
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
                 {chat.title || "Untitled Chat"}
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
 
-      {/* Footer with dates */}
+      {/* Footer with updated date */}
       <div className="mt-auto pt-2 border-t border-gray-300/50">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>
-            Created{" "}
-            {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}
-          </span>
-          <span>
-            Updated{" "}
-            {formatDistanceToNow(new Date(app.updatedAt), { addSuffix: true })}
-          </span>
+        <div className="text-xs text-muted-foreground">
+          Updated{" "}
+          {formatDistanceToNow(
+            new Date(app.mostRecentChatActivity || app.updatedAt),
+            { addSuffix: true }
+          )}
         </div>
       </div>
     </div>

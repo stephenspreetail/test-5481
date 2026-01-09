@@ -97,6 +97,7 @@ export interface AppRecentChat {
   id: number;
   title: string | null;
   createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface App {
@@ -126,6 +127,7 @@ export interface App {
   recentChats?: AppRecentChat[];
   chatCount?: number;
   messageCount?: number;
+  mostRecentChatActivity?: Date | string | null;
 }
 
 export interface Version {

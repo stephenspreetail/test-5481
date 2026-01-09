@@ -249,9 +249,6 @@ function SidebarTrigger({
           <span className="sr-only">Toggle Menu</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="right" align="center">
-        Toggle Menu
-      </TooltipContent>
     </Tooltip>
   );
 }

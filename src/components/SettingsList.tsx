@@ -55,7 +55,7 @@ export function SettingsList({ show }: { show: boolean }) {
   const handleScrollAndNavigateTo = scrollAndNavigateTo;
 
   return (
-    <div className="flex flex-col h-full pt-8">
+    <div className="flex flex-col h-full pt-2">
       <ScrollArea className="flex-grow">
         <div className="space-y-1 px-4 pb-4">
           {SETTINGS_SECTIONS.map((section) => (
@@ -63,7 +63,7 @@ export function SettingsList({ show }: { show: boolean }) {
               key={section.id}
               onClick={() => handleScrollAndNavigateTo(section.id)}
               className={cn(
-                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
+                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors cursor-pointer",
                 activeSection === section.id
                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                   : "hover:bg-sidebar-accent",

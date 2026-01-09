@@ -132,7 +132,7 @@ export async function handleChatStream(
     const abortController = new AbortController();
     activeStreams.set(streamKey, abortController);
 
-    // Save user message to database
+    // Save user message to database and update chat's updatedAt
     const userMessage = await db
       .insert(messages)
       .values({
@@ -141,6 +141,12 @@ export async function handleChatStream(
         content: prompt,
       })
       .returning();
+
+    // Update chat's updatedAt timestamp
+    await db
+      .update(chats)
+      .set({ updatedAt: new Date() })
+      .where(eq(chats.id, chatId));
 
     // Send initial chunk with user message
     sendChunk(ws, chatId, [
@@ -360,7 +366,7 @@ export async function handleChatStream(
       }
     }
 
-    // Save assistant message to database
+    // Save assistant message to database and update chat's updatedAt
     if (assistantContent) {
       const assistantMessage = await db
         .insert(messages)
@@ -370,6 +376,12 @@ export async function handleChatStream(
           content: assistantContent,
         })
         .returning();
+
+      // Update chat's updatedAt timestamp
+      await db
+        .update(chats)
+        .set({ updatedAt: new Date() })
+        .where(eq(chats.id, chatId));
 
       // Send final assistant message
       sendChunk(ws, chatId, [
@@ -566,7 +578,10 @@ async function generateAndUpdateTitle(
 
     if (title && title !== "New Chat") {
       // Update database
-      await db.update(chats).set({ title }).where(eq(chats.id, chatId));
+      await db
+        .update(chats)
+        .set({ title, updatedAt: new Date() })
+        .where(eq(chats.id, chatId));
 
       // Notify frontend
       sendTitleUpdate(ws, chatId, title);

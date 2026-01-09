@@ -34,7 +34,7 @@ export function AppItem({
               <Button
                 variant="ghost"
                 onClick={() => handleAppClick(app.id)}
-                className={`justify-start w-full text-left py-3 rounded-xl ${
+                className={`justify-start w-full text-left py-3 rounded-xl cursor-pointer ${
                   selectedAppId === app.id
                     ? "bg-card shadow-sm text-foreground"
                     : ""
@@ -44,9 +44,10 @@ export function AppItem({
                 <div className="flex flex-col w-4/5">
                   <span className="truncate text-foreground">{app.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(app.createdAt), {
-                      addSuffix: true,
-                    })}
+                    {formatDistanceToNow(
+                      new Date(app.mostRecentChatActivity || app.updatedAt),
+                      { addSuffix: true }
+                    )}
                   </span>
                 </div>
               </Button>

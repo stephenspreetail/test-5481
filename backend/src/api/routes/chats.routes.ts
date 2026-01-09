@@ -35,12 +35,13 @@ export async function chatsRoutes(app: FastifyInstance) {
         appId: chats.appId,
         title: chats.title,
         createdAt: chats.createdAt,
+        updatedAt: chats.updatedAt,
         initialCommitHash: chats.initialCommitHash,
       })
       .from(chats)
       .innerJoin(apps, eq(chats.appId, apps.id))
       .where(eq(apps.userId, user.userId))
-      .orderBy(desc(chats.createdAt));
+      .orderBy(desc(chats.updatedAt));
 
     return result;
   });
@@ -189,6 +190,12 @@ export async function chatsRoutes(app: FastifyInstance) {
           ...body,
         })
         .returning();
+
+      // Update chat's updatedAt timestamp
+      await db
+        .update(chats)
+        .set({ updatedAt: new Date() })
+        .where(eq(chats.id, parseInt(id)));
 
       reply.status(201).send(result[0]);
     },

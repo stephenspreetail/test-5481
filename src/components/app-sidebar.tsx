@@ -6,15 +6,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
 import {
+  Binoculars,
+  BinocularsIcon,
   BookOpen,
   HelpCircle,
   Home,
   LogOut,
+  SearchCode,
+  SearchX,
   Settings,
+  Sparkles,
   Store,
   User,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+// @ts-ignore
+import logo from "../../assets/logo.svg";
 
 import {
   DropdownMenu,
@@ -45,12 +52,12 @@ const items = [
   {
     title: "Apps",
     to: "/",
-    icon: Home,
+    icon: Sparkles,
   },
   {
-    title: "Settings",
-    to: "/settings",
-    icon: Settings,
+    title: "Discovery",
+    to: "/discovery",
+    icon: BinocularsIcon,
   },
   {
     title: "Library",
@@ -61,6 +68,11 @@ const items = [
     title: "Hub",
     to: "/hub",
     icon: Store,
+  },
+  {
+    title: "Settings",
+    to: "/settings",
+    icon: Settings,
   },
 ];
 
@@ -145,11 +157,24 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent className="overflow-hidden">
-        <div className="flex mt-8">
-          {/* Left Column: Menu items */}
-          <div className="">
+      <SidebarContent className="overflow-hidden flex flex-col pt-2">
+        {/* Top row: Toggle + Logo - matches the layout of menu icons + flyout panel below */}
+        <div className="flex items-center shrink-0">
+          {/* Toggle aligned with menu icons column */}
+          <div className="w-14 flex justify-center shrink-0 pl-3">
             <SidebarTrigger onClick={handleToggleSidebar} />
+          </div>
+          {/* Logo aligned with flyout panel */}
+          <div className="flex items-center gap-2 pl-6">
+            <img src={logo} alt="Kova Logo" className="w-6 h-6" />
+            <span className="text-lg font-semibold">Kova</span>
+          </div>
+        </div>
+
+        {/* Main content: Menu icons + Flyout panel */}
+        <div className="flex flex-1 min-h-0">
+          {/* Left Column: Menu items */}
+          <div className="shrink-0">
             <AppIcons
               selectedPanel={selectedPanel}
               onPanelClick={handleMenuClick}
@@ -157,7 +182,7 @@ export function AppSidebar() {
             />
           </div>
           {/* Right Column: App List Section */}
-          <div className="w-[240px]">
+          <div className="w-[240px] overflow-hidden">
             <AppList show={selectedPanel === "Apps"} />
             <SettingsList show={selectedPanel === "Settings"} />
           </div>
@@ -173,8 +198,8 @@ export function AppSidebar() {
                   size="sm"
                   className="font-medium w-14 flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl"
                 >
-                  <User className="h-5 w-5" />
-                  <span className="text-xs">User</span>
+                  <User className="!h-6 !w-6" />
+                  <span className="text-xs">Account</span>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" align="end" className="w-56">
@@ -190,10 +215,6 @@ export function AppSidebar() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setIsHelpDialogOpen(true)}>
                   <HelpCircle className="mr-2 h-4 w-4" />
                   Help

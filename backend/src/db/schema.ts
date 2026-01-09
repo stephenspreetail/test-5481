@@ -153,6 +153,7 @@ export const chats = pgTable("chats", {
   title: varchar("title", { length: 255 }),
   initialCommitHash: varchar("initial_commit_hash", { length: 40 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // =====================

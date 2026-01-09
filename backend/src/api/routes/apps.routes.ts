@@ -52,16 +52,17 @@ export async function appsRoutes(app: FastifyInstance) {
     // For each app, get recent chats and stats
     const appsWithDetails = await Promise.all(
       appsResult.map(async (app) => {
-        // Get 3 most recent chats
+        // Get 3 most recently updated chats
         const recentChats = await db
           .select({
             id: chats.id,
             title: chats.title,
             createdAt: chats.createdAt,
+            updatedAt: chats.updatedAt,
           })
           .from(chats)
           .where(eq(chats.appId, app.id))
-          .orderBy(desc(chats.createdAt))
+          .orderBy(desc(chats.updatedAt))
           .limit(3);
 
         // Get chat count
@@ -77,11 +78,17 @@ export async function appsRoutes(app: FastifyInstance) {
           .innerJoin(chats, eq(messages.chatId, chats.id))
           .where(eq(chats.appId, app.id));
 
+        // Get the most recent chat activity timestamp
+        const mostRecentChatActivity = recentChats.length > 0
+          ? recentChats[0].updatedAt
+          : null;
+
         return {
           ...app,
           recentChats,
           chatCount: chatCountResult[0]?.count || 0,
           messageCount: messageCountResult[0]?.count || 0,
+          mostRecentChatActivity,
         };
       }),
     );
@@ -418,7 +425,7 @@ export async function appsRoutes(app: FastifyInstance) {
         .select()
         .from(chats)
         .where(eq(chats.appId, parseInt(id)))
-        .orderBy(desc(chats.createdAt));
+        .orderBy(desc(chats.updatedAt));
 
       return result;
     },
