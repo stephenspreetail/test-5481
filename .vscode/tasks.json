@@ -23,7 +23,7 @@
       }
     },
     {
-      "label": "Start Web Dev Server",
+      "label": "Start Frontend",
       "type": "shell",
       "command": "npm",
       "args": ["run", "dev:web"],
@@ -41,7 +41,7 @@
       }
     },
     {
-      "label": "Start Full Stack (Backend + Web)",
+      "label": "Start Full Stack (Backend + Frontend)",
       "type": "shell",
       "command": "npm",
       "args": ["run", "dev:full"],
@@ -70,7 +70,7 @@
       "problemMatcher": "$tsc"
     },
     {
-      "label": "Build Web",
+      "label": "Build Frontend",
       "type": "shell",
       "command": "npm",
       "args": ["run", "build:web"],

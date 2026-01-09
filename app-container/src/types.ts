@@ -110,7 +110,7 @@ export type AgentStreamEvent =
 /**
  * Dev server status
  */
-export type DevServerStatus = "stopped" | "starting" | "running" | "error";
+export type DevServerStatus = "stopped" | "starting" | "running" | "stopping" | "error";
 
 /**
  * Health check response

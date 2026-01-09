@@ -96,6 +96,7 @@ export class DevServerManager {
         },
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
+        detached: true, // Create process group for proper cleanup
       });
 
       this.process.stdout?.on("data", (data) => {
@@ -352,6 +353,8 @@ export class DevServerManager {
       return;
     }
 
+    // Set status to "stopping" FIRST to prevent auto-restart logic in close handler
+    this.status = "stopping";
     console.log("[DevServer] Stopping dev server...");
     const pid = this.process.pid;
 
