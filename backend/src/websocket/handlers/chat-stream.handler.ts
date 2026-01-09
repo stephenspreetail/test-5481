@@ -265,8 +265,7 @@ export async function handleChatStream(
         sessionId,
         chatId: chatId.toString(),
         allowedTools: ["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
-        // TEMPORARILY DISABLED: Test without custom system prompt
-        // systemPrompt,
+        systemPrompt,
       }),
       signal: abortController.signal,
     });
