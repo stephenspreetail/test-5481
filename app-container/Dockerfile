@@ -1,18 +1,18 @@
 # App Container for Kova
 # Runs Claude Agent SDK + Dev Server for user apps
 
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 # Install git (required by Claude Code CLI) and other utilities
-RUN apk add --no-cache git bash
+RUN apt-get update && apt-get install -y --no-install-recommends git bash && rm -rf /var/lib/apt/lists/*
 
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
 
 # Create non-root user for running the agent
 # This is required because Claude Code CLI refuses --dangerously-skip-permissions when running as root
-RUN addgroup -g 1001 kova && \
-    adduser -u 1001 -G kova -s /bin/sh -D kova
+RUN groupadd -g 1001 kova && \
+    useradd -u 1001 -g kova -s /bin/bash -m kova
 
 # Create app directory
 WORKDIR /app
