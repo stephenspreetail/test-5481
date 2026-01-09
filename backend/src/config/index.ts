@@ -38,7 +38,7 @@ const configSchema = z.object({
 
   // App Container Settings
   APP_CONTAINER_IMAGE: z.string().default("kova-app-container:latest"),
-  APP_CONTAINER_IDLE_TIMEOUT_MS: z.coerce.number().default(30 * 60 * 1000),
+  APP_CONTAINER_IDLE_TIMEOUT_MS: z.coerce.number().default(15 * 60 * 1000),
 
   // Container Orchestrator Settings
   CONTAINER_NETWORK: z.string().default("kova-network"),

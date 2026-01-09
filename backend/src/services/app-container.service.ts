@@ -797,12 +797,15 @@ class AppContainerService {
 
       const idleTime = now - containerInfo.lastActivityAt;
       if (idleTime > this.idleTimeoutMs) {
-        console.log(
-          `[${new Date().toLocaleString()}] [AppContainerService] stopping idle container for app ${appId} (idle for ${Math.round(idleTime / 1000)}s)`,
-        );
+        const idleMinutes = Math.round(idleTime / 60000);
+        console.log(`\n========== IDLE TIMEOUT ==========`);
+        console.log(`[AppContainerService] Container for app ${appId} has been idle for ${idleMinutes} minutes`);
+        console.log(`[AppContainerService] Idle timeout threshold: ${Math.round(this.idleTimeoutMs / 60000)} minutes`);
+        console.log(`[AppContainerService] Stopping container due to IDLE TIMEOUT`);
+        console.log(`==================================\n`);
         await this.stopContainer(
           appId,
-          `idle for ${Math.round(idleTime / 1000)}s`,
+          `IDLE TIMEOUT: no activity for ${idleMinutes} minutes`,
         );
       }
     }
