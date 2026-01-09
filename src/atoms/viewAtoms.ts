@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-export const isPreviewOpenAtom = atom(true);
+export const isPreviewOpenAtom = atom(false);
 export const selectedFileAtom = atom<{
   path: string;
 } | null>(null);

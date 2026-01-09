@@ -110,14 +110,14 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
       // Create the GitHub issue URL with the pre-filled body
       const encodedBody = encodeURIComponent(issueBody);
       const encodedTitle = encodeURIComponent("[bug] <WRITE TITLE HERE>");
-      const githubIssueUrl = `https://github.com/kova-sh/kova/issues/new?title=${encodedTitle}&labels=bug&body=${encodedBody}`;
+      const githubIssueUrl = `https://github.com/todo-url/kova/issues/new?title=${encodedTitle}&labels=bug&body=${encodedBody}`;
 
       // Open the pre-filled GitHub issue page
       getClient().openExternalUrl(githubIssueUrl);
     } catch (error) {
       console.error("Failed to prepare bug report:", error);
       // Fallback to opening the regular GitHub issue page
-      getClient().openExternalUrl("https://github.com/kova-sh/kova/issues/new");
+      getClient().openExternalUrl("https://github.com/todo-url/kova/issues/new");
     } finally {
       setIsLoading(false);
     }
@@ -227,7 +227,7 @@ Session ID: ${sessionId}
 
     const encodedBody = encodeURIComponent(issueBody);
     const encodedTitle = encodeURIComponent("[session report] <add title>");
-    const githubIssueUrl = `https://github.com/kova-sh/kova/issues/new?title=${encodedTitle}&labels=support&body=${encodedBody}`;
+    const githubIssueUrl = `https://github.com/todo-url/kova/issues/new?title=${encodedTitle}&labels=support&body=${encodedBody}`;
 
     getClient().openExternalUrl(githubIssueUrl);
     handleClose();

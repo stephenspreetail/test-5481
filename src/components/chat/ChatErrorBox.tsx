@@ -11,11 +11,6 @@ export function ChatErrorBox({
   onDismiss: () => void;
   error: string;
 }) {
-  // This is a very long list of model fallbacks that clutters the error message.
-  //
-  // We are matching "Fallbacks=[{" and not just "Fallbacks=" because the fallback
-  // model itself can error and we want to include the fallback model error in the error message.
-  // Example: https://github.com/kova-sh/kova/issues/1849#issuecomment-3590685911
   const fallbackPrefix = "Fallbacks=[{";
   let displayError = error;
   if (error.includes(fallbackPrefix)) {

@@ -6,7 +6,6 @@ import {
   isStreamingByIdAtom,
   recentStreamChatIdsAtom,
 } from "@/atoms/chatAtoms";
-import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { showExtraFilesToast } from "@/lib/toast";
 import type { FileAttachment, Message } from "@/types";
@@ -36,7 +35,6 @@ export function useStreamChat({
   const setIsStreamingById = useSetAtom(isStreamingByIdAtom);
   const errorById = useAtomValue(chatErrorByIdAtom);
   const setErrorById = useSetAtom(chatErrorByIdAtom);
-  const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
   const [selectedAppId] = useAtom(selectedAppIdAtom);
   const { refreshChats } = useChats(selectedAppId);
   const { refreshApp } = useLoadApp(selectedAppId);
@@ -119,7 +117,6 @@ export function useStreamChat({
           },
           onEnd: (response: ChatResponseEnd) => {
             if (response.updatedFiles) {
-              setIsPreviewOpen(true);
               refreshAppIframe();
               if (settings?.enableAutoFixProblems) {
                 checkProblems();
@@ -189,7 +186,6 @@ export function useStreamChat({
     [
       setMessagesById,
       setIsStreamingById,
-      setIsPreviewOpen,
       checkProblems,
       selectedAppId,
       settings,

@@ -476,6 +476,8 @@ class AppContainerService {
       `WORKSPACE_DIR=/workspace`,
       `AGENT_PORT=3100`,
       `DEV_SERVER_PORT=3000`,
+      // Store Claude sessions in workspace (persisted via bind mount)
+      `CLAUDE_CONFIG_DIR=/workspace/.claude`,
     ];
 
     // Update state to starting

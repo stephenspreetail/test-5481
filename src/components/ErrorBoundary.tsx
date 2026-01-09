@@ -59,14 +59,14 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
       const encodedTitle = encodeURIComponent(
         "[bug] Error in Kova application",
       );
-      const githubIssueUrl = `https://github.com/kova-sh/kova/issues/new?title=${encodedTitle}&labels=bug,filed-from-app,client-error&body=${encodedBody}`;
+      const githubIssueUrl = `https://TODO-URL/kova/issues/new?title=${encodedTitle}&labels=bug,filed-from-app,client-error&body=${encodedBody}`;
 
       // Open the pre-filled GitHub issue page
       await getClient().openExternalUrl(githubIssueUrl);
     } catch (err) {
       console.error("Failed to prepare bug report:", err);
       // Fallback to opening the regular GitHub issue page
-      getClient().openExternalUrl("https://github.com/kova-sh/kova/issues/new");
+      getClient().openExternalUrl("https://github.com/todo-url/kova/issues/new");
     } finally {
       setIsLoading(false);
     }
