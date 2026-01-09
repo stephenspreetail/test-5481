@@ -24,12 +24,5 @@
       "sourceMaps": true,
       "preLaunchTask": "Start Web Dev Server"
     }
-  ],
-  "compounds": [
-    {
-      "name": "Debug Full",
-      "configurations": ["Debug Backend", "Debug Frontend"],
-      "stopAll": true
-    }
   ]
 }

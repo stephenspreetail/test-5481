@@ -353,6 +353,7 @@ export class DevServerManager {
     }
 
     console.log("[DevServer] Stopping dev server...");
+    const pid = this.process.pid;
 
     return new Promise((resolve) => {
       if (!this.process) {
@@ -361,21 +362,46 @@ export class DevServerManager {
         return;
       }
 
+      // Timeout to prevent hanging forever
+      const timeout = setTimeout(() => {
+        console.log("[DevServer] Stop timeout reached, forcing cleanup...");
+        this.process = null;
+        this.status = "stopped";
+        resolve();
+      }, 10000);
+
       this.process.on("close", () => {
+        clearTimeout(timeout);
         this.process = null;
         this.status = "stopped";
         console.log("[DevServer] Server stopped");
         resolve();
       });
 
-      // Send SIGTERM for graceful shutdown
-      this.process.kill("SIGTERM");
+      // Try to kill the process tree (shell + children)
+      // On Unix, negative PID kills the process group
+      if (pid) {
+        try {
+          console.log(`[DevServer] Killing process tree (PID: ${pid})...`);
+          process.kill(-pid, "SIGTERM");
+        } catch (e) {
+          // Fallback to regular kill if process group kill fails
+          console.log("[DevServer] Process group kill failed, using regular kill");
+          this.process?.kill("SIGTERM");
+        }
+      } else {
+        this.process.kill("SIGTERM");
+      }
 
       // Force kill after timeout
       setTimeout(() => {
-        if (this.process) {
-          console.log("[DevServer] Force killing server...");
-          this.process.kill("SIGKILL");
+        if (this.process && pid) {
+          console.log("[DevServer] Force killing server (SIGKILL)...");
+          try {
+            process.kill(-pid, "SIGKILL");
+          } catch (e) {
+            this.process?.kill("SIGKILL");
+          }
         }
       }, 5000);
     });
