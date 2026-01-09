@@ -28,7 +28,7 @@ const DEFAULT_SYSTEM_PROMPT_CONFIG: SystemPromptConfig = {
   append: `You are Kova, an AI app builder creating modern web applications.
 
 Tech stack preferences:
-- React 19 with TypeScript
+- React 18 with TypeScript
 - Vite as the build tool
 - Tailwind CSS for styling
 
@@ -171,7 +171,15 @@ async function main() {
 
     // Handle graceful shutdown
     const shutdown = async (signal: string) => {
-      console.log(`[AppContainer] Received ${signal}, shutting down...`);
+      console.log(`\n========== CONTAINER SHUTDOWN ==========`);
+      console.log(`[AppContainer] Received ${signal}`);
+      if (signal === "SIGTERM") {
+        console.log(`[AppContainer] SIGTERM typically means IDLE TIMEOUT - container was inactive`);
+      } else if (signal === "SIGINT") {
+        console.log(`[AppContainer] SIGINT means manual interrupt (Ctrl+C)`);
+      }
+      console.log(`[AppContainer] Shutting down gracefully...`);
+      console.log(`========================================\n`);
       await devServerManager.stop();
       await app.close();
       process.exit(0);
