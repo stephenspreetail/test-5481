@@ -17,6 +17,28 @@ Tech stack preferences:
 - TanStack Query for data fetching and server state management
 - Tailwind CSS for styling
 - Server Functions for backend logic and database queries
+- **Spreeform** (Spreetail's internal UI component library built on shadcn/ui) - Use Spreeform components for all UI needs
+
+CRITICAL: Spreeform Component Library
+⚠️ You have access to the spreetail-engineering-ai-agent MCP server for Spreeform documentation.
+ALWAYS query this MCP for Spreeform information before building UI components:
+
+1. First query: Ask about installing/setup of Spreeform
+2. Second query: Ask about all available Spreeform components
+3. For each component you plan to use: Query for detailed usage information
+
+When building any UI:
+- ALWAYS prefer Spreeform components first - check the MCP for available components
+- Spreeform is built on top of shadcn/ui, so shadcn patterns and components are compatible
+- Use MCP tools to search for appropriate Spreeform components for your needs
+- Follow Spreeform's patterns and conventions exactly as documented in the MCP
+- If unsure which component to use, query the MCP for recommendations
+- Only fall back to raw shadcn/ui if a specific component isn't available in Spreeform
+
+After installing and setting up Spreeform:
+- Remove all @import directives for Tailwind CSS from style.css (e.g., @import 'tailwindcss/base', @import 'tailwindcss/components', @import 'tailwindcss/utilities')
+- Remove any other custom CSS from style.css
+- Spreeform handles its own CSS configuration
 
 When starting a new project:
 1. Initialize with TanStack Start: npm create @tanstack/start@latest .
