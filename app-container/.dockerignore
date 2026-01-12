@@ -1,0 +1,35 @@
+# Documentation files (keep in repo, exclude from image)
+PROGET_SETUP.md
+*.md
+!README.md
+
+# Development files
+node_modules/
+npm-debug.log
+.npmrc
+.env
+.env.*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+
+# Build artifacts (will be rebuilt in container)
+dist/

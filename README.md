@@ -94,9 +94,16 @@ ENCRYPTION_KEY=<paste-second-generated-value>
 # AI Provider (get from https://console.anthropic.com)
 ANTHROPIC_API_KEY=sk-ant-your-api-key-here
 
+# ProGet (REQUIRED - get from GitLab CI/CD variables)
+PROGET_API_KEY=your-proget-api-key-here
+
 # App storage (create this directory in step 5)
 APPS_BASE_PATH=/Users/YOUR_USERNAME/Repos/scaled-innovation/kova/backend/apps
 ```
+
+> **⚠️ IMPORTANT:** The `PROGET_API_KEY` is **required** for the app builder to function properly. This key allows the Claude Agent SDK to install internal `@spreetail/*` packages from ProGet when building applications.
+>
+> **Where to get it:** Find the shared API key in this project's **GitLab Repository → Settings → CI/CD → Variables** (look for `PROGET_API_KEY`).
 
 **If using Rancher Desktop (macOS):**
 
@@ -410,6 +417,48 @@ providers:
 3. Is the app-container image built? `docker images | grep kova-app-container`
 4. Are secrets configured in `backend/.env`?
 5. Is `DOCKER_SOCKET` correct for your Docker installation?
+
+### Error: `npm install` fails for `@spreetail/*` packages
+
+**Cause**: Missing or invalid `PROGET_API_KEY`, or app-container image built before ProGet configuration.
+
+**Symptoms**:
+- Claude Agent SDK reports "404 Not Found" when installing `@spreetail/*` packages
+- npm errors like "Unable to authenticate" or "unauthorized"
+- Agent logs show npm authentication failures
+
+**Solution**:
+1. **Verify API key is set** in `backend/.env`:
+   ```bash
+   grep PROGET_API_KEY backend/.env
+   # Should show: PROGET_API_KEY=your-key-here (not empty)
+   ```
+
+2. **Get the API key from GitLab** if missing:
+   - Go to this project in GitLab
+   - Navigate to **Settings → CI/CD → Variables**
+   - Find `PROGET_API_KEY` and copy its value
+   - Add to `backend/.env`
+
+3. **Rebuild the app-container image** after updating `.env`:
+   ```bash
+   docker-compose build app-container
+   ```
+
+4. **Test the configuration** inside a container:
+   ```bash
+   # Start a test container
+   docker run -it --rm \
+     -e PROGET_API_KEY="$(grep PROGET_API_KEY backend/.env | cut -d '=' -f2)" \
+     kova-app-container:latest bash
+
+   # Inside container, verify .npmrc
+   cat /home/kova/.npmrc
+   # Should show: @spreetail:registry=https://proget.spreetail.org/npm/spreepm/
+
+   # Test npm access
+   npm whoami --registry=https://proget.spreetail.org/npm/spreepm/
+   ```
 
 ## License
 
