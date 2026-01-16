@@ -22,7 +22,7 @@
       "url": "http://localhost:5174",
       "webRoot": "${workspaceFolder}/src",
       "sourceMaps": true,
-      "preLaunchTask": "Start Web Dev Server"
+      "preLaunchTask": "Start Frontend"
     }
   ]
 }

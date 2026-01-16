@@ -99,7 +99,7 @@ export function useStreamChat({
           chatId,
           redo,
           attachments,
-          onUpdate: (updatedMessages: Message[]) => {
+          onUpdate: (streamingMessages: Message[]) => {
             if (!hasIncrementedStreamCount) {
               setStreamCountById((prev) => {
                 const next = new Map(prev);
@@ -111,7 +111,23 @@ export function useStreamChat({
 
             setMessagesById((prev) => {
               const next = new Map(prev);
-              next.set(chatId, updatedMessages);
+              const existingMessages = prev.get(chatId) || [];
+
+              // Get IDs of real messages (id > 0) from streaming update
+              const streamingRealIds = new Set(
+                streamingMessages.filter((m) => m.id > 0).map((m) => m.id),
+              );
+
+              // Preserve existing messages that aren't in the streaming update
+              // This keeps chat history while allowing new messages to be added
+              const preserved = existingMessages.filter(
+                (m) => m.id > 0 && !streamingRealIds.has(m.id),
+              );
+
+              // Combine: preserved history + all streaming messages
+              const merged = [...preserved, ...streamingMessages];
+
+              next.set(chatId, merged);
               return next;
             });
           },
