@@ -1,0 +1,16 @@
+# ProGet Registry Configuration for Internal Packages
+# This file is used inside app-container to allow Claude Agent SDK
+# to install internal npm packages from your ProGet instance.
+
+# Scope all @spreetail packages to Spreetail ProGet registry
+@spreetail:registry=https://proget.spreetail.org/npm/spreepm/
+
+# Authentication using environment variable (PROGET_API_KEY)
+# The ${PROGET_API_KEY} will be substituted by npm at runtime
+//proget.spreetail.org/npm/spreepm/:_authToken=${PROGET_API_KEY}
+
+# Always authenticate when accessing scoped packages
+@spreetail:always-auth=true
+
+# Use public npm registry as fallback for other packages
+registry=https://registry.npmjs.org/

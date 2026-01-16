@@ -11,7 +11,8 @@ services:
       # Dynamic config directory for static routes (dashboard, etc.)
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
     extra_hosts:
-      # Allow Traefik to reach the backend on host machine
+      # Allow Traefik to reach the backend on host machine (Docker Desktop)
+      # Note: Rancher Desktop users may need to comment this out if experiencing connection issues
       - "host.docker.internal:host-gateway"
     networks:
       - kova-network

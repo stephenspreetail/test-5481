@@ -26,6 +26,7 @@
     "db:generate": "cd backend && drizzle-kit generate",
     "db:push": "cd backend && drizzle-kit push",
     "db:studio": "cd backend && drizzle-kit studio",
+    "db:reset": "cd backend && npm run db:reset",
     "prettier:check": "npx prettier --check .",
     "prettier": "npx prettier --write .",
     "presubmit": "npm run prettier:check && npm run lint",

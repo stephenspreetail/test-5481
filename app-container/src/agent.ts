@@ -132,6 +132,14 @@ export async function* streamQuery(
       resume?: string;
       systemPrompt?: SystemPromptConfig | string;
       maxTurns?: number;
+      mcpServers?: Record<
+        string,
+        {
+          type: "http";
+          url: string;
+          headers?: Record<string, string>;
+        }
+      >;
     } = {
       allowedTools:
         options.allowedTools || (DEFAULT_TOOLS as unknown as string[]),
@@ -139,6 +147,13 @@ export async function* streamQuery(
       allowDangerouslySkipPermissions: true,
       cwd: absoluteCwd,
       maxTurns: 50,
+      // Configure static MCP server for Spreetail engineering AI agent
+      mcpServers: {
+        "spreetail-engineering-ai-agent": {
+          type: "http",
+          url: "https://spreetail-engineering-ai-agent.prod01.tk.dev/mcp",
+        },
+      },
     };
 
     if (options.sessionId) {
@@ -151,12 +166,17 @@ export async function* streamQuery(
       queryOptions.systemPrompt = options.systemPrompt;
     }
 
+    log("MCP", "Configured MCP servers:", queryOptions.mcpServers);
+
     log("QUERY", "Calling Claude Agent SDK with options:", {
       ...queryOptions,
       systemPrompt: queryOptions.systemPrompt
         ? isPresetConfig(queryOptions.systemPrompt)
           ? `[preset: ${queryOptions.systemPrompt.preset}, append: ${queryOptions.systemPrompt.append.length} chars]`
           : `[legacy string: ${queryOptions.systemPrompt.length} chars]`
+        : undefined,
+      mcpServers: queryOptions.mcpServers
+        ? Object.keys(queryOptions.mcpServers)
         : undefined,
     });
 

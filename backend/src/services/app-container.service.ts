@@ -478,6 +478,8 @@ class AppContainerService {
       `DEV_SERVER_PORT=3000`,
       // Store Claude sessions in workspace (persisted via bind mount)
       `CLAUDE_CONFIG_DIR=/workspace/.claude`,
+      // ProGet API key for internal npm packages
+      `PROGET_API_KEY=${config.PROGET_API_KEY || ""}`,
     ];
 
     // Update state to starting
