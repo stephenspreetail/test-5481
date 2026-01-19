@@ -19,6 +19,7 @@
     "build:backend": "cd backend && npm run build",
     "start:backend": "cd backend && npm run start",
     "dev:full": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+    "dev:reset": "cd backend && npm run clear-apps && npm run db:reset",
     "ts": "npx tsc -p tsconfig.app.json --noEmit",
     "lint": "npx oxlint --fix",
     "lint:fix": "npx oxlint --fix --fix-suggestions --fix-dangerously",
