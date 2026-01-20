@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/sidebar";
 import { AppList } from "./AppList";
 import { HelpDialog } from "./HelpDialog"; // Import the new dialog
+import { HubList } from "./HubList";
 import { SettingsList } from "./SettingsList";
 
 // Menu items.
@@ -77,7 +78,7 @@ const items = [
 ];
 
 // Selected flyout panel
-type SelectedPanel = "Apps" | "Settings" | null;
+type SelectedPanel = "Apps" | "Settings" | "Hub" | null;
 
 // Determine initial panel based on route
 function getInitialPanel(pathname: string): SelectedPanel {
@@ -90,6 +91,9 @@ function getInitialPanel(pathname: string): SelectedPanel {
   }
   if (pathname.startsWith("/settings")) {
     return "Settings";
+  }
+  if (pathname.startsWith("/hub")) {
+    return "Hub";
   }
   return null;
 }
@@ -104,6 +108,7 @@ export function AppSidebar() {
     pathname.startsWith("/app-details") ||
     pathname === "/chat";
   const isSettingsRoute = pathname.startsWith("/settings");
+  const isHubRoute = pathname.startsWith("/hub");
 
   const [selectedPanel, setSelectedPanel] = useState<SelectedPanel>(() =>
     getInitialPanel(pathname)
@@ -149,6 +154,8 @@ export function AppSidebar() {
         setSelectedPanel("Apps");
       } else if (isSettingsRoute) {
         setSelectedPanel("Settings");
+      } else if (isHubRoute) {
+        setSelectedPanel("Hub");
       } else {
         setSelectedPanel("Apps");
       }
@@ -165,10 +172,10 @@ export function AppSidebar() {
             <SidebarTrigger onClick={handleToggleSidebar} />
           </div>
           {/* Logo aligned with flyout panel */}
-          <div className="flex items-center gap-2 pl-6">
+          <Link to="/" className="flex items-center gap-2 pl-6 hover:opacity-80 transition-opacity">
             <img src={logo} alt="Kova Logo" className="w-6 h-6" />
             <span className="text-lg font-semibold">Kova</span>
-          </div>
+          </Link>
         </div>
 
         {/* Main content: Menu icons + Flyout panel */}
@@ -185,6 +192,7 @@ export function AppSidebar() {
           <div className="w-[240px] overflow-hidden">
             <AppList show={selectedPanel === "Apps"} />
             <SettingsList show={selectedPanel === "Settings"} />
+            <HubList show={selectedPanel === "Hub"} />
           </div>
         </div>
       </SidebarContent>
@@ -265,7 +273,7 @@ function AppIcons({
               (item.to !== "/" && pathname.startsWith(item.to));
 
             // Items with flyout panels
-            const hasFlyout = item.title === "Apps" || item.title === "Settings";
+            const hasFlyout = item.title === "Apps" || item.title === "Settings" || item.title === "Hub";
 
             return (
               <SidebarMenuItem key={item.title}>

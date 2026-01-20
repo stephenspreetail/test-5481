@@ -4,6 +4,7 @@ import type {
   ContextPathResults,
   UserSettings,
 } from "@/lib/schemas";
+import type { Template } from "@/shared/templates";
 import type {
   App,
   AppOutput,
@@ -803,5 +804,33 @@ export class ApiClient {
 
   openExternalUrl(url: string): void {
     window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  // =====================
+  // Templates
+  // =====================
+
+  async getTemplates(): Promise<Template[]> {
+    return this.request("/api/templates");
+  }
+
+  // =====================
+  // Workflow Apps
+  // =====================
+
+  async createWorkflowApp(params: {
+    workflowType: "excel-workflow" | "data-platform";
+    file: string;
+    fileName: string;
+  }): Promise<{
+    appId: number;
+    chatId: number;
+    initialPrompt: string;
+    workflowDocFilename: string;
+  }> {
+    return this.request("/api/workflows/create-app", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
   }
 }

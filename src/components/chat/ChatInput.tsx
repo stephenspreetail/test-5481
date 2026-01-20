@@ -10,6 +10,7 @@ import {
   Database,
   FileText,
   FileX,
+  Hammer,
   Loader2,
   Package,
   SendHorizontalIcon,
@@ -18,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
@@ -71,6 +72,14 @@ import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
 
 const showTokenBarAtom = atom(false);
 
+// Workflow state stored per chat
+interface WorkflowInfo {
+  workflowType: string;
+  workflowDocFilename: string;
+  planReady: boolean;
+}
+const workflowInfoAtom = atom<Map<number, WorkflowInfo>>(new Map());
+
 export function ChatInput({ chatId }: { chatId?: number }) {
   const posthog = usePostHog();
   const navigate = useNavigate();
@@ -91,6 +100,8 @@ export function ChatInput({ chatId }: { chatId?: number }) {
   const [showTokenBar, setShowTokenBar] = useAtom(showTokenBarAtom);
   const { checkProblems } = useCheckProblems(appId);
   const { refreshAppIframe } = useRunApp();
+  const [workflowInfoMap, setWorkflowInfoMap] = useAtom(workflowInfoAtom);
+  const [isBuildingApp, setIsBuildingApp] = useState(false);
 
   // Use the attachments hook
   const {
@@ -128,6 +139,134 @@ export function ChatInput({ chatId }: { chatId?: number }) {
       setShowError(true);
     }
   }, [error]);
+
+  // Reference to track if we've already processed the pending workflow prompt
+  const pendingPromptProcessedRef = useRef<number | null>(null);
+
+  // Check for pending workflow prompt and auto-send it
+  useEffect(() => {
+    if (!chatId || isStreaming) return;
+
+    // Don't process if we've already processed this chatId
+    if (pendingPromptProcessedRef.current === chatId) return;
+
+    const storedPrompt = sessionStorage.getItem("pending-workflow-prompt");
+    if (!storedPrompt) return;
+
+    try {
+      const { chatId: promptChatId, prompt, workflowType, workflowDocFilename } = JSON.parse(storedPrompt);
+
+      // Only send if this is the chat the prompt was intended for
+      if (promptChatId === chatId && prompt) {
+        // Mark as processed before sending to avoid double-sends
+        pendingPromptProcessedRef.current = chatId;
+        sessionStorage.removeItem("pending-workflow-prompt");
+
+        // Store workflow info for this chat (if it's a workflow type)
+        if (workflowType && workflowDocFilename) {
+          setWorkflowInfoMap((prev) => {
+            const next = new Map(prev);
+            next.set(chatId, {
+              workflowType,
+              workflowDocFilename,
+              planReady: false,
+            });
+            return next;
+          });
+        }
+
+        // Auto-send the workflow prompt
+        streamMessage({
+          prompt,
+          chatId,
+          redo: false,
+        });
+      }
+    } catch (e) {
+      console.error("Failed to parse pending workflow prompt:", e);
+      sessionStorage.removeItem("pending-workflow-prompt");
+    }
+  }, [chatId, isStreaming, streamMessage, setWorkflowInfoMap]);
+
+  // Track previous streaming state to detect when streaming ends
+  const prevIsStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    // Detect transition from streaming to not streaming
+    if (prevIsStreamingRef.current && !isStreaming && chatId) {
+      // Check if this is a workflow chat that needs plan marked as ready
+      const workflowInfo = workflowInfoMap.get(chatId);
+      if (workflowInfo && !workflowInfo.planReady) {
+        // Mark plan as ready after first response ends
+        setWorkflowInfoMap((prev) => {
+          const next = new Map(prev);
+          const info = next.get(chatId);
+          if (info) {
+            next.set(chatId, { ...info, planReady: true });
+          }
+          return next;
+        });
+      }
+    }
+    prevIsStreamingRef.current = isStreaming;
+  }, [isStreaming, chatId, workflowInfoMap, setWorkflowInfoMap]);
+
+  // Get workflow info for current chat
+  const currentWorkflowInfo = chatId ? workflowInfoMap.get(chatId) : undefined;
+  const showBuildAppButton = currentWorkflowInfo?.planReady && !isStreaming;
+
+  // Handle "Build App" button click
+  const handleBuildApp = async () => {
+    console.log("[BuildApp] clicked", { chatId, appId, currentWorkflowInfo, isBuildingApp });
+
+    if (!chatId) {
+      console.error("[BuildApp] No chatId");
+      return;
+    }
+    if (!appId) {
+      console.error("[BuildApp] No appId");
+      return;
+    }
+    if (!currentWorkflowInfo) {
+      console.error("[BuildApp] No currentWorkflowInfo");
+      return;
+    }
+    if (isBuildingApp) {
+      console.error("[BuildApp] Already building");
+      return;
+    }
+
+    setIsBuildingApp(true);
+    try {
+      // Read the workflow documentation file (filename provided by backend)
+      const workflowFileName = currentWorkflowInfo.workflowDocFilename;
+      console.log("[BuildApp] Reading file:", workflowFileName);
+
+      const { content } = await getClient().readAppFile({
+        appId,
+        filePath: workflowFileName,
+      });
+      console.log("[BuildApp] File content length:", content?.length);
+
+      // Send the workflow content as the next prompt
+      await streamMessage({
+        prompt: content,
+        chatId,
+        redo: false,
+      });
+
+      // Clear workflow info after sending (we don't need the button anymore)
+      setWorkflowInfoMap((prev) => {
+        const next = new Map(prev);
+        next.delete(chatId);
+        return next;
+      });
+    } catch (error) {
+      console.error("[BuildApp] Failed to read workflow file:", error);
+      setError("Failed to read workflow plan. Please try again.");
+    } finally {
+      setIsBuildingApp(false);
+    }
+  };
 
   const fetchChatMessages = useCallback(async () => {
     if (!chatId) {
@@ -274,13 +413,50 @@ export function ChatInput({ chatId }: { chatId?: number }) {
       )}
       <div className="p-4" data-testid="chat-input-container">
         <div
-          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
+          className={`relative flex flex-col border border-border rounded-3xl bg-(--background-lighter) shadow-sm w-full max-w-[760px] mx-auto ${
             isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
+          {/* Build App button for workflow apps */}
+          {showBuildAppButton && (
+            <div className="border-b border-border p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Hammer size={18} className="text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    Workflow plan ready
+                  </span>
+                </div>
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("[BuildApp] Button onClick fired");
+                    handleBuildApp();
+                  }}
+                  disabled={isBuildingApp}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  size="sm"
+                >
+                  {isBuildingApp ? (
+                    <>
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                      Building...
+                    </>
+                  ) : (
+                    <>
+                      <Hammer size={16} className="mr-2" />
+                      Build App
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Only render ChatInputActions if proposal is loaded */}
           {proposal &&
             proposalResult?.chatId === chatId &&
@@ -311,7 +487,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
           {/* Use the DragDropOverlay component */}
           <DragDropOverlay isDraggingOver={isDraggingOver} />
 
-          <div className="flex items-start space-x-2 ">
+          <div className="flex items-start space-x-2 pt-3 px-3">
             <LexicalChatInput
               value={inputValue}
               onChange={setInputValue}
@@ -344,7 +520,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
               </button>
             )}
           </div>
-          <div className="pl-2 pr-1 flex items-center justify-between pb-2">
+          <div className="pl-5 pr-3 pb-3 flex items-center justify-between">
             <div className="flex items-center">
               <ChatInputControls showContextFilesPicker={true} />
               {/* File attachment dropdown */}

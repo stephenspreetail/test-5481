@@ -35,6 +35,8 @@ const runningApps = new Map<
     containerId?: string;
     status: "starting" | "running" | "stopped" | "error";
     url?: string;
+    proxyUrl?: string; // The kova-proxy-server URL
+    originalUrl?: string;
   }
 >();
 
@@ -48,6 +50,19 @@ export function subscribeToAppOutput(appId: number, ws: WebSocket) {
   const appState = runningApps.get(appId);
   if (appState) {
     sendStatus(ws, appId, appState.status, appState.url);
+
+    // If we have a proxy URL, send it to the new subscriber
+    if (appState.proxyUrl) {
+      const proxyMessage = `[kova-proxy-server]started=[${appState.proxyUrl}]original=[${appState.originalUrl || "http://localhost:3000"}]`;
+      const output: AppOutputMessage = {
+        type: "app:output",
+        appId,
+        outputType: "info",
+        message: proxyMessage,
+        timestamp: Date.now(),
+      };
+      ws.send(JSON.stringify(output));
+    }
   }
 }
 
@@ -100,6 +115,21 @@ export function broadcastAppOutput(
   outputType: AppOutputMessage["outputType"],
   message: string,
 ) {
+  // Check if this is a proxy server started message and store the URLs
+  if (message.includes("[kova-proxy-server]started=")) {
+    const proxyUrlMatch = message.match(/\[kova-proxy-server\]started=\[(.*?)\]/);
+    const originalUrlMatch = message.match(/original=\[(.*?)\]/);
+
+    if (proxyUrlMatch && proxyUrlMatch[1]) {
+      // Update or create the app state with proxy URL
+      const appState = runningApps.get(appId) || { status: "running" as const };
+      appState.proxyUrl = proxyUrlMatch[1];
+      appState.originalUrl = originalUrlMatch?.[1] || "http://localhost:3000";
+      appState.status = "running";
+      runningApps.set(appId, appState);
+    }
+  }
+
   const subscribers = appSubscriptions.get(appId);
   if (!subscribers || subscribers.size === 0) {
     return;
@@ -132,7 +162,13 @@ export function broadcastAppStatus(
   if (status === "stopped") {
     runningApps.delete(appId);
   } else {
-    runningApps.set(appId, { status, url });
+    // Preserve proxyUrl and originalUrl if they exist
+    const existing = runningApps.get(appId);
+    runningApps.set(appId, {
+      ...existing,
+      status,
+      url,
+    });
   }
 
   const subscribers = appSubscriptions.get(appId);

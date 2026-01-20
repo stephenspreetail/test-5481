@@ -77,7 +77,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
           />
         )}
         {!isStreaming && (
-          <div className="flex max-w-3xl mx-auto gap-2">
+          <div className="flex w-full max-w-[710px] mx-auto gap-2">
             {!!messages.length &&
               messages[messages.length - 1].role === "assistant" &&
               messages[messages.length - 1].commitHash && (

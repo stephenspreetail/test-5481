@@ -89,7 +89,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
         message.role === "assistant" ? "justify-start" : "justify-end"
       }`}
     >
-      <div className={`mt-2 w-full max-w-3xl mx-auto group`}>
+      <div className={`mt-2 w-full max-w-[710px] mx-auto group`}>
         <div
           className={`rounded-lg p-2 ${
             message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
@@ -135,7 +135,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
             </div>
           ) : (
             <div
-              className="prose prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
+              className="prose prose-headings:mb-2 prose-pre:my-0 break-words"
               suppressHydrationWarning
             >
               {message.role === "assistant" ? (

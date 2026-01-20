@@ -1,6 +1,6 @@
 /**
  * App Container Service
- * Manages Docker containers for running Claude Agent SDK + Dev Server per app
+ * Manages containers for running Claude Agent SDK + Dev Server per app
  * Traefik HTTP provider polls /api/traefik/config for routing
  */
 
@@ -8,13 +8,14 @@ import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import Docker from "dockerode";
 import { config } from "../config/index.js";
+import { broadcastAppOutput } from "../websocket/handlers/app-output.handler.js";
 
-// Initialize Docker client based on platform
+// Initialize container client based on platform
 function createDockerClient(): Docker {
   // Check if we're on Windows
   if (process.platform === "win32") {
-    // Windows Docker Desktop uses named pipe
-    return new Docker({ socketPath: "//./pipe/docker_engine" });
+    // Windows uses named pipe
+    return new Docker({ socketPath: config.DOCKER_SOCKET_WIN32 });
   }
   // Unix-based systems use socket path from config
   return new Docker({ socketPath: config.DOCKER_SOCKET });
@@ -22,11 +23,9 @@ function createDockerClient(): Docker {
 
 /**
  * Convert a path to Docker-compatible format for bind mounts
- * Docker Desktop on Windows accepts Windows paths natively
  */
 function toDockerPath(hostPath: string): string {
-  // Docker Desktop on Windows handles Windows paths natively
-  // Just ensure forward slashes for consistency in the bind mount string
+  // Ensure forward slashes for consistency in the bind mount string
   return hostPath.replace(/\\/g, "/");
 }
 
@@ -155,7 +154,7 @@ class AppContainerService {
   }
 
   /**
-   * This method is essentially “reconcile Docker reality → in-memory maps”
+   * This method is essentially “reconcile container reality → in-memory maps”
    * (handles the case where backend restarts but containers are still running)
    *  - List running managed containers
    *  - Build a set of running appIds
@@ -229,7 +228,7 @@ class AppContainerService {
       }
 
       // Remove stale entries for containers no longer running
-      // BUT don't remove entries in "starting" state - they might not be in Docker's list yet
+      // BUT don't remove entries in "starting" state - they might not be in the container's list yet
       for (const [appId, info] of appContainers.entries()) {
         if (!runningAppIds.has(appId)) {
           if (info.state === "starting") {
@@ -402,7 +401,7 @@ class AppContainerService {
       (existing.state === "running" || existing.state === "starting") &&
       existing.containerId
     ) {
-      // Verify the container is actually running in Docker
+      // Verify the container is actually running
       try {
         const container = docker.getContainer(existing.containerId);
         const info = await container.inspect();
@@ -478,8 +477,6 @@ class AppContainerService {
       `DEV_SERVER_PORT=3000`,
       // Store Claude sessions in workspace (persisted via bind mount)
       `CLAUDE_CONFIG_DIR=/workspace/.claude`,
-      // ProGet API key for internal npm packages
-      `PROGET_API_KEY=${config.PROGET_API_KEY || ""}`,
     ];
 
     // Update state to starting
@@ -538,15 +535,22 @@ class AppContainerService {
         },
         HostConfig: {
           NetworkMode: config.CONTAINER_NETWORK,
-          Binds: [`${dockerAppPath}:/workspace:rw`],
+          Binds: [
+            `${dockerAppPath}:/workspace:rw`,
+            // Named volume for node_modules - stored on Linux filesystem
+            // This fixes npm bin-links issues on Windows where bind mounts don't support chmod/symlinks
+            `app-${appId}-modules:/workspace/node_modules`,
+            // Named volume for skills - allows copying skills without bind mount permission issues
+            `app-${appId}-skills:/workspace/.claude/skills`,
+          ],
           // Agent port exposed to host for direct access
           PortBindings: {
             "3100/tcp": [{ HostPort: agentPort.toString() }],
           },
-          Memory: 1024 * 1024 * 1024, // 1GB
-          MemorySwap: 2 * 1024 * 1024 * 1024, // 2GB with swap
+          Memory: 2 * 1024 * 1024 * 1024, // 2GB (Claude Code CLI needs more memory)
+          MemorySwap: 4 * 1024 * 1024 * 1024, // 4GB with swap
           CpuPeriod: 100000,
-          CpuQuota: 100000, // 100% CPU (1 core)
+          CpuQuota: 200000, // 200% CPU (2 cores)
         },
         Labels: {
           "kova.app-container": "true",
@@ -574,6 +578,9 @@ class AppContainerService {
         containerInfoAfterStart.state = "running";
       }
 
+      // Stream container logs to WebSocket subscribers
+      this.streamContainerLogs(appId, container, previewUrl);
+
       // Monitor container for exit
       this.monitorContainer(appId, container);
 
@@ -597,6 +604,79 @@ class AppContainerService {
         error,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Stream container logs to WebSocket subscribers
+   * Note: Container uses Tty: true, so logs are raw (not multiplexed)
+   */
+  private async streamContainerLogs(
+    appId: number,
+    container: Docker.Container,
+    previewUrl: string,
+  ): Promise<void> {
+    try {
+      const logStream = await container.logs({
+        follow: true,
+        stdout: true,
+        stderr: true,
+        timestamps: false,
+      });
+
+      // Track if we've sent the proxy server started message
+      let proxyStartedSent = false;
+
+      // With Tty: true, logs are raw text (not multiplexed with 8-byte headers)
+      logStream.on("data", (chunk: Buffer) => {
+        const output = chunk.toString("utf8");
+
+        // Process each line
+        for (const line of output.split("\n")) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+
+          // Log to console for debugging
+          console.log(`[Container ${appId}] stdout: ${trimmedLine}`);
+
+          // Broadcast to WebSocket subscribers
+          broadcastAppOutput(appId, "stdout", trimmedLine);
+
+          // Check if dev server is ready and send proxy URL
+          if (
+            !proxyStartedSent &&
+            (trimmedLine.includes("Local:") ||
+              trimmedLine.includes("ready in") ||
+              trimmedLine.includes("listening on") ||
+              trimmedLine.includes("started server") ||
+              trimmedLine.includes("Accepting connections") ||
+              trimmedLine.includes("Serving!") ||
+              trimmedLine.includes("Server is running"))
+          ) {
+            proxyStartedSent = true;
+            // Extract the original URL from the log (e.g., http://localhost:3000)
+            const urlMatch = trimmedLine.match(/https?:\/\/[^\s]+/);
+            const originalUrl = urlMatch ? urlMatch[0] : "http://localhost:3000";
+
+            const proxyMessage = `[kova-proxy-server]started=[${previewUrl}]original=[${originalUrl}]`;
+            console.log(`[Container ${appId}] Broadcasting proxy URL: ${proxyMessage}`);
+            broadcastAppOutput(appId, "info", proxyMessage);
+          }
+        }
+      });
+
+      logStream.on("error", (err) => {
+        console.error(`[AppContainerService] Log stream error for app ${appId}:`, err);
+      });
+
+      logStream.on("end", () => {
+        console.log(`[AppContainerService] Log stream ended for app ${appId}`);
+      });
+    } catch (error) {
+      console.error(
+        `[AppContainerService] Failed to stream logs for app ${appId}:`,
+        error,
+      );
     }
   }
 
@@ -853,7 +933,7 @@ class AppContainerService {
           `[AppContainerService] Image ${this.containerImage} not found, please build it first`,
         );
         throw new Error(
-          `Docker image ${this.containerImage} not found. Run 'docker-compose build app-container' first.`,
+          `Container image ${this.containerImage} not found. Run 'podman compose build app-container' first.`,
         );
       }
       throw error;

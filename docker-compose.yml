@@ -11,8 +11,7 @@ services:
       # Dynamic config directory for static routes (dashboard, etc.)
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
     extra_hosts:
-      # Allow Traefik to reach the backend on host machine (Docker Desktop)
-      # Note: Rancher Desktop users may need to comment this out if experiencing connection issues
+      # Allow Traefik to reach the backend on host machine
       - "host.docker.internal:host-gateway"
     networks:
       - kova-network
@@ -37,67 +36,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API server
-  # backend:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: kova-backend
-  #   environment:
-  #     NODE_ENV: development
-  #     PORT: 3002
-  #     DATABASE_URL: postgresql://kova:kova_dev_password@postgres:5432/kova
-  #     JWT_SECRET: dev_jwt_secret_change_in_production_at_least_32_chars
-  #     JWT_REFRESH_SECRET: dev_refresh_secret_change_in_production_at_least_32_chars
-  #     ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-  #     CORS_ORIGIN: http://localhost:5174
-  #     APPS_BASE_PATH: /app/apps
-  #     DOCKER_SOCKET: /var/run/docker.sock
-  #     # App container settings
-  #     APP_CONTAINER_IMAGE: kova-app-container:latest
-  #     APP_CONTAINER_IDLE_TIMEOUT_MS: 900000  # 15 minutes
-  #     # Orchestrator settings
-  #     CONTAINER_NETWORK: kova-network
-  #     PREVIEW_DOMAIN: localhost
-  #     PREVIEW_PORT: 8081
-  #     AGENT_PORT: 3100
-  #     DEV_SERVER_PORT: 3000
-  #     # Claude API
-  #     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-your_anthropic_api_key_here}
-  #   ports:
-  #     - "3002:3002"
-  #   volumes:
-  #     - ./backend:/app
-  #     - /app/node_modules
-  #     # Note: Socket mount removed due to podman-compose path issues on Windows
-  #     # Backend will need alternative approach for container spawning
-  #     - apps_data:/app/apps
-  #   networks:
-  #     - kova-network
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     traefik:
-  #       condition: service_started
-  #   command: npm run dev
-
-  # Frontend web server
-  # frontend:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.web
-  #   container_name: kova-frontend
-  #   environment:
-  #     VITE_API_URL: http://localhost:3002
-  #   ports:
-  #     - "5175:5174"
-  #   volumes:
-  #     - ./:/app
-  #     - /app/node_modules
-  #   networks:
-  #     - kova-network
-  #   depends_on:
-  #     - backend
 
   # App container image (build only, not run as a service)
   # This builds the image that will be spawned dynamically by the backend
@@ -118,4 +56,3 @@ networks:
 
 volumes:
   postgres_data:
-  # apps_data:
