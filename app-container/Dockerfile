@@ -3,11 +3,18 @@
 
 FROM node:22-bookworm-slim
 
-# Build argument for ProGet API key (optional, can also be set at runtime)
-ARG PROGET_API_KEY
+# Install git (required by Claude Code CLI), Python, and LibreOffice for Excel operations
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    bash \
+    python3 \
+    python3-pip \
+    python3-venv \
+    libreoffice-calc-nogui \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install git (required by Claude Code CLI) and other utilities
-RUN apt-get update && apt-get install -y --no-install-recommends git bash gettext-base && rm -rf /var/lib/apt/lists/*
+# Install Python packages for xlsx skill (pandas, openpyxl)
+RUN pip3 install --no-cache-dir --break-system-packages pandas openpyxl
 
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
@@ -32,6 +39,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+# Copy skills directory (will be copied to workspace on startup)
+COPY skills/ /app/skills/
+
 # Create workspace directory for user app files and set ownership
 RUN mkdir -p /workspace && chown -R kova:kova /workspace
 
@@ -40,16 +50,6 @@ RUN mkdir -p /home/kova/.claude && chown -R kova:kova /home/kova
 
 # Set ownership of app directory
 RUN chown -R kova:kova /app
-
-# Configure npm registry for ProGet (internal packages)
-# Copy .npmrc template to kova user's home directory
-COPY --chown=kova:kova .npmrc.template /home/kova/.npmrc
-
-# Also copy to workspace so it's available for user app builds
-COPY --chown=kova:kova .npmrc.template /workspace/.npmrc
-
-# Set PROGET_API_KEY as environment variable (will be used by npm at runtime)
-ENV PROGET_API_KEY=${PROGET_API_KEY}
 
 # Expose ports:
 # 3000 - Dev server (user's app)

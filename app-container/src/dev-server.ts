@@ -1,14 +1,12 @@
 /**
  * Dev Server Manager
  * Spawns and manages the user's app dev server
- *
- * Note: On Windows bind mounts, symlinks in node_modules/.bin don't work,
- * so we use npx to run dev servers directly instead of relying on npm run dev.
  */
 
 import { ChildProcess, spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { devServerLog as log } from "./logger.js";
 import type { DevServerStatus } from "./types.js";
 
 /**
@@ -42,7 +40,7 @@ export class DevServerManager {
   async start(): Promise<void> {
     // Find the actual project directory (might be in a subdirectory)
     const projectDir = this.findProjectDir();
-    console.log(`[DevServer] Using project directory: ${projectDir}`);
+    log.log(`Using project directory: ${projectDir}`);
 
     // Check if package.json exists in project dir
     const packageJsonPath = join(projectDir, "package.json");
@@ -51,20 +49,21 @@ export class DevServerManager {
     // If package.json exists, ensure node_modules is installed
     if (hasPackageJson) {
       const nodeModulesPath = join(projectDir, "node_modules");
-      if (!existsSync(nodeModulesPath)) {
-        console.log(
-          "[DevServer] node_modules not found, running npm install...",
-        );
+      // Check if node_modules exists AND has content (not just an empty directory from a volume mount)
+      const nodeModulesExists = existsSync(nodeModulesPath);
+      const nodeModulesHasContent = nodeModulesExists && readdirSync(nodeModulesPath).length > 0;
+
+      if (!nodeModulesHasContent) {
+        log.log("node_modules empty or not found, running npm install...");
         await this.runNpmInstall(projectDir);
       }
     }
 
     this.status = "starting";
-    console.log(`[DevServer] Starting dev server on port ${this.port}...`);
+    log.log(`Starting dev server on port ${this.port}...`);
 
     try {
       // Detect framework and get appropriate command
-      // Using npx instead of npm run dev to avoid .bin symlink issues on Windows bind mounts
       let cmd: string;
       let args: string[];
 
@@ -77,16 +76,16 @@ export class DevServerManager {
         args = devCommand.args;
       } else if (this.isStaticSite(projectDir)) {
         // Use npx serve for static HTML sites (no package.json needed)
-        console.log("[DevServer] Detected static HTML site, using serve");
+        log.log("Detected static HTML site, using serve");
         cmd = "npx";
         args = ["serve", "-l", String(this.port), "-s", "."];
       } else {
-        console.log("[DevServer] No servable content found");
+        log.log("No servable content found");
         this.status = "stopped";
         return;
       }
 
-      console.log(`[DevServer] Running: ${cmd} ${args.join(" ")}`);
+      log.log(`Running: ${cmd} ${args.join(" ")}`);
 
       this.process = spawn(cmd, args, {
         cwd: projectDir,
@@ -100,8 +99,8 @@ export class DevServerManager {
       });
 
       this.process.stdout?.on("data", (data) => {
-        const output = data.toString();
-        console.log(`[DevServer] ${output}`);
+        const output = data.toString().trim();
+        log.log(`stdout: ${output}`);
 
         // Detect when server is ready (common patterns)
         if (
@@ -113,22 +112,20 @@ export class DevServerManager {
           output.includes("Serving!") // serve
         ) {
           this.status = "running";
-          console.log("[DevServer] Server is running");
+          log.log("Server is running");
         }
       });
 
       this.process.stderr?.on("data", (data) => {
-        console.error(`[DevServer] stderr: ${data}`);
+        log.error(`stderr: ${data}`);
       });
 
       this.process.on("close", (code) => {
-        console.log(`[DevServer] Process exited with code ${code}`);
+        log.log(`Process exited with code ${code}`);
         this.process = null;
 
         if (this.status === "running" && this.restartCount < this.maxRestarts) {
-          console.log(
-            `[DevServer] Restarting (attempt ${this.restartCount + 1}/${this.maxRestarts})...`,
-          );
+          log.log(`Restarting (attempt ${this.restartCount + 1}/${this.maxRestarts})...`);
           this.restartCount++;
           setTimeout(() => this.start(), this.restartDelay);
         } else {
@@ -137,14 +134,14 @@ export class DevServerManager {
       });
 
       this.process.on("error", (error) => {
-        console.error(`[DevServer] Error: ${error.message}`);
+        log.error(`Error: ${error.message}`);
         this.status = "error";
       });
 
       // Reset restart count on successful start
       this.restartCount = 0;
     } catch (error) {
-      console.error("[DevServer] Failed to start:", error);
+      log.error("Failed to start:", error);
       this.status = "error";
       throw error;
     }
@@ -152,12 +149,10 @@ export class DevServerManager {
 
   /**
    * Run npm install in the project directory
-   * Uses --no-bin-links to work around Windows bind mount symlink issues
    */
   private async runNpmInstall(projectDir: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Use --no-bin-links because Windows bind mounts don't support symlinks
-      const installProcess = spawn("npm", ["install", "--no-bin-links"], {
+      const installProcess = spawn("npm", ["install"], {
         cwd: projectDir,
         stdio: "inherit",
         shell: true,
@@ -165,7 +160,7 @@ export class DevServerManager {
 
       installProcess.on("close", (code) => {
         if (code === 0) {
-          console.log("[DevServer] npm install completed");
+          log.log("npm install completed");
           resolve();
         } else {
           reject(new Error(`npm install failed with code ${code}`));
@@ -194,30 +189,21 @@ export class DevServerManager {
       const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
       const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
 
-      // Check for common frameworks and use npx to run them directly
-      // This avoids relying on .bin symlinks which don't work on Windows bind mounts
+      // Check for common frameworks
       if (allDeps.vite) {
-        console.log("[DevServer] Detected Vite project");
-        // Run vite directly via node to avoid .bin symlink issues on Windows bind mounts
+        log.log("Detected Vite project");
         return {
-          cmd: "node",
-          args: [
-            "node_modules/vite/bin/vite.js",
-            "--port",
-            String(this.port),
-            "--host",
-            "0.0.0.0",
-          ],
+          cmd: "npx",
+          args: ["vite", "--port", String(this.port), "--host", "0.0.0.0"],
         };
       }
 
       if (allDeps.next) {
-        console.log("[DevServer] Detected Next.js project");
-        // Run next directly via node to avoid .bin symlink issues
+        log.log("Detected Next.js project");
         return {
-          cmd: "node",
+          cmd: "npx",
           args: [
-            "node_modules/next/dist/bin/next",
+            "next",
             "dev",
             "--port",
             String(this.port),
@@ -228,12 +214,11 @@ export class DevServerManager {
       }
 
       if (allDeps["@angular/cli"]) {
-        console.log("[DevServer] Detected Angular project");
-        // Run ng directly via node to avoid .bin symlink issues
+        log.log("Detected Angular project");
         return {
-          cmd: "node",
+          cmd: "npx",
           args: [
-            "node_modules/@angular/cli/bin/ng.js",
+            "ng",
             "serve",
             "--port",
             String(this.port),
@@ -244,17 +229,16 @@ export class DevServerManager {
       }
 
       if (allDeps["react-scripts"]) {
-        console.log("[DevServer] Detected Create React App project");
-        // Run react-scripts directly via node to avoid .bin symlink issues
+        log.log("Detected Create React App project");
         return {
-          cmd: "node",
-          args: ["node_modules/react-scripts/bin/react-scripts.js", "start"],
+          cmd: "npx",
+          args: ["react-scripts", "start"],
         };
       }
 
       // Check if there's a dev script defined
       if (pkg.scripts?.dev) {
-        console.log("[DevServer] Found dev script, using npm run dev");
+        log.log("Found dev script, using npm run dev");
         return {
           cmd: "npm",
           args: [
@@ -272,7 +256,7 @@ export class DevServerManager {
       // No framework or dev script found
       return null;
     } catch (error) {
-      console.error("[DevServer] Error reading package.json:", error);
+      log.error("Error reading package.json:", error);
       return null;
     }
   }
@@ -295,14 +279,14 @@ export class DevServerManager {
     // First, check if workspace itself has servable content
     const packageJsonPath = join(this.workspaceDir, "package.json");
     if (existsSync(packageJsonPath)) {
-      console.log("[DevServer] Found package.json in workspace root");
+      log.log("Found package.json in workspace root");
       return this.workspaceDir;
     }
 
     // Check for static site in root
     const staticFiles = ["index.html", "index.htm", "default.html"];
     if (staticFiles.some((file) => existsSync(join(this.workspaceDir, file)))) {
-      console.log("[DevServer] Found static site in workspace root");
+      log.log("Found static site in workspace root");
       return this.workspaceDir;
     }
 
@@ -318,16 +302,12 @@ export class DevServerManager {
           if (statSync(entryPath).isDirectory()) {
             // Check for package.json in subdirectory
             if (existsSync(join(entryPath, "package.json"))) {
-              console.log(
-                `[DevServer] Found package.json in subdirectory: ${entry}`,
-              );
+              log.log(`Found package.json in subdirectory: ${entry}`);
               return entryPath;
             }
             // Check for static site in subdirectory
             if (staticFiles.some((file) => existsSync(join(entryPath, file)))) {
-              console.log(
-                `[DevServer] Found static site in subdirectory: ${entry}`,
-              );
+              log.log(`Found static site in subdirectory: ${entry}`);
               return entryPath;
             }
           }
@@ -336,11 +316,11 @@ export class DevServerManager {
         }
       }
     } catch (error) {
-      console.error("[DevServer] Error scanning workspace:", error);
+      log.error("Error scanning workspace:", error);
     }
 
     // Default to workspace dir
-    console.log("[DevServer] No project found, using workspace root");
+    log.log("No project found, using workspace root");
     return this.workspaceDir;
   }
 
@@ -355,7 +335,7 @@ export class DevServerManager {
 
     // Set status to "stopping" FIRST to prevent auto-restart logic in close handler
     this.status = "stopping";
-    console.log("[DevServer] Stopping dev server...");
+    log.log("Stopping dev server...");
     const pid = this.process.pid;
 
     return new Promise((resolve) => {
@@ -367,7 +347,7 @@ export class DevServerManager {
 
       // Timeout to prevent hanging forever
       const timeout = setTimeout(() => {
-        console.log("[DevServer] Stop timeout reached, forcing cleanup...");
+        log.log("Stop timeout reached, forcing cleanup...");
         this.process = null;
         this.status = "stopped";
         resolve();
@@ -377,7 +357,7 @@ export class DevServerManager {
         clearTimeout(timeout);
         this.process = null;
         this.status = "stopped";
-        console.log("[DevServer] Server stopped");
+        log.log("Server stopped");
         resolve();
       });
 
@@ -385,11 +365,11 @@ export class DevServerManager {
       // On Unix, negative PID kills the process group
       if (pid) {
         try {
-          console.log(`[DevServer] Killing process tree (PID: ${pid})...`);
+          log.log(`Killing process tree (PID: ${pid})...`);
           process.kill(-pid, "SIGTERM");
         } catch (e) {
           // Fallback to regular kill if process group kill fails
-          console.log("[DevServer] Process group kill failed, using regular kill");
+          log.log("Process group kill failed, using regular kill");
           this.process?.kill("SIGTERM");
         }
       } else {
@@ -399,7 +379,7 @@ export class DevServerManager {
       // Force kill after timeout
       setTimeout(() => {
         if (this.process && pid) {
-          console.log("[DevServer] Force killing server (SIGKILL)...");
+          log.log("Force killing server (SIGKILL)...");
           try {
             process.kill(-pid, "SIGKILL");
           } catch (e) {

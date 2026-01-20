@@ -5,9 +5,12 @@
  * - Dev Server on port 3000 (user's app)
  */
 
+import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import Fastify from "fastify";
 import { streamQuery } from "./agent.js";
 import { DevServerManager } from "./dev-server.js";
+import { appContainerLog as log } from "./logger.js";
 import type {
   HealthResponse,
   QueryRequest,
@@ -31,6 +34,8 @@ Tech stack preferences:
 - React 18 with TypeScript
 - Vite as the build tool
 - Tailwind CSS for styling
+
+IMPORTANT: The dev server starts AUTOMATICALLY after you create the app files. Do NOT run "npm run dev" or start the server manually.
 
 Use relative file paths from the workspace root.
 Build complete, working applications without asking unnecessary questions.`,
@@ -153,33 +158,99 @@ app.post("/dev-server/restart", async (request, reply) => {
 });
 
 /**
+ * Recursively list directory contents for debugging
+ */
+function listDirRecursive(dir: string, prefix = ""): string[] {
+  const results: string[] = [];
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        results.push(`${prefix}${entry.name}/`);
+        results.push(...listDirRecursive(fullPath, `${prefix}  `));
+      } else {
+        results.push(`${prefix}${entry.name}`);
+      }
+    }
+  } catch (error) {
+    results.push(`${prefix}[ERROR reading dir: ${error}]`);
+  }
+  return results;
+}
+
+/**
+ * Copy bundled skills to project .claude/skills directory
+ * This directory uses a named volume mount, so we can write to it
+ * without the permission issues of the bind-mounted workspace
+ */
+function copySkillsToProjectDir() {
+  const bundledSkillsDir = "/app/skills";
+  const projectSkillsDir = join(WORKSPACE_DIR, ".claude", "skills");
+
+  log.log(`[SKILLS] Bundled skills dir: ${bundledSkillsDir}`);
+  log.log(`[SKILLS] Project skills dir: ${projectSkillsDir}`);
+
+  if (!existsSync(bundledSkillsDir)) {
+    log.log("[SKILLS] No bundled skills directory found, skipping skill setup");
+    return;
+  }
+
+  // Log bundled skills contents
+  log.log("[SKILLS] Bundled skills:");
+  const bundledContents = listDirRecursive(bundledSkillsDir);
+  for (const line of bundledContents) {
+    log.log(`  ${line}`);
+  }
+
+  // Copy to project directory (/workspace/.claude/skills/)
+  // This now uses a named volume, so permissions should work
+  try {
+    cpSync(bundledSkillsDir, projectSkillsDir, { recursive: true });
+    log.log(`[SKILLS] Copied skills to project dir: ${projectSkillsDir}`);
+
+    // Verify copy
+    log.log("[SKILLS] Project skills after copy:");
+    const projectContents = listDirRecursive(projectSkillsDir);
+    for (const line of projectContents) {
+      log.log(`  ${line}`);
+    }
+  } catch (error) {
+    log.error("[SKILLS] Failed to copy skills to project dir:", error);
+  }
+}
+
+/**
  * Main startup function
  */
 async function main() {
   try {
-    console.log(`[AppContainer] Starting for app ${APP_ID}`);
-    console.log(`[AppContainer] Workspace: ${WORKSPACE_DIR}`);
-    console.log(`[AppContainer] Agent port: ${AGENT_PORT}`);
-    console.log(`[AppContainer] Dev server port: ${DEV_SERVER_PORT}`);
+    log.log(`Starting for app ${APP_ID}`);
+    log.log(`Workspace: ${WORKSPACE_DIR}`);
+    log.log(`Agent port: ${AGENT_PORT}`);
+    log.log(`Dev server port: ${DEV_SERVER_PORT}`);
+
+    // Copy bundled skills to project directory (uses named volume mount)
+    copySkillsToProjectDir();
 
     // Start the agent server
     await app.listen({ port: AGENT_PORT, host: "0.0.0.0" });
-    console.log(`[AppContainer] Agent server listening on port ${AGENT_PORT}`);
+    log.log(`Agent server listening on port ${AGENT_PORT}`);
 
     // Start the dev server (if workspace has a package.json)
     await devServerManager.start();
 
     // Handle graceful shutdown
     const shutdown = async (signal: string) => {
-      console.log(`\n========== CONTAINER SHUTDOWN ==========`);
-      console.log(`[AppContainer] Received ${signal}`);
+      log.log(`========== CONTAINER SHUTDOWN ==========`);
+      log.log(`Received ${signal}`);
       if (signal === "SIGTERM") {
-        console.log(`[AppContainer] SIGTERM typically means IDLE TIMEOUT - container was inactive`);
+        log.log(`SIGTERM typically means IDLE TIMEOUT - container was inactive`);
       } else if (signal === "SIGINT") {
-        console.log(`[AppContainer] SIGINT means manual interrupt (Ctrl+C)`);
+        log.log(`SIGINT means manual interrupt (Ctrl+C)`);
       }
-      console.log(`[AppContainer] Shutting down gracefully...`);
-      console.log(`========================================\n`);
+      log.log(`Shutting down gracefully...`);
+      log.log(`========================================`);
       await devServerManager.stop();
       await app.close();
       process.exit(0);
@@ -188,7 +259,7 @@ async function main() {
     process.on("SIGTERM", () => shutdown("SIGTERM"));
     process.on("SIGINT", () => shutdown("SIGINT"));
   } catch (error) {
-    console.error("[AppContainer] Failed to start:", error);
+    log.error("Failed to start:", error);
     process.exit(1);
   }
 }

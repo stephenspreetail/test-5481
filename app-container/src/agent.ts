@@ -24,6 +24,12 @@ export interface AgentQueryOptions {
   systemPrompt?: SystemPromptConfig | string;
 }
 
+// ANSI color codes
+const YELLOW = "\x1b[33m";
+const GREEN = "\x1b[32m";
+const RED = "\x1b[31m";
+const RESET = "\x1b[0m";
+
 /**
  * Check if verbose logging is enabled
  */
@@ -36,11 +42,12 @@ function isVerbose(): boolean {
 }
 
 /**
- * Log with timestamp and optional JSON formatting
+ * Log with timestamp, category, and optional JSON formatting
+ * Color coded: timestamp (yellow), source (green)
  */
 function log(category: string, message: string, data?: unknown): void {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [Agent:${category}] ${message}`);
+  console.log(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:${category}]${RESET} ${message}`);
   if (data !== undefined && isVerbose()) {
     if (typeof data === "string") {
       console.log(data);
@@ -65,8 +72,9 @@ function isPresetConfig(
  * Log the full system prompt (multi-line)
  */
 function logSystemPrompt(systemPrompt: SystemPromptConfig | string): void {
+  const timestamp = new Date().toISOString();
   console.log("=".repeat(80));
-  console.log("[Agent] SYSTEM PROMPT CONFIG:");
+  console.log(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:SYSTEM_PROMPT]${RESET} CONFIG:`);
   console.log("=".repeat(80));
   if (isPresetConfig(systemPrompt)) {
     console.log(`Type: preset`);
@@ -86,8 +94,9 @@ function logSystemPrompt(systemPrompt: SystemPromptConfig | string): void {
 function logSdkMessage(message: unknown): void {
   if (!isVerbose()) return;
 
+  const timestamp = new Date().toISOString();
   console.log("-".repeat(60));
-  console.log("[Agent:SDK] Raw message received:");
+  console.log(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:SDK]${RESET} Raw message received:`);
   console.log(JSON.stringify(message, null, 2));
   console.log("-".repeat(60));
 }
@@ -103,6 +112,7 @@ export async function* streamQuery(
   const startTime = Date.now();
   let sessionId: string | undefined;
   let messageCount = 0;
+  let resultReceived = false;
 
   // Ensure cwd is absolute
   const absoluteCwd = resolve(options.cwd);
@@ -132,14 +142,7 @@ export async function* streamQuery(
       resume?: string;
       systemPrompt?: SystemPromptConfig | string;
       maxTurns?: number;
-      mcpServers?: Record<
-        string,
-        {
-          type: "http";
-          url: string;
-          headers?: Record<string, string>;
-        }
-      >;
+      settingSources?: ("user" | "project")[];
     } = {
       allowedTools:
         options.allowedTools || (DEFAULT_TOOLS as unknown as string[]),
@@ -147,13 +150,9 @@ export async function* streamQuery(
       allowDangerouslySkipPermissions: true,
       cwd: absoluteCwd,
       maxTurns: 50,
-      // Configure static MCP server for Spreetail engineering AI agent
-      mcpServers: {
-        "spreetail-engineering-ai-agent": {
-          type: "http",
-          url: "https://spreetail-engineering-ai-agent.prod01.tk.dev/mcp",
-        },
-      },
+      // Load skills from project directory
+      // Skills are copied to /workspace/.claude/skills/ which uses a named volume
+      settingSources: ["project"],
     };
 
     if (options.sessionId) {
@@ -166,17 +165,16 @@ export async function* streamQuery(
       queryOptions.systemPrompt = options.systemPrompt;
     }
 
-    log("MCP", "Configured MCP servers:", queryOptions.mcpServers);
-
     log("QUERY", "Calling Claude Agent SDK with options:", {
-      ...queryOptions,
+      allowedTools: queryOptions.allowedTools,
+      permissionMode: queryOptions.permissionMode,
+      cwd: queryOptions.cwd,
+      maxTurns: queryOptions.maxTurns,
+      settingSources: queryOptions.settingSources,
       systemPrompt: queryOptions.systemPrompt
         ? isPresetConfig(queryOptions.systemPrompt)
           ? `[preset: ${queryOptions.systemPrompt.preset}, append: ${queryOptions.systemPrompt.append.length} chars]`
           : `[legacy string: ${queryOptions.systemPrompt.length} chars]`
-        : undefined,
-      mcpServers: queryOptions.mcpServers
-        ? Object.keys(queryOptions.mcpServers)
         : undefined,
     });
 
@@ -289,6 +287,7 @@ export async function* streamQuery(
         if ("result" in msg) {
           const durationMs = Date.now() - startTime;
           const result = msg.result as string;
+          resultReceived = true;
           log("RESULT", `Query completed in ${durationMs}ms`, {
             resultLength: result?.length || 0,
             totalMessages: messageCount,
@@ -309,9 +308,21 @@ export async function* streamQuery(
       error instanceof Error ? error.message : "Unknown error occurred";
     const errorStack = error instanceof Error ? error.stack : undefined;
 
-    log("ERROR", `Query failed: ${errorMessage}`);
+    // If we already received a successful result, ignore process exit errors
+    // This happens when background tasks are started (e.g., dev server)
+    // The Claude Code process exits with code 1 but the query was successful
+    if (resultReceived && errorMessage.includes("process exited with code")) {
+      log(
+        "WARN",
+        `Ignoring post-result process exit error: ${errorMessage}`,
+      );
+      return;
+    }
+
+    log("ERROR", `${RED}Query failed: ${errorMessage}${RESET}`);
     if (errorStack) {
-      console.error("[Agent:ERROR] Stack trace:", errorStack);
+      const timestamp = new Date().toISOString();
+      console.error(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:ERROR]${RESET} ${RED}Stack trace:${RESET}`, errorStack);
     }
 
     yield {
