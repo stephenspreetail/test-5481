@@ -11,6 +11,7 @@ import { appsRoutes } from "./api/routes/apps.routes.js";
 // Import routes
 import { authRoutes } from "./api/routes/auth.routes.js";
 import { chatsRoutes } from "./api/routes/chats.routes.js";
+import { workflowAppRoutes } from "./api/routes/workflow-app.routes.js";
 import { languageModelsRoutes } from "./api/routes/language-models.routes.js";
 import { previewRoutes } from "./api/routes/preview.routes.js";
 import { promptsRoutes } from "./api/routes/prompts.routes.js";
@@ -71,6 +72,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(promptsRoutes, { prefix: "/api/prompts" });
   await app.register(languageModelsRoutes, { prefix: "/api/language-models" });
   await app.register(templatesRoutes, { prefix: "/api/templates" });
+  await app.register(workflowAppRoutes, { prefix: "/api/workflows" });
   await app.register(agentRoutes, { prefix: "/api/agent" });
   await app.register(previewRoutes, { prefix: "/api/preview" });
   await app.register(traefikRoutes, { prefix: "/api/traefik" });

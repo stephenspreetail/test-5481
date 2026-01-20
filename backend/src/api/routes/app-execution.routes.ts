@@ -12,7 +12,7 @@ export async function appExecutionRoutes(app: FastifyInstance) {
 
   /**
    * POST /api/apps/:id/run
-   * Start an app in a Docker container
+   * Start an app in an OCI container
    */
   app.post("/:id/run", async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;

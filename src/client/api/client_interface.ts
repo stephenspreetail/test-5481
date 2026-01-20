@@ -400,6 +400,20 @@ export interface IApiClient {
   takeScreenshot(): Promise<string>;
 
   // =====================
+  // Workflow Apps
+  // =====================
+  createWorkflowApp(params: {
+    workflowType: "excel-workflow" | "data-platform";
+    file: string;
+    fileName: string;
+  }): Promise<{
+    appId: number;
+    chatId: number;
+    initialPrompt: string;
+    workflowDocFilename: string;
+  }>;
+
+  // =====================
   // Utility
   // =====================
   openExternalUrl(url: string): void;

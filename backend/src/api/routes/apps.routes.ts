@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { and, count, desc, eq, ilike, sql } from "drizzle-orm";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { config } from "../../config/index.js";
 import { db } from "../../db/index.js";
 import { apps, chats, messages } from "../../db/schema.js";
 import { secretService } from "../../services/secret.service.js";
@@ -571,9 +574,45 @@ export async function appsRoutes(app: FastifyInstance) {
         return;
       }
 
-      // TODO: Implement file reading from app storage
-      // For now, return empty content - file operations will be added in Phase C
-      return { content: "" };
+      const appPath = appResult[0].path;
+
+      // Sanitize file path to prevent directory traversal
+      const normalizedFilePath = filePath.replace(/\\/g, "/");
+      if (
+        normalizedFilePath.includes("..") ||
+        normalizedFilePath.startsWith("/")
+      ) {
+        reply.status(400).send({ error: "Invalid file path" });
+        return;
+      }
+
+      // Build full path: {APPS_BASE_PATH}/{appPath}/{filePath}
+      const basePath = config.APPS_BASE_PATH;
+      const resolvedBasePath =
+        resolve(basePath) === basePath
+          ? basePath
+          : resolve(process.cwd(), basePath);
+      const fullPath = resolve(resolvedBasePath, appPath, normalizedFilePath);
+
+      // Verify the resolved path is within the app directory (prevent traversal)
+      const appDir = resolve(resolvedBasePath, appPath);
+      if (!fullPath.startsWith(appDir)) {
+        reply.status(400).send({ error: "Invalid file path" });
+        return;
+      }
+
+      try {
+        const content = readFileSync(fullPath, "utf-8");
+        return { content };
+      } catch (error: any) {
+        if (error.code === "ENOENT") {
+          reply.status(404).send({ error: "File not found" });
+          return;
+        }
+        console.error("[apps.routes] Error reading file:", error);
+        reply.status(500).send({ error: "Failed to read file" });
+        return;
+      }
     },
   );
 

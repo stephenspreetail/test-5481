@@ -2,7 +2,11 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { WebSocket } from "ws";
 import { db } from "../../db/index.js";
 import { apps, chats, messages } from "../../db/schema.js";
-import { constructSystemPromptConfig } from "../../prompts/system_prompt.js";
+import {
+  constructSystemPromptConfig,
+  constructWorkflowAnalysisPromptConfig,
+  isWorkflowAnalysisPrompt,
+} from "../../prompts/system_prompt.js";
 import { appContainerService } from "../../services/app-container.service.js";
 import {
   generateAppName,
@@ -249,10 +253,16 @@ export async function handleChatStream(
 
     // Construct system prompt config for the agent
     // Uses preset: "claude_code" with minimal append to preserve SDK defaults
+    // For workflow analysis prompts, use a minimal prompt that lets the skill guide
     // TODO: Support custom AI_RULES.md from app directory
-    const systemPrompt = constructSystemPromptConfig();
+    const systemPrompt = isWorkflowAnalysisPrompt(prompt)
+      ? constructWorkflowAnalysisPromptConfig()
+      : constructSystemPromptConfig();
 
-    console.log(`[CHAT] System prompt config:`, JSON.stringify(systemPrompt));
+    console.log(
+      `[CHAT] System prompt config (workflow analysis: ${isWorkflowAnalysisPrompt(prompt)}):`,
+      JSON.stringify(systemPrompt),
+    );
 
     const response = await fetch(queryUrl, {
       method: "POST",
@@ -264,7 +274,7 @@ export async function handleChatStream(
         prompt: fullPrompt,
         sessionId,
         chatId: chatId.toString(),
-        allowedTools: ["Read", "Glob", "Grep", "Write", "Edit", "Bash"],
+        allowedTools: ["Read", "Glob", "Grep", "Write", "Edit", "Bash", "Skill"],
         systemPrompt,
       }),
       signal: abortController.signal,
@@ -324,12 +334,9 @@ export async function handleChatStream(
 
               case "tool_use":
                 if (event.toolName) {
-                  sendDelta(
-                    ws,
-                    chatId,
-                    `\n[Using tool: ${event.toolName}]\n`,
-                    event.toolName,
-                  );
+                  const toolUseText = `\n[Using tool: ${event.toolName}]\n`;
+                  assistantContent += toolUseText;
+                  sendDelta(ws, chatId, toolUseText, event.toolName);
                   // Track if files were modified
                   if (event.toolName === "Write" || event.toolName === "Edit") {
                     updatedFiles = true;
