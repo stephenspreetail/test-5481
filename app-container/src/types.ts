@@ -134,6 +134,7 @@ export const AVAILABLE_TOOLS = [
   "WebSearch",
   "WebFetch",
   "Task",
+  "Skill",
 ] as const;
 
 export type AgentTool = (typeof AVAILABLE_TOOLS)[number];
@@ -148,4 +149,5 @@ export const DEFAULT_TOOLS: AgentTool[] = [
   "Glob",
   "Grep",
   "Bash",
+  "Skill",
 ];
