@@ -4,9 +4,9 @@
  * Traefik HTTP provider polls /api/traefik/config for routing
  */
 
+import Docker from "dockerode";
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import Docker from "dockerode";
 import { config } from "../config/index.js";
 import { broadcastAppOutput } from "../websocket/handlers/app-output.handler.js";
 
@@ -477,6 +477,12 @@ class AppContainerService {
       `DEV_SERVER_PORT=3000`,
       // Store Claude sessions in workspace (persisted via bind mount)
       `CLAUDE_CONFIG_DIR=/workspace/.claude`,
+      // ProGet API key for internal npm packages
+      `PROGET_API_KEY=${config.PROGET_API_KEY || ""}`,
+      // Data Platform credentials (Starburst Galaxy / Trino)
+      `DATA_PLATFORM_HOST=${config.DATA_PLATFORM_HOST}`,
+      `DATA_PLATFORM_USER=${config.DATA_PLATFORM_USER}`,
+      `DATA_PLATFORM_PASSWORD=${config.DATA_PLATFORM_PASSWORD}`,
     ];
 
     // Update state to starting
