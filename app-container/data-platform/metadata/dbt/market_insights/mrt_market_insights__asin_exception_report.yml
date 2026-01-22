@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: mrt_market_insights__asin_exception_report
+    description: >
+      Exception report for ASINs showing data quality and pipeline processing status.
+      Tracks which ASINs have data at various stages of the market insights pipeline
+      and identifies where ASINs dropped out of processing.
+
+      Business use cases:
+      - Data quality monitoring and debugging
+      - Pipeline health assessment
+      - Identifying ASINs missing from final output
+      - Understanding data coverage gaps
+
+    config:
+      tags:
+        - snowflake
+
+    columns:
+      - name: has_search_queries
+        description: "Whether this ASIN has associated search queries"
+
+      - name: has_top_keywords
+        description: "Whether this ASIN has top keywords data"
+
+      - name: has_amz_search_term_results
+        description: "Whether this ASIN has Amazon search term results"
+
+      - name: in_final_output
+        description: "Whether this ASIN is included in the final output"
+
+      - name: findability_phrase_count
+        description: "Number of findability phrases associated with this ASIN"
+
+      - name: search_query_count
+        description: "Number of search queries associated with this ASIN"
+
+      - name: top_keyword_count
+        description: "Number of top keywords associated with this ASIN"
+
+      - name: amz_search_result_count
+        description: "Number of Amazon search results for this ASIN"
+
+      - name: final_search_term_count
+        description: "Number of search terms in final output for this ASIN"
+
+      - name: dropout_stage
+        description: "Stage number where this ASIN dropped out of processing (if applicable)"
+
+      - name: dropout_reason
+        description: "Reason why this ASIN dropped out of processing (if applicable)"

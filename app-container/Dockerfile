@@ -3,10 +3,11 @@
 
 FROM node:22-bookworm-slim
 
-# Install git (required by Claude Code CLI), Python, and LibreOffice for Excel operations
+# Install git (required by Claude Code CLI), Python, LibreOffice, and gosu for entrypoint
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     bash \
+    gosu \
     python3 \
     python3-pip \
     python3-venv \
@@ -20,7 +21,7 @@ RUN pip3 install --no-cache-dir --break-system-packages pandas openpyxl
 RUN npm install -g @anthropic-ai/claude-code
 
 # Create non-root user for running the agent
-# This is required because Claude Code CLI refuses --dangerously-skip-permissions when running as root
+# Claude Code CLI refuses to run as root, so we run as 'kova' user via gosu (see entrypoint.sh)
 RUN groupadd -g 1001 kova && \
     useradd -u 1001 -g kova -s /bin/bash -m kova
 
@@ -45,11 +46,21 @@ COPY skills/ /app/skills/
 # Create workspace directory for user app files and set ownership
 RUN mkdir -p /workspace && chown -R kova:kova /workspace
 
+# Create .claude directory in workspace for skills (volume will be mounted here at runtime)
+RUN mkdir -p /workspace/.claude/skills && chown -R kova:kova /workspace/.claude
+
 # Create .claude directory for config and set ownership
 RUN mkdir -p /home/kova/.claude && chown -R kova:kova /home/kova
 
 # Set ownership of app directory
 RUN chown -R kova:kova /app
+
+# Configure npm registry for ProGet (internal packages)
+# Copy .npmrc template to kova user's home directory
+COPY --chown=kova:kova .npmrc.template /home/kova/.npmrc
+
+# Also copy to workspace so it's available for user app builds
+COPY --chown=kova:kova .npmrc.template /workspace/.npmrc
 
 # Expose ports:
 # 3000 - Dev server (user's app)
@@ -60,8 +71,27 @@ EXPOSE 3000 3100
 ENV WORKSPACE_DIR=/workspace
 ENV HOME=/home/kova
 
-# Switch to non-root user
-USER kova
+# =============================================================================
+# ENTRYPOINT PATTERN FOR VOLUME PERMISSIONS
+# =============================================================================
+# We use the "gosu entrypoint pattern" to handle named volume permissions.
+#
+# Problem: Named volumes (for node_modules and .claude/skills) are created with
+# root ownership, but Claude Code CLI refuses to run as root.
+#
+# Solution: Container starts as root, entrypoint.sh fixes volume ownership,
+# then uses 'gosu' to drop privileges to 'kova' user before running the app.
+#
+# This is a Docker best practice used by official images like PostgreSQL/Redis.
+# See entrypoint.sh for detailed documentation.
+# =============================================================================
 
-# Start the server
-CMD ["node", "dist/server.js"]
+# Copy and enable entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# NOTE: We intentionally do NOT use "USER kova" here.
+# The entrypoint starts as root to fix volume permissions, then drops to kova.
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["node", "dist/src/server.js"]

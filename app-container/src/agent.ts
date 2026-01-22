@@ -5,10 +5,17 @@
  * Set VERBOSE_AGENT_LOGGING=true for detailed logging
  */
 
+import { query, type McpServerConfig } from "@anthropic-ai/claude-agent-sdk";
 import { resolve } from "node:path";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import {
+  dataCatalogMcpServer,
+  initializeDataCatalog,
+} from "../data-platform/mcp-server/index.js";
 import type { AgentStreamEvent, SystemPromptConfig } from "./types.js";
 import { DEFAULT_TOOLS } from "./types.js";
+
+// Initialize the data catalog on module load
+initializeDataCatalog();
 
 /**
  * Options for agent query
@@ -142,7 +149,8 @@ export async function* streamQuery(
       resume?: string;
       systemPrompt?: SystemPromptConfig | string;
       maxTurns?: number;
-      settingSources?: ("user" | "project")[];
+      mcpServers?: Record<string, McpServerConfig>;
+      settingSources?: ("project" | "user")[];
     } = {
       allowedTools:
         options.allowedTools || (DEFAULT_TOOLS as unknown as string[]),
@@ -150,9 +158,18 @@ export async function* streamQuery(
       allowDangerouslySkipPermissions: true,
       cwd: absoluteCwd,
       maxTurns: 50,
-      // Load skills from project directory
-      // Skills are copied to /workspace/.claude/skills/ which uses a named volume
+      // Load project-level skills from .claude/skills/
       settingSources: ["project"],
+      // Configure MCP servers
+      mcpServers: {
+        // Spreetail engineering AI agent (external HTTP server)
+        "spreetail-engineering-ai-agent": {
+          type: "http",
+          url: "https://spreetail-engineering-ai-agent.prod01.tk.dev/mcp",
+        },
+        // Data Catalog (in-process SDK MCP server)
+        "data-catalog": dataCatalogMcpServer,
+      },
     };
 
     if (options.sessionId) {
@@ -164,6 +181,8 @@ export async function* streamQuery(
     if (options.systemPrompt) {
       queryOptions.systemPrompt = options.systemPrompt;
     }
+
+    log("MCP", "Configured MCP servers:", Object.keys(queryOptions.mcpServers || {}));
 
     log("QUERY", "Calling Claude Agent SDK with options:", {
       allowedTools: queryOptions.allowedTools,
