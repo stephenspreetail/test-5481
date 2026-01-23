@@ -105,3 +105,4 @@ nul
 docs/spreeform/
 
 tmpclaude*
+.playwright-mcp/

@@ -248,7 +248,7 @@ function SecurityHeader({
           <div className="text-sm">
             <p>
               <a
-                className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                className="text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
                 onClick={() =>
                   getClient().openExternalUrl(
                     "https://spreetail-engineering-playbook.tk.dev/docs/guides/security-review",
@@ -323,9 +323,9 @@ function SecurityHeader({
 function LoadingView() {
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-      <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+      <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
         <svg
-          className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin"
+          className="w-6 h-6 text-teal-600 dark:text-teal-400 animate-spin"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -372,9 +372,9 @@ function RunningReviewCard() {
     <Card>
       <CardContent className="pt-6">
         <div className="text-center py-8">
-          <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center mx-auto mb-4">
             <svg
-              className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin"
+              className="w-8 h-8 text-teal-600 dark:text-teal-400 animate-spin"
               fill="none"
               viewBox="0 0 24 24"
             >
@@ -978,7 +978,7 @@ ${issuesList}`;
             </div>
             <div className="mt-3">
               <textarea
-                className="w-full h-72 rounded-md border border-gray-300 dark:border-gray-700 bg-transparent p-3 font-mono text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-72 rounded-md border border-gray-300 dark:border-gray-700 bg-transparent p-3 font-mono text-sm outline-none focus:ring-2 focus:ring-teal-500"
                 value={rulesContent}
                 onChange={(e) => setRulesContent(e.target.value)}
                 placeholder="# SECURITY_RULES.md\n\nDescribe relevant security context, accepted risks, non-issues, and environment details."

@@ -106,7 +106,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
               key={model.apiName + model.displayName}
               className={`p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
                 selectedModel === model.apiName
-                  ? "ring-2 ring-blue-500 dark:ring-blue-400"
+                  ? "ring-2 ring-teal-500 dark:ring-teal-400"
                   : ""
               }`}
               onClick={() => handleModelClick(model.apiName)}
@@ -125,7 +125,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                         e.stopPropagation();
                         handleEditClick(model);
                       }}
-                      className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 h-8 w-8"
+                      className="text-teal-500 hover:text-teal-700 hover:bg-teal-100 dark:hover:bg-teal-900/50 h-8 w-8"
                     >
                       <svg
                         className="h-4 w-4"
@@ -177,12 +177,12 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                 )}
               </div>
               <div className="flex flex-wrap gap-x-2">
-                <span className="mt-2 inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                <span className="mt-2 inline-block bg-teal-100 text-teal-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-teal-900 dark:text-teal-300">
                   {model.type === "cloud" ? "Built-in" : "Custom"}
                 </span>
 
                 {model.tag && (
-                  <span className="mt-2 inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                  <span className="mt-2 inline-block bg-teal-100 text-teal-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-teal-900 dark:text-teal-300">
                     {model.tag}
                   </span>
                 )}

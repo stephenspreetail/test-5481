@@ -22,7 +22,7 @@ export function AttachmentsList({
         >
           <div className="flex items-center gap-1">
             {attachment.type === "upload-to-codebase" ? (
-              <Upload size={12} className="text-blue-600" />
+              <Upload size={12} className="text-teal-600" />
             ) : (
               <MessageSquare size={12} className="text-green-600" />
             )}

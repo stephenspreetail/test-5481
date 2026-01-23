@@ -933,7 +933,7 @@ class AppContainerService {
           `[AppContainerService] Image ${this.containerImage} not found, please build it first`,
         );
         throw new Error(
-          `Container image ${this.containerImage} not found. Run 'podman compose build app-container' first.`,
+          `Container image ${this.containerImage} not found. Run '<docker> compose build app-container' first.`,
         );
       }
       throw error;

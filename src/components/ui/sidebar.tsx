@@ -16,7 +16,7 @@ import * as React from "react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "18rem";
+const SIDEBAR_WIDTH = "23rem";
 const SIDEBAR_WIDTH_ICON = "5rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
@@ -245,7 +245,7 @@ function SidebarTrigger({
           }}
           {...props}
         >
-          <Menu className="size-5" />
+          <Menu className="size-5" stroke="#676767" />
           <span className="sr-only">Toggle Menu</span>
         </Button>
       </TooltipTrigger>

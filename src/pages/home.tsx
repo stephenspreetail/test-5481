@@ -2,7 +2,6 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { ImportAppButton } from "@/components/ImportAppButton";
-import { SetupBanner } from "@/components/SetupBanner";
 import { HomeChatInput } from "@/components/chat/HomeChatInput";
 import { Button } from "@/components/ui/button";
 import {
@@ -171,7 +170,6 @@ export default function HomePage() {
   return (
     <div className="flex flex-col items-center max-w-3xl w-full mx-auto px-8 pt-[25vh]">
       <div className="w-full">
-        <SetupBanner />
         <ImportAppButton />
         <HomeChatInput onSubmit={handleSubmit} />
       </div>

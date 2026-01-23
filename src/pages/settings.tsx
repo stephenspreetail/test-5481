@@ -4,7 +4,6 @@ import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { MaxChatTurnsSelector } from "@/components/MaxChatTurnsSelector";
 import { ProviderSettingsGrid } from "@/components/ProviderSettings";
-import { SupabaseIntegration } from "@/components/SupabaseIntegration";
 import { TelemetrySwitch } from "@/components/TelemetrySwitch";
 import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
 import { VercelIntegration } from "@/components/VercelIntegration";
@@ -66,7 +65,7 @@ export default function SettingsPage() {
 
           <div
             id="provider-settings"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm"
+            className="bg-card rounded-xl shadow-sm"
           >
             <ProviderSettingsGrid />
           </div>
@@ -74,7 +73,7 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div
               id="telemetry"
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+              className="bg-card rounded-xl shadow-sm p-6"
             >
               <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Telemetry
@@ -88,7 +87,7 @@ export default function SettingsPage() {
 
               <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
                 <span className="mr-2 font-medium">Telemetry ID:</span>
-                <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
+                <span className="bg-gray-100 dark:bg-card px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
                   {settings ? settings.telemetryUserId : "n/a"}
                 </span>
               </div>
@@ -98,7 +97,7 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className="bg-card rounded-xl shadow-sm p-6"
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Integrations
@@ -106,7 +105,6 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <GitHubIntegration />
               <VercelIntegration />
-              <SupabaseIntegration />
               <NeonIntegration />
             </div>
           </div>
@@ -114,7 +112,7 @@ export default function SettingsPage() {
           {/* Tools (MCP) */}
           <div
             id="tools-mcp"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className="bg-card rounded-xl shadow-sm p-6"
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Tools (MCP)
@@ -125,7 +123,7 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800"
+            className="bg-card rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800"
           >
             <h2 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
               Danger Zone
@@ -174,7 +172,7 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
   return (
     <div
       id="general-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className="bg-card rounded-xl shadow-sm p-6"
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         General Settings
@@ -186,7 +184,7 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
             Theme
           </label>
 
-          <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
+          <div className="relative bg-gray-100 dark:bg-card rounded-lg p-1 flex">
             {(["system", "light", "dark"] as const).map((option) => (
               <button
                 key={option}
@@ -218,7 +216,7 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
 
       <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-4">
         <span className="mr-2 font-medium">App Version:</span>
-        <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
+        <span className="bg-gray-100 dark:bg-card px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
           {appVersion ? appVersion : "-"}
         </span>
       </div>
@@ -230,7 +228,7 @@ export function WorkflowSettings() {
   return (
     <div
       id="workflow-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className="bg-card rounded-xl shadow-sm p-6"
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Workflow Settings
@@ -256,7 +254,7 @@ export function AISettings() {
   return (
     <div
       id="ai-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className="bg-card rounded-xl shadow-sm p-6"
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         AI Settings

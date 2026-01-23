@@ -105,6 +105,7 @@ body[data-scroll-locked] .app-region-drag {
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  --input-background: oklch(0.97 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -123,6 +124,23 @@ body[data-scroll-locked] .app-region-drag {
   --sidebar-border: var(--sidebar);
   /* --sidebar-border: oklch(0.922 0 0); */
   --sidebar-ring: oklch(0.708 0 0);
+  /* Gray-800 override for theme consistency */
+  --gray-800: #1f2937;
+  /* Primary button colors */
+  --button-primary: #0B5B51;
+  --button-primary-hover: #30746B;
+  --button-primary-active: #0A5249;
+  /* Teal accent scale (replacing blue) */
+  --teal-900: #0C3633;
+  --teal-800: #0B5B51;
+  --teal-700: #028985;
+  --teal-600: #0B5B51;
+  --teal-500: #0AA68C;
+  --teal-400: #09CCA9;
+  --teal-300: #09CCA9;
+  --teal-200: #C6FCED;
+  --teal-100: #E9FDF8;
+  --teal-50: #E9FDF8;
 }
 
 .prose {
@@ -135,52 +153,59 @@ body[data-scroll-locked] .app-region-drag {
   --tw-prose-counters: var(--muted-foreground);
 }
 .dark {
-  --docs-bg: #e8eef5;
+  color-scheme: dark;
 
-  /* Light blue-gray dashboard theme */
-  --background-lightest: #ffffff;
-  --background-lighter: #f5f8fb;
-  --background: #e8eef5;
-  --background-darker: #dce4ed;
-  --background-darkest: #cdd8e4;
-  --foreground: #1e293b;
-  --card: #ffffff;
-  --card-foreground: #1e293b;
-  --popover: #ffffff;
-  --popover-foreground: #1e293b;
-  --primary: #5b8fb9;
+  /* Dark theme */
+  --docs-bg: #25292e;
+  --background-lightest: #2b3138;
+  --background-lighter: #2b3138;
+  --background: #25292e;
+  --background-darker: #1f2226;
+  --background-darkest: #1a1d20;
+  --foreground: #dddddd;
+  --card: #3B4144;
+  --card-foreground: #e0e6ed;
+  --popover: #2b3138;
+  --popover-foreground: #e0e6ed;
+  --primary: #6b9fc9;
   --primary-foreground: #ffffff;
-  --secondary: #e2e8f0;
-  --secondary-foreground: #475569;
-  --muted: #e2e8f0;
-  --muted-foreground: #64748b;
-  --accent: #dce4ed;
-  --accent-foreground: #1e293b;
+  --secondary: #3a4048;
+  --secondary-foreground: #c8ced8;
+  --muted: #3a4048;
+  --muted-foreground: #7a8494;
+  --accent: #3a4048;
+  --accent-foreground: #e0e6ed;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #cbd5e1;
-  --input: #cbd5e1;
-  --ring: #5b8fb9;
-  --chart-1: #5b8fb9;
-  --chart-2: #7ba3c4;
-  --chart-3: #9bb8d0;
+  --border: #3a4048;
+  --input: #3a4048;
+  --ring: #6b9fc9;
+  --input-background: #2b3138;
+  --chart-1: #6b9fc9;
+  --chart-2: #8bb3d4;
+  --chart-3: #abc7e0;
   --chart-4: #38b2ac;
   --chart-5: #48bb78;
-  /* Sidebar - slightly darker blue-gray */
-  --sidebar: #dce4ed;
-  --sidebar-foreground: #1e293b;
-  --sidebar-primary: #5b8fb9;
+  /* Sidebar - dark */
+  --sidebar: #2b3138;
+  --sidebar-foreground: #e0e6ed;
+  --sidebar-primary: #6b9fc9;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #cdd8e4;
-  --sidebar-accent-foreground: #1e293b;
-  --sidebar-border: #cbd5e1;
-  --sidebar-ring: #5b8fb9;
+  --sidebar-accent: #3a4048;
+  --sidebar-accent-foreground: #e0e6ed;
+  --sidebar-border: #3a4048;
+  --sidebar-ring: #6b9fc9;
+  /* Gray-800 override for card backgrounds */
+  --gray-800: #3B4144;
 }
 
 @theme inline {
   --container-6xs: 10rem;
   --container-5xs: 12rem;
   --container-4xs: 14rem;
+
+  /* Override Tailwind's default gray-800 for dark mode consistency */
+  --color-gray-800: var(--gray-800);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -200,6 +225,7 @@ body[data-scroll-locked] .app-region-drag {
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-input-background: var(--input-background);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -218,6 +244,21 @@ body[data-scroll-locked] .app-region-drag {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  /* Primary button colors */
+  --color-button-primary: var(--button-primary);
+  --color-button-primary-hover: var(--button-primary-hover);
+  --color-button-primary-active: var(--button-primary-active);
+  /* Teal accent scale */
+  --color-teal-900: var(--teal-900);
+  --color-teal-800: var(--teal-800);
+  --color-teal-700: var(--teal-700);
+  --color-teal-600: var(--teal-600);
+  --color-teal-500: var(--teal-500);
+  --color-teal-400: var(--teal-400);
+  --color-teal-300: var(--teal-300);
+  --color-teal-200: var(--teal-200);
+  --color-teal-100: var(--teal-100);
+  --color-teal-50: var(--teal-50);
 }
 
 @layer base {
@@ -233,24 +274,24 @@ body[data-scroll-locked] .app-region-drag {
   :root {
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 170 80% 21%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 170 80% 21%;
   }
 
   .dark {
-    /* Light blue-gray dashboard sidebar */
-    --sidebar-background: 213 25% 89%;
-    --sidebar-foreground: 215 25% 17%;
-    --sidebar-primary: 207 40% 54%;
+    /* Dark theme sidebar */
+    --sidebar-background: 220 20% 15%;
+    --sidebar-foreground: 216 20% 90%;
+    --sidebar-primary: 166 80% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 213 25% 85%;
-    --sidebar-accent-foreground: 215 25% 17%;
-    --sidebar-border: 213 20% 80%;
-    --sidebar-ring: 207 40% 54%;
+    --sidebar-accent: 220 15% 24%;
+    --sidebar-accent-foreground: 216 20% 90%;
+    --sidebar-border: 220 15% 24%;
+    --sidebar-ring: 166 80% 42%;
   }
 }
 

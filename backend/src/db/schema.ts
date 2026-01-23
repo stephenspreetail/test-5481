@@ -64,22 +64,6 @@ export const userSecrets = pgTable(
 );
 
 // =====================
-// Prompts (per-user)
-// =====================
-
-export const prompts = pgTable("prompts", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-// =====================
 // Apps (per-user)
 // =====================
 
@@ -96,11 +80,6 @@ export const apps = pgTable("apps", {
   githubOrg: varchar("github_org", { length: 255 }),
   githubRepo: varchar("github_repo", { length: 255 }),
   githubBranch: varchar("github_branch", { length: 255 }),
-  // Supabase integration
-  supabaseProjectId: varchar("supabase_project_id", { length: 255 }),
-  supabaseParentProjectId: varchar("supabase_parent_project_id", {
-    length: 255,
-  }),
   // Neon integration
   neonProjectId: varchar("neon_project_id", { length: 255 }),
   neonDevelopmentBranchId: varchar("neon_development_branch_id", {
@@ -287,7 +266,6 @@ export const mcpToolConsents = pgTable(
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   apps: many(apps),
-  prompts: many(prompts),
   settings: one(userSettings),
   secrets: many(userSecrets),
   refreshTokens: many(refreshTokens),

@@ -247,7 +247,7 @@ Session ID: ${sessionId}
             <h3 className="text-lg font-medium">
               Chat Logs Uploaded Successfully
             </h3>
-            <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded flex items-center space-x-2 font-mono text-sm">
+            <div className="bg-card p-3 rounded flex items-center space-x-2 font-mono text-sm">
               <FileIcon
                 className="h-4 w-4 cursor-pointer"
                 onClick={async () => {

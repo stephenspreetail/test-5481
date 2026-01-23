@@ -134,7 +134,7 @@ function ConnectedGitHubConnector({
             `https://github.com/${app.githubOrg}/${app.githubRepo}`,
           );
         }}
-        className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+        className="cursor-pointer text-teal-600 hover:underline dark:text-teal-400"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -195,7 +195,7 @@ function ConnectedGitHubConnector({
                   "https://spreetail-engineering-playbook.tk.dev/docs/integrations/github#troubleshooting",
                 );
               }}
-              className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+              className="cursor-pointer text-teal-600 hover:underline dark:text-teal-400"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -289,7 +289,7 @@ export function UnconnectedGitHubConnector({
   if (!settings?.githubAccessToken) {
     return (
       <div className="mt-1 w-full" data-testid="github-unconnected-repo">
-        <div className="p-4 border rounded-md bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <div className="p-4 border rounded-md bg-card border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-2">
             <Github className="h-5 w-5" />
             <span className="font-medium">GitHub Integration</span>
@@ -316,7 +316,7 @@ export function UnconnectedGitHubConnector({
   // If GitHub is connected, show the repo setup UI
   return (
     <div className="w-full" data-testid="github-setup-repo">
-      <div className="p-4 border rounded-md bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <div className="p-4 border rounded-md bg-card border-gray-200 dark:border-gray-700">
         <p className="text-sm text-gray-600 dark:text-gray-400">
           GitHub repository setup is available. Use the settings panel to
           configure your repository connection.

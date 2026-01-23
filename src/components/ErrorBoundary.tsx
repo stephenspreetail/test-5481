@@ -82,7 +82,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
         <p className="text-sm mb-3">There was an error loading the app...</p>
 
         {error && (
-          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md mb-6">
+          <div className="bg-card p-4 rounded-md mb-6">
             <p className="text-sm mb-1">
               <strong>Error name:</strong> {error.name}
             </p>
@@ -98,9 +98,9 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
           </Button>
         </div>
 
-        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md flex items-center gap-2">
-          <LightbulbIcon className="h-4 w-4 text-blue-700 dark:text-blue-400 flex-shrink-0" />
-          <p className="text-sm text-blue-700 dark:text-blue-400">
+        <div className="mt-4 p-3 bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 rounded-md flex items-center gap-2">
+          <LightbulbIcon className="h-4 w-4 text-teal-700 dark:text-teal-400 flex-shrink-0" />
+          <p className="text-sm text-teal-700 dark:text-teal-400">
             <strong>Tip:</strong> Try closing and re-opening Kova as a temporary
             workaround.
           </p>

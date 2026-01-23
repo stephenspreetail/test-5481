@@ -309,7 +309,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6 overflow-y-auto flex-1">
-          <Alert className="border-blue-500/20 text-blue-500 mb-2">
+          <Alert className="border-teal-500/20 text-teal-500 mb-2">
             <Info className="h-4 w-4 flex-shrink-0" />
             <AlertDescription className="text-xs sm:text-sm">
               App import is an experimental feature. If you encounter any

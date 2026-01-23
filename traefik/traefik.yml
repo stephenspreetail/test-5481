@@ -11,8 +11,10 @@ providers:
   # HTTP provider for dynamic routing (backend serves route config)
   # This polls the backend for route configuration every 2 seconds
   http:
-    # Use actual host IP since host.docker.internal doesn't work reliably with Podman on Windows
-    endpoint: "http://192.168.1.153:3002/api/traefik/config"
+    # TRAEFIK_BACKEND_HOST and TRAEFIK_BACKEND_PORT should be set via environment variables
+    # Local: host.docker.internal (Docker) or <your-ip> (Podman/Windows)
+    # Dev/Prod: backend (container network)
+    endpoint: "http://{{ env "TRAEFIK_BACKEND_HOST" }}:{{ env "TRAEFIK_BACKEND_PORT" }}/api/traefik/config"
     pollInterval: 2s
 
   # File provider for static routes (dashboard, etc.)

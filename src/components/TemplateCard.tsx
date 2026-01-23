@@ -68,12 +68,12 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
       <div
         onClick={handleCardClick}
         className={`
-          bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden 
+          bg-card rounded-xl shadow-sm overflow-hidden 
           transform transition-all duration-300 ease-in-out 
           cursor-pointer group relative
           ${
             isSelected
-              ? "ring-2 ring-blue-500 dark:ring-blue-400 shadow-xl"
+              ? "ring-2 ring-teal-500 dark:ring-teal-400 shadow-xl"
               : "hover:shadow-lg hover:-translate-y-1"
           }
         `}
@@ -87,7 +87,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             }`}
           />
           {isSelected && (
-            <span className="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-md shadow-lg">
+            <span className="absolute top-3 right-3 bg-teal-600 text-white text-xs font-bold px-3 py-1.5 rounded-md shadow-lg">
               Selected
             </span>
           )}
@@ -97,7 +97,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             <h2
               className={`text-lg font-semibold ${
                 isSelected
-                  ? "text-blue-600 dark:text-blue-400"
+                  ? "text-teal-600 dark:text-teal-400"
                   : "text-gray-900 dark:text-white"
               }`}
             >
@@ -107,7 +107,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
               <span
                 className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   isSelected
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-600 dark:text-blue-100"
+                    ? "bg-teal-100 text-teal-700 dark:bg-teal-600 dark:text-teal-100"
                     : "bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200"
                 }`}
               >
@@ -127,8 +127,8 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             <a
               className={`inline-flex items-center text-sm font-medium transition-colors duration-200 ${
                 isSelected
-                  ? "text-blue-500 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
-                  : "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  ? "text-teal-500 hover:text-teal-700 dark:text-teal-300 dark:hover:text-teal-200"
+                  : "text-teal-600 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300"
               }`}
               onClick={handleGithubClick}
             >

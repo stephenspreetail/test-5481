@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Database, FileSpreadsheet, Upload, X } from "lucide-react";
+import { Database, FileSpreadsheet, Image, ImageIcon, Upload, X } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { Button } from "./ui/button";
 
@@ -7,7 +7,7 @@ export interface WorkflowType {
   id: string;
   title: string;
   description: string;
-  icon: "FileSpreadsheet" | "Database";
+  icon: "FileSpreadsheet" | "Database" | "Image";
   acceptedFiles?: string[];
   comingSoon?: boolean;
 }
@@ -22,6 +22,7 @@ interface WorkflowTypeCardProps {
 const IconMap = {
   FileSpreadsheet,
   Database,
+  Image,
 };
 
 export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
@@ -108,14 +109,14 @@ export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
     <div
       onClick={handleCardClick}
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden",
+        "bg-card rounded-xl shadow-sm overflow-hidden",
         "transform transition-all duration-300 ease-in-out",
         "relative",
         workflow.comingSoon
           ? "opacity-60 cursor-not-allowed"
           : "cursor-pointer group",
         isSelected
-          ? "ring-2 ring-blue-500 dark:ring-blue-400 shadow-xl"
+          ? "ring-2 ring-teal-500 dark:ring-teal-400 shadow-xl"
           : !workflow.comingSoon && "hover:shadow-lg hover:-translate-y-1"
       )}
     >
@@ -126,21 +127,21 @@ export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
             className={cn(
               "p-3 rounded-lg",
               isSelected
-                ? "bg-blue-100 dark:bg-blue-900"
-                : "bg-gray-100 dark:bg-gray-700"
+                ? "bg-teal-100 dark:bg-teal-900"
+                : "bg-teal-50 dark:bg-teal-900/30"
             )}
           >
             <Icon
               className={cn(
                 "w-6 h-6",
                 isSelected
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-gray-600 dark:text-gray-400"
+                  ? "text-teal-600 dark:text-teal-400"
+                  : "text-teal-700 dark:text-teal-500"
               )}
             />
           </div>
           {workflow.comingSoon && (
-            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-400">
               Coming Soon
             </span>
           )}
@@ -158,7 +159,7 @@ export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
           className={cn(
             "text-lg font-semibold mb-2",
             isSelected
-              ? "text-blue-600 dark:text-blue-400"
+              ? "text-teal-600 dark:text-teal-400"
               : "text-gray-900 dark:text-white"
           )}
         >
@@ -181,8 +182,8 @@ export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
               className={cn(
                 "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
                 isDragActive
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                  : "border-gray-300 dark:border-gray-600 hover:border-blue-400"
+                  ? "border-teal-500 bg-teal-50 dark:bg-teal-900/20"
+                  : "border-gray-300 dark:border-gray-600 hover:border-teal-400"
               )}
             >
               <input
@@ -196,7 +197,9 @@ export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {isDragActive
                   ? "Drop the file here..."
-                  : "Drop your Excel file here, or click to select"}
+                  : workflow.id === "image-forge"
+                    ? "Drop your image file here, or click to select"
+                    : "Drop your Excel file here, or click to select"}
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 Accepts {workflow.acceptedFiles?.join(", ")} files
@@ -204,9 +207,13 @@ export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+              <div className="flex items-center justify-between bg-gray-50 dark:bg-card rounded-lg p-3">
                 <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                  {workflow.id === "image-forge" ? (
+                    <ImageIcon className="w-5 h-5 text-purple-600" />
+                  ) : (
+                    <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                  )}
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {uploadedFile.name}
@@ -226,7 +233,7 @@ export const WorkflowTypeCard: React.FC<WorkflowTypeCardProps> = ({
 
               <Button
                 onClick={handleCreateApp}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold"
               >
                 Create App
               </Button>

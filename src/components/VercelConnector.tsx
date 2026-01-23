@@ -77,7 +77,7 @@ function ConnectedVercelConnector({
             `https://vercel.com/${app.vercelTeamSlug}/${app.vercelProjectName}`,
           );
         }}
-        className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+        className="cursor-pointer text-teal-600 hover:underline dark:text-teal-400"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -94,7 +94,7 @@ function ConnectedVercelConnector({
                   getClient().openExternalUrl(app.vercelDeploymentUrl);
                 }
               }}
-              className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400 font-mono"
+              className="cursor-pointer text-teal-600 hover:underline dark:text-teal-400 font-mono"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -178,7 +178,7 @@ function ConnectedVercelConnector({
                       e.preventDefault();
                       getClient().openExternalUrl(`https://${deployment.url}`);
                     }}
-                    className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400 text-sm"
+                    className="cursor-pointer text-teal-600 hover:underline dark:text-teal-400 text-sm"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -365,12 +365,12 @@ function UnconnectedVercelConnector({
           </div>
 
           <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+            <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-md p-3">
+              <p className="text-sm text-teal-800 dark:text-teal-200 mb-2">
                 To connect your app to Vercel, you'll need to create an access
                 token:
               </p>
-              <ol className="list-decimal list-inside text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <ol className="list-decimal list-inside text-sm text-teal-700 dark:text-teal-300 space-y-1">
                 <li>If you don't have a Vercel account, sign up first</li>
                 <li>Go to Vercel settings to create a token</li>
                 <li>Copy the token and paste it below</li>
@@ -392,7 +392,7 @@ function UnconnectedVercelConnector({
                       "https://vercel.com/account/settings/tokens",
                     );
                   }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
                 >
                   Open Vercel Settings
                 </Button>

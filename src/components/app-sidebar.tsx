@@ -8,7 +8,6 @@ import { useAtom, useSetAtom } from "jotai";
 import {
   Binoculars,
   BinocularsIcon,
-  BookOpen,
   HelpCircle,
   Home,
   LogOut,
@@ -21,7 +20,9 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 // @ts-ignore
-import logo from "../../assets/logo.svg";
+import kovaLogo from "@assets/kova-logo.svg";
+// @ts-ignore
+import vitaliLogo from "@assets/vitali-claude.svg";
 
 import {
   DropdownMenu,
@@ -59,11 +60,6 @@ const items = [
     title: "Discovery",
     to: "/discovery",
     icon: BinocularsIcon,
-  },
-  {
-    title: "Library",
-    to: "/library",
-    icon: BookOpen,
   },
   {
     title: "Hub",
@@ -173,8 +169,8 @@ export function AppSidebar() {
           </div>
           {/* Logo aligned with flyout panel */}
           <Link to="/" className="flex items-center gap-2 pl-6 hover:opacity-80 transition-opacity">
-            <img src={logo} alt="Kova Logo" className="w-6 h-6" />
-            <span className="text-lg font-semibold">Kova</span>
+            <img src={kovaLogo} alt="Kova" className="h-8 w-8" />
+            <img src={vitaliLogo} alt="Vitali" className="h-16" />
           </Link>
         </div>
 

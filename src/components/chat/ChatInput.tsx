@@ -414,7 +414,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
       <div className="p-4" data-testid="chat-input-container">
         <div
           className={`relative flex flex-col border border-border rounded-3xl bg-(--background-lighter) shadow-sm w-full max-w-[760px] mx-auto ${
-            isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
+            isDraggingOver ? "ring-2 ring-teal-500 border-teal-500" : ""
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -422,11 +422,11 @@ export function ChatInput({ chatId }: { chatId?: number }) {
         >
           {/* Build App button for workflow apps */}
           {showBuildAppButton && (
-            <div className="border-b border-border p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+            <div className="border-b border-border p-3 bg-gradient-to-r from-teal-50 to-teal-100 dark:from-teal-900/30 dark:to-teal-800/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Hammer size={18} className="text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  <Hammer size={18} className="text-teal-600 dark:text-teal-400" />
+                  <span className="text-sm font-medium text-teal-800 dark:text-teal-200">
                     Workflow plan ready
                   </span>
                 </div>
@@ -438,7 +438,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
                     handleBuildApp();
                   }}
                   disabled={isBuildingApp}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
                   size="sm"
                 >
                   {isBuildingApp ? (
@@ -918,7 +918,7 @@ function ChatInputActions({
                         size={16}
                         className="text-muted-foreground flex-shrink-0"
                       />
-                      <span className="cursor-pointer text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                      <span className="cursor-pointer text-teal-500 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300">
                         {pkg}
                       </span>
                     </li>
