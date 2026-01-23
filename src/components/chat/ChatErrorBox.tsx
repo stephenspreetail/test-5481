@@ -45,7 +45,7 @@ function ExternalLink({
   const baseClasses =
     "cursor-pointer inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm focus:outline-none focus:ring-2";
   const secondaryClasses =
-    "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 focus:ring-blue-200";
+    "bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 hover:border-teal-300 focus:ring-teal-200";
 
   return (
     <a
@@ -88,7 +88,7 @@ function ChatErrorContainer({
                         getClient().openExternalUrl(props.href);
                       }
                     }}
-                    className="text-blue-500 hover:text-blue-700"
+                    className="text-teal-500 hover:text-teal-700"
                   >
                     {linkChildren}
                   </a>

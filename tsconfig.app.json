@@ -24,7 +24,8 @@
     // import
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@assets/*": ["./assets/*"]
     }
   },
   "include": ["src", "shared"]

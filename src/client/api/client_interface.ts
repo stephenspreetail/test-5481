@@ -29,7 +29,6 @@ import type {
   CreateCustomLanguageModelProviderParams,
   CreateMcpServer,
   CreateNeonProjectParams,
-  CreatePromptParamsDto,
   CreateVercelProjectParams,
   DisconnectVercelProjectParams,
   EditAppFileReturnType,
@@ -53,19 +52,15 @@ import type {
   Message,
   NeonProject,
   ProblemReport,
-  PromptDto,
   RenameBranchParams,
   RespondToAppInputParams,
   RevertVersionParams,
   RevertVersionResponse,
   SaveVercelAccessTokenParams,
   SecurityReviewResult,
-  SetSupabaseAppProjectParams,
-  SupabaseBranch,
   SystemDebugInfo,
   TokenCountParams,
   TokenCountResult,
-  UpdatePromptParamsDto,
   UserBudgetInfo,
   VercelDeployment,
   VercelProject,
@@ -212,14 +207,6 @@ export interface IApiClient {
   resetAll(): Promise<void>;
 
   // =====================
-  // Prompts
-  // =====================
-  listPrompts(): Promise<PromptDto[]>;
-  createPrompt(params: CreatePromptParamsDto): Promise<PromptDto>;
-  updatePrompt(params: UpdatePromptParamsDto): Promise<void>;
-  deletePrompt(id: number): Promise<void>;
-
-  // =====================
   // Templates
   // =====================
   getTemplates(): Promise<Template[]>;
@@ -338,15 +325,6 @@ export interface IApiClient {
   fakeHandleNeonConnect(): Promise<void>;
 
   // =====================
-  // Supabase Integration
-  // =====================
-  listSupabaseProjects(): Promise<{ id: string; name: string }[]>;
-  listSupabaseBranches(projectId: string): Promise<SupabaseBranch[]>;
-  setSupabaseAppProject(params: SetSupabaseAppProjectParams): Promise<void>;
-  unsetSupabaseAppProject(appId: number): Promise<void>;
-  fakeHandleSupabaseConnect(): Promise<void>;
-
-  // =====================
   // Vercel Integration
   // =====================
   listVercelProjects(): Promise<VercelProject[]>;
@@ -403,7 +381,7 @@ export interface IApiClient {
   // Workflow Apps
   // =====================
   createWorkflowApp(params: {
-    workflowType: "excel-workflow" | "data-platform";
+    workflowType: "excel-workflow" | "image-forge" | "data-platform";
     file: string;
     fileName: string;
   }): Promise<{

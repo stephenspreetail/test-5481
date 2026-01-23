@@ -110,9 +110,6 @@ export interface App {
   githubOrg: string | null;
   githubRepo: string | null;
   githubBranch: string | null;
-  supabaseProjectId: string | null;
-  supabaseParentProjectId: string | null;
-  supabaseProjectName: string | null;
   neonProjectId: string | null;
   neonDevelopmentBranchId: string | null;
   neonPreviewBranchId: string | null;
@@ -382,26 +379,6 @@ export interface UploadFileToCodebaseResult {
   filePath: string;
 }
 
-// --- Prompts ---
-export interface PromptDto {
-  id: number;
-  title: string;
-  description: string | null;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreatePromptParamsDto {
-  title: string;
-  description?: string;
-  content: string;
-}
-
-export interface UpdatePromptParamsDto extends CreatePromptParamsDto {
-  id: number;
-}
-
 export interface FileAttachment {
   file: File;
   type: "upload-to-codebase" | "chat-context";
@@ -531,19 +508,6 @@ export type CloneRepoReturnType =
       error: string;
     };
 
-export interface SupabaseBranch {
-  id: string;
-  name: string;
-  isDefault: boolean;
-  projectRef: string;
-  parentProjectRef: string;
-}
-
-export interface SetSupabaseAppProjectParams {
-  projectId: string;
-  parentProjectId?: string;
-  appId: number;
-}
 export interface SetNodePathParams {
   nodePath: string;
 }

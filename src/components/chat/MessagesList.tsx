@@ -1,7 +1,6 @@
 import type { Message } from "@/types";
 import type React from "react";
 import { forwardRef, useState } from "react";
-import { SetupBanner } from "../SetupBanner";
 import ChatMessage from "./ChatMessage";
 
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -10,8 +9,6 @@ import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { Button } from "@/components/ui/button";
 import { useCountTokens } from "@/hooks/useCountTokens";
-import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
-import { useSettings } from "@/hooks/useSettings";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { useVersions } from "@/hooks/useVersions";
 import { showError, showWarning } from "@/lib/toast";
@@ -29,8 +26,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const appId = useAtomValue(selectedAppIdAtom);
     const { versions, revertVersion } = useVersions(appId);
     const { streamMessage, isStreaming } = useStreamChat();
-    const { isAnyProviderSetup } = useLanguageModelProviders();
-    const { settings } = useSettings();
     const setMessagesById = useSetAtom(chatMessagesByIdAtom);
     const [isUndoLoading, setIsUndoLoading] = useState(false);
     const [isRetryLoading, setIsRetryLoading] = useState(false);
@@ -40,13 +35,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       !isStreaming ? selectedChatId : null,
       "",
     );
-
-    const renderSetupBanner = () => {
-      if (!isAnyProviderSetup()) {
-        return <SetupBanner />;
-      }
-      return null;
-    };
 
     return (
       <div
@@ -62,7 +50,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                 isLastMessage={index === messages.length - 1}
               />
             ))
-          : !renderSetupBanner() && (
+          : (
               <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
                 <div className="flex flex-1 items-center justify-center text-gray-500">
                   No messages yet
@@ -241,7 +229,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         )}
 
         <div ref={messagesEndRef} />
-        {renderSetupBanner()}
       </div>
     );
   },

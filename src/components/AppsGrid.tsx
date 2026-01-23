@@ -77,7 +77,7 @@ export function AppsGrid() {
         {/* Header with title and new app button */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-foreground">Your Apps</h1>
-          <Button onClick={handleNewApp} variant="outline" className="gap-2">
+          <Button onClick={handleNewApp} className="gap-2">
             <Plus size={16} />
             <span>New app</span>
           </Button>
@@ -136,7 +136,7 @@ function AppCard({
 }) {
   return (
     <div
-      className="cursor-pointer rounded-2xl bg-[#dce4ed] p-5 min-h-[180px] flex flex-col transition-all hover:shadow-md"
+      className="cursor-pointer rounded-2xl bg-card p-5 min-h-[180px] flex flex-col transition-all hover:shadow-md"
       onClick={onClick}
     >
       {/* App name */}

@@ -41,7 +41,7 @@ export function ChatActivityButton() {
             >
               {isAnyStreaming && (
                 <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="block size-7 rounded-full border-3 border-blue-500/60 border-t-transparent animate-spin" />
+                  <span className="block size-7 rounded-full border-3 border-teal-500/60 border-t-transparent animate-spin" />
                 </span>
               )}
               <Bell size={16} />

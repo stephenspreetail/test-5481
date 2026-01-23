@@ -24,6 +24,14 @@ const WORKFLOW_TYPES: WorkflowType[] = [
     acceptedFiles: [".xlsx", ".xls"],
   },
   {
+    id: "image-forge",
+    title: "Image Forge",
+    description:
+      "Upload a UI mockup, screenshot, wireframe, or design image and generate a web application that matches the visual design.",
+    icon: "Image",
+    acceptedFiles: [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+  },
+  {
     id: "data-platform",
     title: "Data Platform Integration",
     description:
@@ -72,7 +80,7 @@ const HubPage: React.FC = () => {
       // Call the workflow app creation endpoint
       const client = getClient();
       const result = await client.createWorkflowApp({
-        workflowType: workflowType as "excel-workflow" | "data-platform",
+        workflowType: workflowType as "excel-workflow" | "image-forge" | "data-platform",
         file: base64,
         fileName: file.name,
       });

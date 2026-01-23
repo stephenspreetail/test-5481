@@ -152,14 +152,6 @@ export const GithubUserSchema = z.object({
 });
 export type GithubUser = z.infer<typeof GithubUserSchema>;
 
-export const SupabaseSchema = z.object({
-  accessToken: SecretSchema.optional(),
-  refreshToken: SecretSchema.optional(),
-  expiresIn: z.number().optional(),
-  tokenTimestamp: z.number().optional(),
-});
-export type Supabase = z.infer<typeof SupabaseSchema>;
-
 export const NeonSchema = z.object({
   accessToken: SecretSchema.optional(),
   refreshToken: SecretSchema.optional(),
@@ -204,7 +196,6 @@ export const UserSettingsSchema = z.object({
   githubUser: GithubUserSchema.optional(),
   githubAccessToken: SecretSchema.optional(),
   vercelAccessToken: SecretSchema.optional(),
-  supabase: SupabaseSchema.optional(),
   neon: NeonSchema.optional(),
   autoApproveChanges: z.boolean().optional(),
   telemetryConsent: z.enum(["opted_in", "opted_out", "unset"]).optional(),
@@ -214,7 +205,6 @@ export const UserSettingsSchema = z.object({
   maxChatTurnsInContext: z.number().optional(),
   thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
   selectedTemplateId: z.string(),
-  enableSupabaseWriteSqlMigration: z.boolean().optional(),
   selectedChatMode: ChatModeSchema.optional(),
   acceptedCommunityCode: z.boolean().optional(),
   zoomLevel: ZoomLevelSchema.optional(),

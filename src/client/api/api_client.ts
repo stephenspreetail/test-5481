@@ -12,14 +12,11 @@ import type {
   ChatResponseEnd,
   CreateAppParams,
   CreateAppResult,
-  CreatePromptParamsDto,
   FileAttachment,
   LanguageModel,
   LanguageModelProvider,
   ListAppsResponse,
   Message,
-  PromptDto,
-  UpdatePromptParamsDto,
   Version,
 } from "@/types";
 import type { IApiClient } from "./client_interface";
@@ -527,32 +524,6 @@ export class ApiClient {
   }
 
   // =====================
-  // Prompts
-  // =====================
-
-  async listPrompts(): Promise<PromptDto[]> {
-    return this.request("/api/prompts");
-  }
-
-  async createPrompt(params: CreatePromptParamsDto): Promise<PromptDto> {
-    return this.request("/api/prompts", {
-      method: "POST",
-      body: JSON.stringify(params),
-    });
-  }
-
-  async updatePrompt(params: UpdatePromptParamsDto): Promise<void> {
-    await this.request(`/api/prompts/${params.id}`, {
-      method: "PUT",
-      body: JSON.stringify(params),
-    });
-  }
-
-  async deletePrompt(id: number): Promise<void> {
-    await this.request(`/api/prompts/${id}`, { method: "DELETE" });
-  }
-
-  // =====================
   // App Files
   // =====================
 
@@ -819,7 +790,7 @@ export class ApiClient {
   // =====================
 
   async createWorkflowApp(params: {
-    workflowType: "excel-workflow" | "data-platform";
+    workflowType: "excel-workflow" | "image-forge" | "data-platform";
     file: string;
     fileName: string;
   }): Promise<{

@@ -3,6 +3,9 @@ services:
   traefik:
     image: traefik:v3.0
     container_name: kova-traefik
+    environment:
+      - TRAEFIK_BACKEND_HOST=${TRAEFIK_BACKEND_HOST:-host.docker.internal}
+      - TRAEFIK_BACKEND_PORT=${TRAEFIK_BACKEND_PORT:-3002}
     ports:
       - "8081:8081" # Preview access (app-{id}.localhost:8081) + Dashboard (traefik.localhost:8081)
     volumes:

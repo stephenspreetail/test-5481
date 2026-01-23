@@ -1,7 +1,6 @@
 import { appBasePathAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { GitHubConnector } from "@/components/GitHubConnector";
-import { SupabaseConnector } from "@/components/SupabaseConnector";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -254,7 +253,7 @@ export default function AppDetailsPage() {
       data-testid="app-details-page"
     >
       {/* App Info Section */}
-      <div className="w-full max-w-2xl mx-auto mt-10 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm relative text-gray-900 dark:text-gray-100">
+      <div className="w-full max-w-2xl mx-auto mt-10 p-6 bg-card rounded-2xl shadow-sm relative text-gray-900 dark:text-gray-100">
         <div className="flex items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {selectedApp.name}
@@ -376,18 +375,17 @@ export default function AppDetailsPage() {
       </div>
 
       {/* Integrations Section */}
-      <div className="w-full max-w-2xl mx-auto mt-4 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-gray-900 dark:text-gray-100">
+      <div className="w-full max-w-2xl mx-auto mt-4 p-6 bg-card rounded-2xl shadow-sm text-gray-900 dark:text-gray-100">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Integrations
         </h3>
         <div className="space-y-4">
           <GitHubConnector appId={appId} folderName={selectedApp.path} />
-          {appId && <SupabaseConnector appId={appId} />}
         </div>
       </div>
 
       {/* Chats Section */}
-      <div className="w-full max-w-2xl mx-auto mt-4 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm text-gray-900 dark:text-gray-100">
+      <div className="w-full max-w-2xl mx-auto mt-4 p-6 bg-card rounded-2xl shadow-sm text-gray-900 dark:text-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Chats
@@ -568,7 +566,7 @@ export default function AppDetailsPage() {
               disabled={isRenaming}
             >
               <div className="absolute top-1 right-1">
-                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
+                <span className="bg-teal-100 text-teal-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-teal-900 dark:text-teal-300 text-[10px]">
                   Recommended
                 </span>
               </div>
@@ -616,8 +614,7 @@ export default function AppDetailsPage() {
               <DialogDescription className="text-sm">
                 <p>Create a copy of this app.</p>
                 <p>
-                  Note: this does not copy over the Supabase project or GitHub
-                  project.
+                  Note: this does not copy over the GitHub project.
                 </p>
               </DialogDescription>
             </DialogHeader>
@@ -665,7 +662,7 @@ export default function AppDetailsPage() {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
                   <div className="absolute top-1 right-1">
-                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
+                    <span className="bg-teal-100 text-teal-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-teal-900 dark:text-teal-300 text-[10px]">
                       Recommended
                     </span>
                   </div>

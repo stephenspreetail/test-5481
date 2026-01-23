@@ -63,7 +63,7 @@ export function TokenBar({ chatId }: TokenBarProps) {
               <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden flex">
                 {/* Message history tokens */}
                 <div
-                  className="h-full bg-blue-400"
+                  className="h-full bg-teal-400"
                   style={{ width: `${messageHistoryPercent}%` }}
                 />
                 {/* Codebase tokens */}
@@ -93,7 +93,7 @@ export function TokenBar({ chatId }: TokenBarProps) {
             <div className="space-y-1">
               <div className="font-medium">Token Usage Breakdown</div>
               <div className="grid grid-cols-[20px_1fr_auto] gap-x-2 items-center">
-                <MessageSquare size={12} className="text-blue-500" />
+                <MessageSquare size={12} className="text-teal-500" />
                 <span>Message History</span>
                 <span>{messageHistoryTokens.toLocaleString()}</span>
 

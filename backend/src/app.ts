@@ -14,7 +14,6 @@ import { chatsRoutes } from "./api/routes/chats.routes.js";
 import { workflowAppRoutes } from "./api/routes/workflow-app.routes.js";
 import { languageModelsRoutes } from "./api/routes/language-models.routes.js";
 import { previewRoutes } from "./api/routes/preview.routes.js";
-import { promptsRoutes } from "./api/routes/prompts.routes.js";
 import { settingsRoutes } from "./api/routes/settings.routes.js";
 import { templatesRoutes } from "./api/routes/templates.routes.js";
 import { traefikRoutes } from "./api/routes/traefik.routes.js";
@@ -69,7 +68,6 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(appExecutionRoutes, { prefix: "/api/apps" });
   await app.register(chatsRoutes, { prefix: "/api/chats" });
   await app.register(settingsRoutes, { prefix: "/api/settings" });
-  await app.register(promptsRoutes, { prefix: "/api/prompts" });
   await app.register(languageModelsRoutes, { prefix: "/api/language-models" });
   await app.register(templatesRoutes, { prefix: "/api/templates" });
   await app.register(workflowAppRoutes, { prefix: "/api/workflows" });

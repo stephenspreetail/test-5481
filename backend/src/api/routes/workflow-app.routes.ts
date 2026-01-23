@@ -10,7 +10,7 @@ import { appContainerService } from "../../services/app-container.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const createWorkflowAppSchema = z.object({
-  workflowType: z.enum(["excel-workflow", "data-platform"]),
+  workflowType: z.enum(["excel-workflow", "image-forge", "data-platform"]),
   file: z.string(), // base64 encoded
   fileName: z.string(),
 });
@@ -42,6 +42,8 @@ function getPlanningPrompt(workflowType: string, fileName: string, outputFilenam
   switch (workflowType) {
     case "excel-workflow":
       return `document the workflow in '${fileName}' and write the documentation to '${outputFilename}'`;
+    case "image-forge":
+      return `analyze the UI image '${fileName}' and create an app planning document, writing it to '${outputFilename}'`;
     case "data-platform":
       return `Analyze the data platform configuration`;
     default:
@@ -136,7 +138,9 @@ export async function workflowAppRoutes(app: FastifyInstance) {
         app.log.info(`Started container for app ${newApp.id}`);
 
         // 5. Build the planning prompt and workflow doc filename
-        const workflowDocFilename = `${workbookName}_workflow.md`;
+        const workflowDocFilename = workflowType === "image-forge"
+          ? `${workbookName}_app_plan.md`
+          : `${workbookName}_workflow.md`;
         const initialPrompt = getPlanningPrompt(workflowType, fileName, workflowDocFilename);
 
         return {

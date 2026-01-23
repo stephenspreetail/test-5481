@@ -71,12 +71,21 @@ export function constructWorkflowAnalysisPromptConfig(): SystemPromptConfig {
 
 /**
  * Check if a prompt is a workflow analysis prompt
- * (e.g., "document the workflow in 'file.xlsx'")
+ * (e.g., "document the workflow in 'file.xlsx'" or "analyze the UI image 'file.png'")
  */
 export function isWorkflowAnalysisPrompt(prompt: string): boolean {
   const lowerPrompt = prompt.toLowerCase();
   return (
     lowerPrompt.startsWith("document the workflow") ||
-    lowerPrompt.includes(".xlsx")
+    lowerPrompt.startsWith("analyze the ui image") ||
+    lowerPrompt.includes(".xlsx") ||
+    // Image file extensions for image-forge
+    (lowerPrompt.includes("app planning document") && (
+      lowerPrompt.includes(".png") ||
+      lowerPrompt.includes(".jpg") ||
+      lowerPrompt.includes(".jpeg") ||
+      lowerPrompt.includes(".gif") ||
+      lowerPrompt.includes(".webp")
+    ))
   );
 }

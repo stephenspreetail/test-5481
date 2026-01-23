@@ -14,9 +14,9 @@ export const PublishPanel = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
           <svg
-            className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin"
+            className="w-6 h-6 text-teal-600 dark:text-teal-400 animate-spin"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -117,7 +117,7 @@ export const PublishPanel = () => {
                   const client = getClient();
                   client.openExternalUrl("https://vercel.com/dashboard");
                 }}
-                className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer bg-transparent border-none p-0"
+                className="flex items-center gap-2 hover:text-teal-600 dark:hover:text-teal-400 transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 <svg
                   className="w-5 h-5"

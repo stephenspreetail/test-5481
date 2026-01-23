@@ -1,7 +1,7 @@
 /**
  * Container Orchestrator Types
  * Abstractions for container management across different platforms
- * (Podman, Kubernetes, ECS Fargate)
+ * ...Local (Rancher, Podman), Kubernetes, ECS Fargate
  */
 
 /**
@@ -59,7 +59,7 @@ export interface HealthCheckResult {
 
 /**
  * Container orchestrator interface
- * Implement this for each platform (Podman, Kubernetes, ECS)
+ * Implement this for each platform (Local, Kubernetes, ECS)
  */
 export interface ContainerOrchestrator {
   /**
