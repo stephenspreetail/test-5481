@@ -3,11 +3,13 @@
  * Main entry point that runs:
  * - Agent Server on port 3100 (Claude Agent SDK)
  * - Dev Server on port 3000 (user's app)
+ *
+ * Note: Data Catalog MCP server runs in-process with the agent (no separate port)
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import Fastify from "fastify";
+import { cpSync, existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { streamQuery } from "./agent.js";
 import { DevServerManager } from "./dev-server.js";
 import { appContainerLog as log } from "./logger.js";

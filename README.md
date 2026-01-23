@@ -155,14 +155,32 @@ npm run test             # Run tests
 
 ## Environment Variables
 
-Create `backend/.env`:
+Create `backend/.env` from the example:
 
 ```bash
-DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
-JWT_SECRET=your_jwt_secret_at_least_32_chars
-JWT_REFRESH_SECRET=your_refresh_secret_at_least_32_chars
-ENCRYPTION_KEY=your_64_char_hex_encryption_key
+cp backend/.env.example backend/.env
 ```
+
+Required variables:
+
+```bash
+# Database
+DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
+
+# Security (generate with: openssl rand -hex 32)
+JWT_SECRET=your_jwt_secret_at_least_32_chars
+ENCRYPTION_KEY=your_64_char_hex_encryption_key
+
+# ProGet - Internal npm registry for @spreetail packages
+PROGET_API_KEY=your_proget_api_key
+
+# Data Platform - Starburst Galaxy / Trino credentials
+DATA_PLATFORM_HOST=spreetail.routing.trino.galaxy.starburst.io
+DATA_PLATFORM_USER=your_service_account_username
+DATA_PLATFORM_PASSWORD=your_service_account_password
+```
+
+**Finding credential values:** ProGet API key and Data Platform service account credentials can be found in the project's [CI/CD Variables](https://gitlab.com/spreetail/engineering/scaled-innovation/app-builder/-/settings/ci_cd) (Settings > CI/CD > Variables).
 
 ## Tech Stack
 
