@@ -37,6 +37,10 @@ const configSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AGENT_MODEL: z.string().default("claude-opus-4-5-20251101"),
 
+  // ProGet (Internal npm registry)
+  // Required for @spreetail scoped packages in app containers
+  PROGET_API_KEY: z.string().min(1, "PROGET_API_KEY is required"),
+
   // App Container Settings
   APP_CONTAINER_IMAGE: z.string().default("kova-app-container:latest"),
   APP_CONTAINER_IDLE_TIMEOUT_MS: z.coerce.number().default(15 * 60 * 1000),
@@ -51,6 +55,13 @@ const configSchema = z.object({
   // Monitoring Intervals
   TRAEFIK_HEARTBEAT_INTERVAL_MS: z.coerce.number().default(60 * 1000),
   CONTAINER_SCAN_INTERVAL_MS: z.coerce.number().default(60 * 1000),
+
+  // Data Platform (Starburst Galaxy / Trino)
+  // These are passed to app containers for data access
+  // Required - backend will crash on startup if not configured
+  DATA_PLATFORM_HOST: z.string().min(1, "DATA_PLATFORM_HOST is required"),
+  DATA_PLATFORM_USER: z.string().min(1, "DATA_PLATFORM_USER is required"),
+  DATA_PLATFORM_PASSWORD: z.string().min(1, "DATA_PLATFORM_PASSWORD is required"),
 });
 
 export type Config = z.infer<typeof configSchema>;

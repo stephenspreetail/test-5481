@@ -1,7 +1,10 @@
 # Documentation files (keep in repo, exclude from image)
+# Exclude root-level markdown files except README
 PROGET_SETUP.md
-*.md
+/*.md
 !README.md
+# Keep skill and pattern markdown files
+!data-platform/skills/**/*.md
 
 # Development files
 node_modules/
