@@ -30,12 +30,16 @@
 
 set -e
 
-# Ensure the named volume mount points exist and have correct ownership
-# These directories are mounted as named volumes in docker-compose/container creation:
-#   - app-{id}-modules:/workspace/node_modules
-#   - app-{id}-skills:/workspace/.claude/skills
-mkdir -p /workspace/node_modules /workspace/.claude/skills
-chown -R kova:kova /workspace/node_modules /workspace/.claude/skills
+# Ensure the named volume mount point exists and has correct ownership
+# node_modules is mounted as a named volume: app-{id}-modules:/workspace/node_modules
+# This fixes npm bin-links/symlink issues on Windows bind mounts
+mkdir -p /workspace/node_modules
+chown -R kova:kova /workspace/node_modules 2>/dev/null || true
+
+# Ensure .claude directory exists for kovaQuery to copy skills into
+# Skills are automatically copied at runtime by @kova/agent's kovaQuery function
+mkdir -p /workspace/.claude
+chown kova:kova /workspace/.claude 2>/dev/null || true
 
 # Drop privileges and execute the main command as 'kova' user
 # Using 'exec' ensures the main process becomes PID 1 for proper signal handling

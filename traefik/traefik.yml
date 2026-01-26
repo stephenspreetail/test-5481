@@ -11,10 +11,10 @@ providers:
   # HTTP provider for dynamic routing (backend serves route config)
   # This polls the backend for route configuration every 2 seconds
   http:
-    # TRAEFIK_BACKEND_HOST and TRAEFIK_BACKEND_PORT should be set via environment variables
+    # To override, set TRAEFIK_PROVIDERS_HTTP_ENDPOINT env var in docker-compose.yml
     # Local: host.docker.internal (Docker) or <your-ip> (Podman/Windows)
     # Dev/Prod: backend (container network)
-    endpoint: "http://{{ env "TRAEFIK_BACKEND_HOST" }}:{{ env "TRAEFIK_BACKEND_PORT" }}/api/traefik/config"
+    endpoint: "http://host.docker.internal/api/traefik/config"
     pollInterval: 2s
 
   # File provider for static routes (dashboard, etc.)

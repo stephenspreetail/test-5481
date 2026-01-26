@@ -2,7 +2,14 @@
 
 ## Overview
 
-Kova's agent server runs the Claude Agent SDK (Claude Code wrapper) in isolated containers, leveraging modular building blocks—skills, MCP servers, and subagents—to enhance its capabilities for app generation.
+Kova's agent server runs `@kova/agent` (a thin wrapper around Claude Agent SDK) in isolated containers, leveraging modular building blocks—skills, MCP servers, and subagents—to enhance its capabilities for app generation.
+
+The `@kova/agent` package (`packages/agent/`) provides:
+- `kovaQuery()` - Core function wrapping Claude Agent SDK with Spreetail defaults
+- Bundled skills (xlsx, data-platform, xlsx-workflow-docs)
+- Data platform integration (Trino client, metadata search, MCP server)
+- System prompts and tool presets
+- Standalone CLI for development outside the web platform
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -107,17 +114,21 @@ The agent's capabilities are extended through modular building blocks:
 │  │                     CURRENT CAPABILITIES                         │       │
 │  ├─────────────────────────────────────────────────────────────────┤       │
 │  │                                                                  │       │
-│  │  SKILLS (Active)                                                 │       │
+│  │  SKILLS (Active) - Located in packages/agent/src/skills/         │       │
 │  │  ├── xlsx                    Excel creation/editing/analysis    │       │
 │  │  │   ├── pandas              Data manipulation                  │       │
 │  │  │   ├── openpyxl            Formulas & formatting              │       │
 │  │  │   └── LibreOffice         Formula recalculation              │       │
 │  │  │                                                               │       │
-│  │  └── xlsx-workflow-docs      Workflow documentation             │       │
-│  │      └── Generates markdown from Excel workflows                │       │
+│  │  ├── xlsx-workflow-docs      Workflow documentation             │       │
+│  │  │   └── Generates markdown from Excel workflows                │       │
+│  │  │                                                               │       │
+│  │  └── data-platform           Data warehouse integration         │       │
+│  │      └── Trino queries, schema discovery, security patterns     │       │
 │  │                                                                  │       │
-│  │  MCP SERVERS (Not Yet Implemented)                               │       │
-│  │  └── (Architecture supports MCP via SDK)                        │       │
+│  │  MCP SERVERS (Active) - Located in packages/agent/src/data-platform/ │  │
+│  │  └── data-catalog            Metadata search, schema discovery  │       │
+│  │      └── 8 tools: search_tables, get_schema, list_domains, etc. │       │
 │  │                                                                  │       │
 │  │  SUBAGENTS (Not Yet Implemented)                                 │       │
 │  │  └── (Task tool disabled in container)                          │       │
@@ -129,20 +140,20 @@ The agent's capabilities are extended through modular building blocks:
 
 ## Skills System Detail
 
-Skills provide domain-specific knowledge and tools:
+Skills provide domain-specific knowledge and tools. They are bundled in the `@kova/agent` package and copied to projects at runtime.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            SKILLS ARCHITECTURE                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  SKILL LOADING FLOW:                                                         │
+│  SKILL LOADING FLOW (via @kova/agent):                                       │
 │                                                                              │
-│  1. Container starts                                                         │
+│  1. kovaQuery() called with cwd option                                       │
 │     │                                                                        │
 │     ▼                                                                        │
-│  2. copySkillsToProjectDir()                                                │
-│     │   /app/skills/ ──copy──▶ /workspace/.claude/skills/                   │
+│  2. ensureSkillsInProject(cwd)                                              │
+│     │   packages/agent/src/skills/ ──copy──▶ {cwd}/.claude/skills/          │
 │     ▼                                                                        │
 │  3. Agent SDK loads skills via settingSources: ["project"]                  │
 │     │                                                                        │
@@ -355,12 +366,22 @@ Skills provide domain-specific knowledge and tools:
 
 ## Summary
 
-Kova's agent architecture is built on **modular building blocks**:
+Kova's agent architecture is built on **modular building blocks**, centralized in the `@kova/agent` package:
 
-1. **Skills** - Domain knowledge + scripts (xlsx, xlsx-workflow-docs)
-2. **MCP Servers** - External service integrations (future)
+1. **Skills** - Domain knowledge + scripts (xlsx, xlsx-workflow-docs, data-platform)
+2. **MCP Servers** - External service integrations (data-catalog for metadata search)
 3. **Subagents** - Parallel specialized work (future)
 4. **Memory** - Persistent context (future)
 5. **Webhooks** - Event-driven automation (future)
 
-The current implementation focuses on the **Excel workflow → Web app** pipeline using the skill system. The architecture is designed to be extensible—new capabilities can be added as skills, MCP servers, or subagents without changing the core agent infrastructure.
+The current implementation focuses on the **Excel workflow → Web app** pipeline using the skill system, and **Data Platform integration** via MCP servers for querying Spreetail's data warehouse. The architecture is designed to be extensible—new capabilities can be added as skills, MCP servers, or subagents without changing the core agent infrastructure.
+
+### Key Files
+
+| Location | Purpose |
+|----------|---------|
+| `packages/agent/src/core/query.ts` | `kovaQuery()` - main entry point |
+| `packages/agent/src/skills/` | Bundled skills |
+| `packages/agent/src/data-platform/mcp-server/` | Data catalog MCP server |
+| `packages/agent/src/config/system-prompt.ts` | Default system prompts |
+| `app-container/src/agent.ts` | Transforms SDKMessage → AgentStreamEvent |

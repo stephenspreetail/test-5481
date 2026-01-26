@@ -3,7 +3,6 @@ import { WebSocket } from "ws";
 import { db } from "../../db/index.js";
 import { apps, chats, messages } from "../../db/schema.js";
 import {
-  constructSystemPromptConfig,
   constructWorkflowAnalysisPromptConfig,
   isWorkflowAnalysisPrompt,
 } from "../../prompts/system_prompt.js";
@@ -251,17 +250,16 @@ export async function handleChatStream(
       throw new Error(`Container not responding: ${healthError.message}`);
     }
 
-    // Construct system prompt config for the agent
-    // Uses preset: "claude_code" with minimal append to preserve SDK defaults
-    // For workflow analysis prompts, use a minimal prompt that lets the skill guide
+    // System prompt: KovaAgent uses DEFAULT_KOVA_SYSTEM_PROMPT by default
+    // Only override for special cases like workflow analysis
     // TODO: Support custom AI_RULES.md from app directory
-    const systemPrompt = isWorkflowAnalysisPrompt(prompt)
+    const isWorkflow = isWorkflowAnalysisPrompt(prompt);
+    const systemPrompt = isWorkflow
       ? constructWorkflowAnalysisPromptConfig()
-      : constructSystemPromptConfig();
+      : undefined; // Let the agent use its default (KOVA_AGENT_APPEND)
 
     console.log(
-      `[CHAT] System prompt config (workflow analysis: ${isWorkflowAnalysisPrompt(prompt)}):`,
-      JSON.stringify(systemPrompt),
+      `[CHAT] System prompt: ${isWorkflow ? "workflow analysis override" : "using agent default"}`,
     );
 
     const response = await fetch(queryUrl, {
@@ -275,7 +273,7 @@ export async function handleChatStream(
         sessionId,
         chatId: chatId.toString(),
         allowedTools: ["Read", "Glob", "Grep", "Write", "Edit", "Bash", "Skill"],
-        systemPrompt,
+        ...(systemPrompt && { systemPrompt }), // Only include if defined
       }),
       signal: abortController.signal,
     });

@@ -18,6 +18,7 @@
     "seed:dev-user": "tsx scripts/seed-dev-user.ts"
   },
   "dependencies": {
+    "@kova/agent": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "^0.1.74",
     "@anthropic-ai/sdk": "^0.71.2",
     "@fastify/cookie": "^11.0.1",
