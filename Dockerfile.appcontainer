@@ -1,6 +1,35 @@
 # App Container for Kova
 # Runs Claude Agent SDK + Dev Server for user apps
+#
+# Multi-stage build:
+# 1. Build @kova/agent package from monorepo
+# 2. Build app-container with the bundled agent
 
+# =============================================================================
+# Stage 1: Build @kova/agent package
+# =============================================================================
+FROM node:22-bookworm-slim AS agent-builder
+
+WORKDIR /build
+
+# Copy agent package files
+COPY packages/agent/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy agent source
+COPY packages/agent/ ./
+
+# Build TypeScript
+RUN npm run build
+
+# Create installable tarball
+RUN npm pack
+
+# =============================================================================
+# Stage 2: Build app-container
+# =============================================================================
 FROM node:22-bookworm-slim
 
 # Install git (required by Claude Code CLI), Python, LibreOffice, and gosu for entrypoint
@@ -28,28 +57,27 @@ RUN groupadd -g 1001 kova && \
 # Create app directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy the built @kova/agent tarball from stage 1
+COPY --from=agent-builder /build/*.tgz /tmp/kova-agent.tgz
 
-# Install dependencies
-RUN npm install
+# Copy package files
+COPY app-container/package*.json ./
+
+# Replace workspace:* with the local tarball path, then install
+RUN sed -i 's|"@kova/agent": "workspace:\*"|"@kova/agent": "file:/tmp/kova-agent.tgz"|' package.json && \
+    npm install
 
 # Copy source files
-COPY . .
+COPY app-container/ ./
 
 # Build TypeScript
 RUN npm run build
 
-# Copy skills directory (will be copied to workspace on startup)
-COPY skills/ /app/skills/
-
 # Create workspace directory for user app files and set ownership
 RUN mkdir -p /workspace && chown -R kova:kova /workspace
 
-# Create .claude directory in workspace for skills (volume will be mounted here at runtime)
-RUN mkdir -p /workspace/.claude/skills && chown -R kova:kova /workspace/.claude
-
 # Create .claude directory for config and set ownership
+# Note: Skills are automatically copied by KovaAgent to /workspace/.claude/skills/ at runtime
 RUN mkdir -p /home/kova/.claude && chown -R kova:kova /home/kova
 
 # Set ownership of app directory
@@ -57,10 +85,10 @@ RUN chown -R kova:kova /app
 
 # Configure npm registry for ProGet (internal packages)
 # Copy .npmrc template to kova user's home directory
-COPY --chown=kova:kova .npmrc.template /home/kova/.npmrc
+COPY --chown=kova:kova app-container/.npmrc.template /home/kova/.npmrc
 
 # Also copy to workspace so it's available for user app builds
-COPY --chown=kova:kova .npmrc.template /workspace/.npmrc
+COPY --chown=kova:kova app-container/.npmrc.template /workspace/.npmrc
 
 # Expose ports:
 # 3000 - Dev server (user's app)
@@ -76,8 +104,8 @@ ENV HOME=/home/kova
 # =============================================================================
 # We use the "gosu entrypoint pattern" to handle named volume permissions.
 #
-# Problem: Named volumes (for node_modules and .claude/skills) are created with
-# root ownership, but Claude Code CLI refuses to run as root.
+# Problem: Named volume for node_modules is created with root ownership,
+# but Claude Code CLI refuses to run as root.
 #
 # Solution: Container starts as root, entrypoint.sh fixes volume ownership,
 # then uses 'gosu' to drop privileges to 'kova' user before running the app.
@@ -87,7 +115,7 @@ ENV HOME=/home/kova
 # =============================================================================
 
 # Copy and enable entrypoint script
-COPY entrypoint.sh /entrypoint.sh
+COPY app-container/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # NOTE: We intentionally do NOT use "USER kova" here.

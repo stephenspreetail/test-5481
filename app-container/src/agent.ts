@@ -1,40 +1,26 @@
 /**
- * Agent wrapper for Claude Agent SDK
- * Handles session management and event streaming
+ * Agent wrapper for the App Container
  *
- * Set VERBOSE_AGENT_LOGGING=true for detailed logging
+ * Uses kovaQuery from @kova/agent and transforms raw SDKMessage
+ * to AgentStreamEvent format for the backend.
+ *
+ * Handles:
+ * - SDK message transformation to AgentStreamEvent
+ * - Post-result error suppression (dev server startup errors)
  */
 
-import { query, type McpServerConfig } from "@anthropic-ai/claude-agent-sdk";
+import { kovaQuery, type SDKMessage } from "@kova/agent";
+import type { SystemPromptConfig } from "@kova/agent";
 import { resolve } from "node:path";
-import {
-  dataCatalogMcpServer,
-  initializeDataCatalog,
-} from "../data-platform/mcp-server/index.js";
-import type { AgentStreamEvent, SystemPromptConfig } from "./types.js";
-import { DEFAULT_TOOLS } from "./types.js";
 
-// Initialize the data catalog on module load
-initializeDataCatalog();
-
-/**
- * Options for agent query
- */
-export interface AgentQueryOptions {
-  /** Working directory for file operations */
-  cwd: string;
-  /** Session ID to resume a previous session */
-  sessionId?: string;
-  /** Allowed tools for this query */
-  allowedTools?: string[];
-  /** System prompt - either preset config object or legacy string */
-  systemPrompt?: SystemPromptConfig | string;
-}
+// =============================================================================
+// Verbose Logging
+// =============================================================================
 
 // ANSI color codes
 const YELLOW = "\x1b[33m";
 const GREEN = "\x1b[32m";
-const RED = "\x1b[31m";
+const CYAN = "\x1b[36m";
 const RESET = "\x1b[0m";
 
 /**
@@ -44,8 +30,8 @@ function isVerbose(): boolean {
   return (
     process.env.VERBOSE_AGENT_LOGGING === "true" ||
     process.env.DEBUG_CLAUDE_AGENT_SDK === "true" ||
-    true
-  ); // Always verbose for now during debugging
+    true // Always verbose for now during debugging
+  );
 }
 
 /**
@@ -54,7 +40,9 @@ function isVerbose(): boolean {
  */
 function log(category: string, message: string, data?: unknown): void {
   const timestamp = new Date().toISOString();
-  console.log(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:${category}]${RESET} ${message}`);
+  console.log(
+    `${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:${category}]${RESET} ${message}`
+  );
   if (data !== undefined && isVerbose()) {
     if (typeof data === "string") {
       console.log(data);
@@ -65,29 +53,39 @@ function log(category: string, message: string, data?: unknown): void {
 }
 
 /**
- * Check if systemPrompt is a preset config object
+ * Log SDK message in verbose mode
  */
-function isPresetConfig(
-  prompt: SystemPromptConfig | string | undefined,
-): prompt is SystemPromptConfig {
-  return (
-    typeof prompt === "object" && prompt !== null && prompt.type === "preset"
+function logSdkMessage(message: SDKMessage, messageCount: number): void {
+  if (!isVerbose()) return;
+
+  const timestamp = new Date().toISOString();
+  console.log("-".repeat(60));
+  console.log(
+    `${YELLOW}[${timestamp}]${RESET} ${CYAN}[Agent:SDK #${messageCount}]${RESET} Raw message:`
   );
+  console.log(JSON.stringify(message, null, 2));
+  console.log("-".repeat(60));
 }
 
 /**
- * Log the full system prompt (multi-line)
+ * Log the system prompt configuration
  */
 function logSystemPrompt(systemPrompt: SystemPromptConfig | string): void {
   const timestamp = new Date().toISOString();
   console.log("=".repeat(80));
-  console.log(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:SYSTEM_PROMPT]${RESET} CONFIG:`);
+  console.log(
+    `${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:SYSTEM_PROMPT]${RESET} CONFIG:`
+  );
   console.log("=".repeat(80));
-  if (isPresetConfig(systemPrompt)) {
-    console.log(`Type: preset`);
-    console.log(`Preset: ${systemPrompt.preset}`);
-    console.log(`Append (${systemPrompt.append.length} chars):`);
-    console.log(systemPrompt.append);
+  if (typeof systemPrompt === "object" && systemPrompt !== null) {
+    console.log(`Type: ${systemPrompt.type}`);
+    if (systemPrompt.type === "preset") {
+      console.log(`Preset: ${systemPrompt.preset}`);
+      console.log(`Append (${systemPrompt.append?.length || 0} chars):`);
+      if (systemPrompt.append) {
+        console.log(systemPrompt.append);
+      }
+    }
   } else {
     console.log(`Type: legacy string (${systemPrompt.length} chars)`);
     console.log(systemPrompt);
@@ -96,37 +94,241 @@ function logSystemPrompt(systemPrompt: SystemPromptConfig | string): void {
 }
 
 /**
- * Log SDK message in verbose mode
+ * Log transformed event being yielded
  */
-function logSdkMessage(message: unknown): void {
+function logEvent(event: AgentStreamEvent): void {
   if (!isVerbose()) return;
 
   const timestamp = new Date().toISOString();
-  console.log("-".repeat(60));
-  console.log(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:SDK]${RESET} Raw message received:`);
-  console.log(JSON.stringify(message, null, 2));
-  console.log("-".repeat(60));
+  let eventSummary: string;
+
+  switch (event.type) {
+    case "text":
+      eventSummary = `text (${event.text.length} chars)`;
+      break;
+    case "tool_use":
+      eventSummary = `tool_use: ${event.toolName}`;
+      break;
+    case "tool_result":
+      eventSummary = "tool_result";
+      break;
+    case "session_init":
+      eventSummary = `session_init: ${event.sessionId}`;
+      break;
+    case "result":
+      eventSummary = `result (${event.durationMs}ms, $${event.costUsd?.toFixed(4) || "?"})`;
+      break;
+    case "error":
+      eventSummary = `error: ${event.error}`;
+      break;
+    default:
+      eventSummary = "unknown";
+  }
+
+  console.log(
+    `${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:EVENT]${RESET} → ${eventSummary}`
+  );
 }
+
+// =============================================================================
+// Types - AgentStreamEvent format for backend
+// =============================================================================
+
+/**
+ * SSE event types sent to the backend
+ */
+export type AgentEventType =
+  | "session_init"
+  | "text"
+  | "tool_use"
+  | "tool_result"
+  | "result"
+  | "error";
+
+export interface SessionInitEvent {
+  type: "session_init";
+  sessionId: string;
+}
+
+export interface TextEvent {
+  type: "text";
+  text: string;
+}
+
+export interface ToolUseEvent {
+  type: "tool_use";
+  toolName: string;
+  toolInput?: unknown;
+}
+
+export interface ToolResultEvent {
+  type: "tool_result";
+  content: unknown;
+}
+
+export interface ResultEvent {
+  type: "result";
+  result: string;
+  durationMs: number;
+  sessionId?: string;
+  costUsd?: number;
+}
+
+export interface ErrorEvent {
+  type: "error";
+  error: string;
+}
+
+export type AgentStreamEvent =
+  | SessionInitEvent
+  | TextEvent
+  | ToolUseEvent
+  | ToolResultEvent
+  | ResultEvent
+  | ErrorEvent;
+
+// =============================================================================
+// Query Options
+// =============================================================================
+
+export interface AgentQueryOptions {
+  /** Working directory for file operations */
+  cwd: string;
+  /** Session ID to resume a previous session */
+  sessionId?: string;
+  /** Allowed tools for this query */
+  allowedTools?: string[];
+  /** System prompt configuration */
+  systemPrompt?: SystemPromptConfig | string;
+}
+
+// =============================================================================
+// SDK Message Transformation
+// =============================================================================
+
+/**
+ * Parse SDK message into AgentStreamEvent(s)
+ * A single SDK message may produce multiple events (e.g., text + tool_use)
+ */
+function* parseSDKMessage(
+  message: SDKMessage,
+  currentSessionId: string | undefined,
+  startTime: number
+): Generator<AgentStreamEvent> {
+  // Type guard
+  if (typeof message !== "object" || message === null || !("type" in message)) {
+    return;
+  }
+
+  const msg = message as Record<string, unknown>;
+
+  // Session initialization: { type: "system", subtype: "init", session_id: "..." }
+  if (msg.type === "system" && msg.subtype === "init") {
+    yield {
+      type: "session_init",
+      sessionId: msg.session_id as string,
+    };
+    return;
+  }
+
+  // Assistant message with content blocks
+  if (msg.type === "assistant" && msg.message) {
+    const assistantMsg = msg.message as Record<string, unknown>;
+    if (Array.isArray(assistantMsg.content)) {
+      for (const block of assistantMsg.content) {
+        if (typeof block !== "object" || block === null || !("type" in block)) {
+          continue;
+        }
+
+        const contentBlock = block as Record<string, unknown>;
+
+        if (contentBlock.type === "text" && contentBlock.text) {
+          yield {
+            type: "text",
+            text: contentBlock.text as string,
+          };
+        }
+
+        if (contentBlock.type === "tool_use") {
+          yield {
+            type: "tool_use",
+            toolName: contentBlock.name as string,
+            toolInput: contentBlock.input,
+          };
+        }
+      }
+    }
+    return;
+  }
+
+  // Tool results from user message
+  if (msg.type === "user" && msg.message) {
+    const userMsg = msg.message as Record<string, unknown>;
+    if (Array.isArray(userMsg.content)) {
+      for (const block of userMsg.content) {
+        if (typeof block !== "object" || block === null || !("type" in block)) {
+          continue;
+        }
+
+        const contentBlock = block as Record<string, unknown>;
+        if (contentBlock.type === "tool_result") {
+          yield {
+            type: "tool_result",
+            content: contentBlock.content,
+          };
+        }
+      }
+    }
+    return;
+  }
+
+  // Final result: { type: "result", result: "...", duration_ms: 123, total_cost_usd: 0.05 }
+  if (msg.type === "result") {
+    yield {
+      type: "result",
+      sessionId: currentSessionId || (msg.session_id as string | undefined),
+      result: msg.result as string,
+      durationMs: (msg.duration_ms as number) || Date.now() - startTime,
+      costUsd: msg.total_cost_usd as number | undefined,
+    };
+    return;
+  }
+
+  // Error from SDK
+  if (msg.type === "error") {
+    yield {
+      type: "error",
+      error:
+        (msg.error as string) ||
+        (msg.message as string) ||
+        "Unknown SDK error",
+    };
+  }
+}
+
+// =============================================================================
+// Main Export
+// =============================================================================
 
 /**
  * Execute a streaming agent query
- * Returns an async generator that yields events as they occur
+ * Returns an async generator that yields AgentStreamEvent for the backend
  */
 export async function* streamQuery(
   prompt: string,
-  options: AgentQueryOptions,
+  options: AgentQueryOptions
 ): AsyncGenerator<AgentStreamEvent> {
   const startTime = Date.now();
   let sessionId: string | undefined;
-  let messageCount = 0;
   let resultReceived = false;
+  let messageCount = 0;
 
   // Ensure cwd is absolute
   const absoluteCwd = resolve(options.cwd);
 
   // Log query start
   log("INIT", "Starting agent query", {
-    prompt,
+    prompt: prompt.substring(0, 200) + (prompt.length > 200 ? "..." : ""),
     cwd: absoluteCwd,
     sessionId: options.sessionId,
     allowedTools: options.allowedTools,
@@ -141,207 +343,49 @@ export async function* streamQuery(
   }
 
   try {
-    const queryOptions: {
-      allowedTools?: string[];
-      permissionMode?: "default" | "bypassPermissions" | "acceptEdits" | "plan";
-      allowDangerouslySkipPermissions?: boolean;
-      cwd?: string;
-      resume?: string;
-      systemPrompt?: SystemPromptConfig | string;
-      maxTurns?: number;
-      mcpServers?: Record<string, McpServerConfig>;
-      settingSources?: ("project" | "user")[];
-    } = {
-      allowedTools:
-        options.allowedTools || (DEFAULT_TOOLS as unknown as string[]),
-      permissionMode: "bypassPermissions" as const,
-      allowDangerouslySkipPermissions: true,
+    for await (const message of kovaQuery(prompt, {
       cwd: absoluteCwd,
-      maxTurns: 50,
-      // Load project-level skills from .claude/skills/
-      settingSources: ["project"],
-      // Configure MCP servers
-      mcpServers: {
-        // Spreetail engineering AI agent (external HTTP server)
-        "spreetail-engineering-ai-agent": {
-          type: "http",
-          url: "https://spreetail-engineering-ai-agent.prod01.tk.dev/mcp",
-        },
-        // Data Catalog (in-process SDK MCP server)
-        "data-catalog": dataCatalogMcpServer,
-      },
-    };
-
-    if (options.sessionId) {
-      queryOptions.resume = options.sessionId;
-      log("SESSION", `Resuming session: ${options.sessionId}`);
-    }
-
-    // Pass systemPrompt - supports both preset config and legacy string
-    if (options.systemPrompt) {
-      queryOptions.systemPrompt = options.systemPrompt;
-    }
-
-    log("MCP", "Configured MCP servers:", Object.keys(queryOptions.mcpServers || {}));
-
-    log("QUERY", "Calling Claude Agent SDK with options:", {
-      allowedTools: queryOptions.allowedTools,
-      permissionMode: queryOptions.permissionMode,
-      cwd: queryOptions.cwd,
-      maxTurns: queryOptions.maxTurns,
-      settingSources: queryOptions.settingSources,
-      systemPrompt: queryOptions.systemPrompt
-        ? isPresetConfig(queryOptions.systemPrompt)
-          ? `[preset: ${queryOptions.systemPrompt.preset}, append: ${queryOptions.systemPrompt.append.length} chars]`
-          : `[legacy string: ${queryOptions.systemPrompt.length} chars]`
-        : undefined,
-    });
-
-    for await (const message of query({
-      prompt,
-      options: queryOptions,
+      sessionId: options.sessionId,
+      allowedTools: options.allowedTools,
+      systemPrompt: options.systemPrompt,
     })) {
       messageCount++;
 
       // Log raw SDK message
-      logSdkMessage(message);
+      logSdkMessage(message, messageCount);
 
-      // Handle different message types from the SDK
-      if (
-        typeof message === "object" &&
-        message !== null &&
-        "type" in message
-      ) {
-        const msg = message as Record<string, unknown>;
-
-        // Session initialization message
-        if (msg.type === "system" && msg.subtype === "init") {
-          sessionId = msg.session_id as string;
-          log("SESSION", `Session initialized: ${sessionId}`);
-          yield {
-            type: "session_init",
-            sessionId,
-          };
+      // Transform SDK message to AgentStreamEvent(s)
+      for (const event of parseSDKMessage(message, sessionId, startTime)) {
+        // Track session ID
+        if (event.type === "session_init") {
+          sessionId = event.sessionId;
         }
-
-        // Text content from assistant
-        if (msg.type === "assistant" && msg.message) {
-          const assistantMsg = msg.message as Record<string, unknown>;
-          log("ASSISTANT", "Received assistant message", {
-            stopReason: assistantMsg.stop_reason,
-            contentBlocks: Array.isArray(assistantMsg.content)
-              ? assistantMsg.content.length
-              : 0,
-          });
-
-          if (Array.isArray(assistantMsg.content)) {
-            for (const block of assistantMsg.content) {
-              if (
-                typeof block === "object" &&
-                block !== null &&
-                "type" in block
-              ) {
-                const contentBlock = block as Record<string, unknown>;
-                if (contentBlock.type === "text" && contentBlock.text) {
-                  const text = contentBlock.text as string;
-                  log(
-                    "TEXT",
-                    `Text content (${text.length} chars)`,
-                    isVerbose()
-                      ? text.substring(0, 500) +
-                          (text.length > 500 ? "..." : "")
-                      : undefined,
-                  );
-                  yield {
-                    type: "text",
-                    text,
-                  };
-                } else if (contentBlock.type === "tool_use") {
-                  const toolName = contentBlock.name as string;
-                  const toolInput = contentBlock.input;
-                  log("TOOL_USE", `Tool: ${toolName}`, toolInput);
-                  yield {
-                    type: "tool_use",
-                    toolName,
-                    toolInput,
-                  };
-                }
-              }
-            }
-          }
-        }
-
-        // Tool results
-        if (msg.type === "user" && msg.message) {
-          const userMsg = msg.message as Record<string, unknown>;
-          if (Array.isArray(userMsg.content)) {
-            for (const block of userMsg.content) {
-              if (
-                typeof block === "object" &&
-                block !== null &&
-                "type" in block
-              ) {
-                const contentBlock = block as Record<string, unknown>;
-                if (contentBlock.type === "tool_result") {
-                  const toolUseId = contentBlock.tool_use_id as string;
-                  const isError = contentBlock.is_error as boolean;
-                  log("TOOL_RESULT", `Tool result for ${toolUseId}`, {
-                    isError,
-                    contentPreview:
-                      typeof contentBlock.content === "string"
-                        ? (contentBlock.content as string).substring(0, 200)
-                        : "[complex content]",
-                  });
-                  yield {
-                    type: "tool_result",
-                    content: contentBlock.content,
-                  };
-                }
-              }
-            }
-          }
-        }
-
-        // Final result
-        if ("result" in msg) {
-          const durationMs = Date.now() - startTime;
-          const result = msg.result as string;
+        // Track result received
+        if (event.type === "result") {
           resultReceived = true;
-          log("RESULT", `Query completed in ${durationMs}ms`, {
-            resultLength: result?.length || 0,
-            totalMessages: messageCount,
-          });
-          yield {
-            type: "result",
-            sessionId,
-            result,
-            durationMs,
-          };
         }
+
+        // Log the event being yielded
+        logEvent(event);
+
+        yield event;
       }
     }
 
-    log("DONE", `Stream ended after ${messageCount} messages`);
+    log("COMPLETE", `Query finished after ${messageCount} SDK messages`, {
+      durationMs: Date.now() - startTime,
+      sessionId,
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
-    const errorStack = error instanceof Error ? error.stack : undefined;
 
-    // If we already received a successful result, ignore process exit errors
-    // This happens when background tasks are started (e.g., dev server)
-    // The Claude Code process exits with code 1 but the query was successful
+    log("ERROR", `Query failed: ${errorMessage}`);
+
+    // Suppress post-result process exit errors (happens when dev server starts)
     if (resultReceived && errorMessage.includes("process exited with code")) {
-      log(
-        "WARN",
-        `Ignoring post-result process exit error: ${errorMessage}`,
-      );
+      log("INFO", "Suppressing post-result process exit error");
       return;
-    }
-
-    log("ERROR", `${RED}Query failed: ${errorMessage}${RESET}`);
-    if (errorStack) {
-      const timestamp = new Date().toISOString();
-      console.error(`${YELLOW}[${timestamp}]${RESET} ${GREEN}[Agent:ERROR]${RESET} ${RED}Stack trace:${RESET}`, errorStack);
     }
 
     yield {
@@ -349,34 +393,4 @@ export async function* streamQuery(
       error: errorMessage,
     };
   }
-}
-
-/**
- * Execute a query and wait for the complete result
- */
-export async function executeQuery(
-  prompt: string,
-  options: AgentQueryOptions,
-): Promise<{ sessionId: string; result: string; durationMs: number }> {
-  let sessionId = "";
-  let result = "";
-  let durationMs = 0;
-
-  for await (const event of streamQuery(prompt, options)) {
-    if (event.type === "session_init") {
-      sessionId = event.sessionId;
-    }
-    if (event.type === "result") {
-      result = event.result;
-      durationMs = event.durationMs;
-      if (event.sessionId) {
-        sessionId = event.sessionId;
-      }
-    }
-    if (event.type === "error") {
-      throw new Error(event.error);
-    }
-  }
-
-  return { sessionId, result, durationMs };
 }

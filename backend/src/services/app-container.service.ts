@@ -99,17 +99,8 @@ class AppContainerService {
   private containerScanIntervalMs: number;
 
   constructor() {
-    if (!config.APP_CONTAINER_IDLE_TIMEOUT_MS) {
-      throw new Error("APP_CONTAINER_IDLE_TIMEOUT_MS is not set");
-    }
-    if (!config.APP_CONTAINER_IMAGE) {
-      throw new Error("APP_CONTAINER_IMAGE is not set");
-    }
-    if (!config.CONTAINER_SCAN_INTERVAL_MS) {
-      throw new Error("CONTAINER_SCAN_INTERVAL_MS is not set");
-    }
-    this.idleTimeoutMs = config.APP_CONTAINER_IDLE_TIMEOUT_MS;
-    this.containerImage = config.APP_CONTAINER_IMAGE;
+    this.idleTimeoutMs = config.CONTAINER_IDLE_TIMEOUT_MS;
+    this.containerImage = config.CONTAINER_IMAGE;
     this.containerScanIntervalMs = config.CONTAINER_SCAN_INTERVAL_MS;
   }
 
@@ -473,8 +464,8 @@ class AppContainerService {
       `ANTHROPIC_API_KEY=${config.ANTHROPIC_API_KEY || ""}`,
       `APP_ID=${appId}`,
       `WORKSPACE_DIR=/workspace`,
-      `AGENT_PORT=3100`,
-      `DEV_SERVER_PORT=3000`,
+      `AGENT_PORT=${config.CONTAINER_AGENT_PORT}`,
+      `DEV_SERVER_PORT=${config.CONTAINER_DEV_PORT}`,
       // Store Claude sessions in workspace (persisted via bind mount)
       `CLAUDE_CONFIG_DIR=/workspace/.claude`,
       // ProGet API key for internal npm packages
@@ -546,8 +537,7 @@ class AppContainerService {
             // Named volume for node_modules - stored on Linux filesystem
             // This fixes npm bin-links issues on Windows where bind mounts don't support chmod/symlinks
             `app-${appId}-modules:/workspace/node_modules`,
-            // Named volume for skills - allows copying skills without bind mount permission issues
-            `app-${appId}-skills:/workspace/.claude/skills`,
+            // Note: Skills are automatically copied by KovaAgent to /workspace/.claude/skills/
           ],
           // Agent port exposed to host for direct access
           PortBindings: {

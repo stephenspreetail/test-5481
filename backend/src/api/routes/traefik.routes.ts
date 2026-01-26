@@ -18,6 +18,11 @@ const TRAEFIK_HEARTBEAT_INTERVAL_MS = config.TRAEFIK_HEARTBEAT_INTERVAL_MS;
 function generateTraefikConfig(): object {
   const runningContainers = appContainerService.getRunningContainers();
 
+  // Return empty config if no containers - Traefik v3 doesn't accept empty routers/services objects
+  if (runningContainers.size === 0) {
+    return {};
+  }
+
   const routers: Record<string, object> = {};
   const services: Record<string, object> = {};
 
@@ -37,7 +42,7 @@ function generateTraefikConfig(): object {
       loadBalancer: {
         servers: [
           {
-            url: `http://${containerInfo.containerName}:${config.DEV_SERVER_PORT}`,
+            url: `http://${containerInfo.containerName}:${config.CONTAINER_DEV_PORT}`,
           },
         ],
       },

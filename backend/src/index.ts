@@ -17,8 +17,8 @@ async function main() {
   });
 
   try {
-    await app.listen({ port: config.PORT, host: config.HOST });
-    app.log.info(`Server running at http://${config.HOST}:${config.PORT}`);
+    await app.listen({ port: config.BACKEND_PORT, host: config.BACKEND_HOST });
+    app.log.info(`Server running at http://${config.BACKEND_HOST}:${config.BACKEND_PORT}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

@@ -63,14 +63,32 @@ npm run db:generate     # Generate migration files
 npm run db:studio       # Open Drizzle Studio GUI
 ```
 
-### Backend Environment Setup
+### Environment Setup
 
-Copy `backend/.env.example` to `backend/.env` and configure:
+Copy `.env.example` to `.env` at the repository root and configure:
 
 ```sh
+cp .env.example .env
+```
+
+Required variables:
+
+```sh
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
 DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
 JWT_SECRET=your_jwt_secret_at_least_32_chars
 ENCRYPTION_KEY=your_64_char_hex_encryption_key
+```
+
+### Agent CLI
+
+```sh
+npm run dev:agent            # Run agent CLI (no build needed, uses tsx)
+npm run dev:agent -- --help  # Show CLI help
+
+# Production build (for publishing/deployment)
+npm run build:agent          # Build the agent package
+npm run start:agent          # Run the built version
 ```
 
 ## Architecture
@@ -95,6 +113,14 @@ const apps = await client.listApps();
 
 ### Key Directories
 
+- `packages/agent/` - **@kova/agent** - Standalone AI agent package
+  - `src/core/` - `kovaQuery()` - thin wrapper around Claude Agent SDK
+  - `src/config/` - System prompts, defaults, credentials
+  - `src/tools/` - Tool presets and constants
+  - `src/projects/` - XDG-compliant project management
+  - `src/data-platform/` - Trino client, metadata search, MCP server
+  - `src/skills/` - Bundled skills (xlsx, data-platform, etc.)
+  - `src/cli/` - Ink-based terminal UI
 - `src/client/api/` - API client layer
   - `client_factory.ts` - Factory that returns ApiClient
   - `client_interface.ts` - Interface definition
@@ -103,14 +129,13 @@ const apps = await client.listApps();
 - `backend/` - Backend server (Fastify + PostgreSQL)
   - `src/api/routes/` - REST API endpoints
   - `src/websocket/` - WebSocket handlers for streaming
-  - `src/services/` - Core services including Claude Agent SDK integration
+  - `src/services/` - Container orchestration, app management
   - `src/db/` - Drizzle ORM with PostgreSQL schema
-  - `src/prompts/` - System prompts for LLM interactions
 - `src/routes/` - TanStack Router page components
 - `src/hooks/` - React hooks (most use TanStack Query + client factory)
 - `src/atoms/` - Jotai atoms for global state
 - `src/components/` - React components
-- `app-container/` - Docker image for running user-generated apps
+- `app-container/` - Docker image for running user-generated apps (uses @kova/agent)
 
 ### Client-Server Communication
 
@@ -122,18 +147,22 @@ const apps = await client.listApps();
 
 ### LLM Integration Pattern
 
-Kova uses the Claude Agent SDK for AI-powered code generation. The agent has access to tools like:
+Kova uses `@kova/agent` (wrapping the Claude Agent SDK) for AI-powered code generation. The agent has access to tools like:
 
 - File operations (read, write, edit, delete)
 - Code search (glob, grep)
 - Shell execution (npm install, etc.)
+- Skills (xlsx, data-platform, etc.)
+- MCP servers (data-catalog for metadata search)
 
 Flow:
-1. User sends a prompt
-2. Backend invokes the Claude Agent with codebase context
-3. Agent autonomously uses tools to implement the requested changes
-4. Response streams to the frontend showing progress
-5. Generated app hot-reloads in the preview iframe
+
+1. User sends a prompt via the chat UI
+2. Backend forwards the prompt to the app-container via HTTP
+3. App-container invokes `kovaQuery()` from `@kova/agent`
+4. Agent autonomously uses tools to implement the requested changes
+5. Response streams back: container → backend (SSE) → frontend (WebSocket)
+6. Generated app hot-reloads in the preview iframe
 
 ### Adding New Features
 
@@ -157,7 +186,8 @@ When creating new features that need backend access:
 - Drizzle ORM with PostgreSQL
 - Tailwind CSS v4
 - Radix UI / shadcn/ui components
-- AI SDK for LLM providers (Anthropic, OpenAI, Google, Azure, Bedrock, etc.)
+- **@kova/agent** - Standalone AI agent package (wraps Claude Agent SDK)
+- Ink (React for CLI) - Terminal UI for agent CLI
 
 ## Testing
 

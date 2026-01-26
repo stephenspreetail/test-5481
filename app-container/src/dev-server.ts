@@ -5,9 +5,14 @@
 
 import { ChildProcess, spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { devServerLog as log } from "./logger.js";
 import type { DevServerStatus } from "./types.js";
+
+// Get the directory where this module is located (for finding assets)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Dev Server Manager class
@@ -20,6 +25,7 @@ export class DevServerManager {
   private restartCount = 0;
   private maxRestarts = 3;
   private restartDelay = 2000; // ms
+  private servingPlaceholder = false;
 
   constructor(workspaceDir: string, port: number = 3000) {
     this.workspaceDir = workspaceDir;
@@ -34,12 +40,46 @@ export class DevServerManager {
   }
 
   /**
+   * Check if currently serving placeholder page
+   */
+  isServingPlaceholder(): boolean {
+    return this.servingPlaceholder;
+  }
+
+  /**
+   * Check if real content is now available and restart if so
+   * Call this after agent makes changes to the workspace
+   */
+  async checkAndRestartIfContentAvailable(): Promise<boolean> {
+    if (!this.servingPlaceholder) {
+      return false; // Already serving real content
+    }
+
+    // Check if the workspace now has servable content
+    const projectDir = this.findProjectDir();
+    const packageJsonPath = join(projectDir, "package.json");
+    const hasPackageJson = existsSync(packageJsonPath);
+
+    const hasServableContent = hasPackageJson
+      ? this.detectDevCommand(projectDir) !== null
+      : this.isStaticSite(projectDir);
+
+    if (hasServableContent) {
+      log.log("Servable content detected, restarting to serve real app...");
+      await this.restart();
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Start the dev server
    * Supports framework projects with package.json OR static HTML sites
    */
   async start(): Promise<void> {
     // Find the actual project directory (might be in a subdirectory)
-    const projectDir = this.findProjectDir();
+    let projectDir = this.findProjectDir();
     log.log(`Using project directory: ${projectDir}`);
 
     // Check if package.json exists in project dir
@@ -74,15 +114,22 @@ export class DevServerManager {
       if (devCommand) {
         cmd = devCommand.cmd;
         args = devCommand.args;
+        this.servingPlaceholder = false;
       } else if (this.isStaticSite(projectDir)) {
         // Use npx serve for static HTML sites (no package.json needed)
         log.log("Detected static HTML site, using serve");
         cmd = "npx";
         args = ["serve", "-l", String(this.port), "-s", "."];
+        this.servingPlaceholder = false;
       } else {
-        log.log("No servable content found");
-        this.status = "stopped";
-        return;
+        // Serve placeholder page while waiting for content
+        log.log("No servable content found, serving placeholder page");
+        // Assets are at /app/assets, __dirname is /app/dist/src
+        const assetsDir = join(__dirname, "..", "..", "assets");
+        cmd = "npx";
+        args = ["serve", "-l", String(this.port), "-s", assetsDir];
+        projectDir = assetsDir; // Override projectDir for serve command
+        this.servingPlaceholder = true;
       }
 
       log.log(`Running: ${cmd} ${args.join(" ")}`);
@@ -92,6 +139,10 @@ export class DevServerManager {
         env: {
           ...process.env,
           PORT: String(this.port),
+          // Allow Vite to accept connections from Traefik proxy (Vite 5.4.12+/6+/7+ security feature)
+          // This env var adds hosts to the allowedHosts list without modifying vite.config
+          // Format: comma-separated list of hosts or patterns
+          __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: ".localhost,app-*",
         },
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,

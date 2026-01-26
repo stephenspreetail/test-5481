@@ -2,7 +2,9 @@
 
 ## Executive Summary
 
-The Data Platform integration, introduced in commit `e217aaad`, provides a comprehensive system for Kova AI agents to discover, understand, and access Spreetail's enterprise data warehouse via Starburst Galaxy/Trino. This document details the architecture, components, and usage patterns.
+The Data Platform integration provides a comprehensive system for Kova AI agents to discover, understand, and access Spreetail's enterprise data warehouse via Starburst Galaxy/Trino. This document details the architecture, components, and usage patterns.
+
+**Note:** As of the `@kova/agent` refactor, all data platform code has been moved from `app-container/` to `packages/agent/src/data-platform/`. This centralizes the functionality in the reusable agent package.
 
 ---
 
@@ -99,7 +101,7 @@ The Data Platform module enables AI agents to:
 
 ### Data Source Clients
 
-Located in `app-container/data-platform/clients/`
+Located in `packages/agent/src/data-platform/clients/`
 
 #### Base Interface (`base.ts`)
 
@@ -147,7 +149,7 @@ const client = new TrinoClient({
 
 ### Metadata Catalog
 
-Located in `app-container/data-platform/metadata/`
+Located in `packages/agent/src/data-platform/metadata/`
 
 #### Type Definitions (`types.ts`)
 
@@ -232,7 +234,7 @@ Features:
 
 ### MCP Server
 
-Located in `app-container/data-platform/mcp-server/server.ts`
+Located in `packages/agent/src/data-platform/mcp-server/server.ts`
 
 Built using Claude Agent SDK's `createSdkMcpServer`:
 
@@ -274,7 +276,7 @@ All tools return formatted markdown for readability:
 
 ### Skills Integration
 
-Located in `app-container/skills/data-platform/`
+Located in `packages/agent/src/skills/data-platform/`
 
 Three documentation files guide AI agent behavior:
 
@@ -620,8 +622,8 @@ metadata/dbt/
 ### File Structure
 
 ```
-app-container/data-platform/
-├── index.ts                    # Module entry point
+packages/agent/src/data-platform/
+├── index.ts                    # Module entry point & exports
 ├── clients/
 │   ├── index.ts               # Client exports
 │   ├── base.ts                # Abstract interface
@@ -633,17 +635,18 @@ app-container/data-platform/
 │   ├── search.ts              # MiniSearch integration
 │   ├── dbt-converter.ts       # dbt → native conversion
 │   ├── README.md              # Metadata documentation
-│   ├── sources/               # Native YAML metadata
 │   └── dbt/                   # dbt schema files
 └── mcp-server/
     ├── index.ts               # MCP exports
     └── server.ts              # Tool definitions
 
-app-container/skills/data-platform/
+packages/agent/src/skills/data-platform/
 ├── SKILL.md                   # Agent skill entry point
 ├── QUERIES.md                 # Query patterns & templates
 └── SECURITY.md                # Security guidelines
 ```
+
+**Note:** Skills are bundled in `@kova/agent` and copied to project directories at runtime via `ensureSkillsInProject()` in `packages/agent/src/core/query.ts`.
 
 ### Dependencies
 

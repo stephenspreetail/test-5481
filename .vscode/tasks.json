@@ -5,9 +5,9 @@
       "label": "Start Backend",
       "type": "shell",
       "command": "npm",
-      "args": ["run", "dev"],
+      "args": ["run", "dev:backend"],
       "options": {
-        "cwd": "${workspaceFolder}/backend"
+        "cwd": "${workspaceFolder}"
       },
       "group": "build",
       "isBackground": true,

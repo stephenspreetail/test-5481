@@ -27,121 +27,101 @@ An AI app builder. Build full-stack web applications through natural language co
 │         │                    │                    │             │
 │         ▼                    ▼                    ▼             │
 │  ┌────────────┐    ┌─────────────────┐    ┌──────────────┐     │
-│  │ PostgreSQL │    │   AI Providers  │    │ App Container│     │
-│  │  (Drizzle) │    │ (Claude, GPT..) │    │   (Docker)   │     │
+│  │ PostgreSQL │    │  @kova/agent    │    │ App Container│     │
+│  │  (Drizzle) │    │ (Claude SDK)    │    │   (Docker)   │     │
 │  └────────────┘    └─────────────────┘    └──────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
-
-## Prerequisites
-
-- Node.js 20+
-- Docker Desktop (for running generated apps)
-- PostgreSQL (or use Docker Compose)
 
 ## Quick Start
 
 ```bash
 # 1. Install dependencies
 npm install
-cd backend && npm install && cd ..
 
-# 2. Start PostgreSQL
+# 2. Configure environment (single .env at root)
+cp .env.example .env
+# Edit .env with your settings (see below)
+
+# 3. Start PostgreSQL
 docker compose up postgres -d
 
-# 3. Configure environment
-cp backend/.env.example backend/.env
-# Edit backend/.env with your settings
-
 # 4. Run database migrations
-cd backend && npm run db:push && cd ..
+npm run db:push
 
-# 5. Start development servers
-npm run dev:full
+# 5. Start development
+npm run dev:full        # Full platform (backend + frontend)
+# OR
+npm run dev:agent       # CLI only (no build needed)
 ```
 
-Open http://localhost:5174 and configure your AI provider API key in Settings.
+Open http://localhost:5174 for the web UI.
 
-## Project Structure
+---
 
-```
-├── src/                    # Frontend (React SPA)
-│   ├── app/               # App shell, layout, TitleBar
-│   ├── atoms/             # Jotai global state
-│   ├── client/api/        # API client (HTTP/WebSocket)
-│   ├── components/        # React components
-│   │   ├── chat/         # Chat UI (messages, input, markdown parser)
-│   │   ├── preview_panel/ # App preview iframe
-│   │   ├── settings/     # Settings pages
-│   │   └── ui/           # shadcn/ui components
-│   ├── hooks/             # React hooks (TanStack Query)
-│   ├── lib/               # Utilities, schemas
-│   ├── routes/            # TanStack Router pages
-│   └── types/             # TypeScript types
-│
-├── backend/               # Backend (Fastify + Node.js)
-│   └── src/
-│       ├── api/routes/    # REST API endpoints
-│       ├── db/            # Drizzle ORM schema
-│       ├── services/      # Business logic
-│       └── websocket/     # WebSocket handlers
-│
-├── worker/                # Preview iframe injections
-│   ├── kova-shim.js      # Error reporting, navigation tracking
-│   └── proxy_server.js   # Injects shim into preview iframe
-│
-└── app-container/         # Docker environment for generated apps
+## Environment Setup
+
+**Single `.env` file at repository root** - used by all components.
+
+```bash
+cp .env.example .env
 ```
 
-## Key Concepts
+### Required Variables
 
-### Chat Flow
+```bash
+# Claude Agent SDK (REQUIRED for all modes)
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
 
-1. User sends a prompt via the chat UI
-2. Backend invokes Claude Agent SDK with codebase context
-3. Agent autonomously uses tools (file operations, code search, shell commands) to implement changes
-4. Response streams to frontend showing progress
-5. Generated app hot-reloads in the preview iframe
+# Database (REQUIRED for web platform)
+DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
 
-### Client Factory Pattern
+# Security (REQUIRED for web platform)
+# Generate with: openssl rand -hex 32
+JWT_SECRET=your-jwt-secret-at-least-32-characters-long
+ENCRYPTION_KEY=your-64-character-hex-encryption-key-here
 
-The frontend abstracts API communication:
-
-```typescript
-import { getClient } from "@/client/api/client_factory";
-
-const client = getClient();
-const apps = await client.listApps();
+# Spreetail Internal (REQUIRED for web platform)
+PROGET_API_KEY=your-proget-api-key
+DATA_PLATFORM_HOST=spreetail.routing.trino.galaxy.starburst.io
+DATA_PLATFORM_USER=your_service_account_username
+DATA_PLATFORM_PASSWORD=your_service_account_password
 ```
 
-### AI Providers
+**Finding Spreetail credentials:** See [CI/CD Variables](https://gitlab.com/spreetail/engineering/scaled-innovation/app-builder/-/settings/ci_cd).
 
-Bring your own API keys. Supported providers:
+### For CLI Only
 
-- Anthropic (Claude)
-- OpenAI (GPT-4, etc.)
-- Google (Gemini)
-- OpenRouter
-- Azure OpenAI
-- AWS Bedrock
-- Custom endpoints
+If you just want to use the agent CLI, you need:
+
+```bash
+# Required for CLI
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+
+# Data Platform (required for Trino queries and metadata search)
+DATA_PLATFORM_HOST=spreetail.routing.trino.galaxy.starburst.io
+DATA_PLATFORM_USER=your_service_account_username
+DATA_PLATFORM_PASSWORD=your_service_account_password
+```
+
+**Alternative:** Instead of adding data platform credentials to `.env`, you can create `~/.config/kova/data-platform.env` with the `DATA_PLATFORM_*` variables. This keeps credentials separate from the repo.
+
+---
 
 ## Development Commands
 
 ```bash
-# Frontend
-npm run dev:web          # Start frontend dev server (port 5174)
-npm run build:web        # Production build
+# Full Platform
+npm run dev:full         # Backend + Frontend (ports 3002, 5174)
+npm run dev:backend      # Backend only
+npm run dev:web          # Frontend only
 
-# Backend
-npm run dev:backend      # Start backend (port 3002)
-npm run build:backend    # Build backend
-
-# Full Stack
-npm run dev:full         # Run both frontend + backend
+# Agent CLI
+npm run dev:agent        # Run agent CLI (no build needed, uses tsx)
+npm run build:agent      # Build for production/publishing
+npm run start:agent      # Run the built version
 
 # Database
-npm run db:generate      # Generate migrations
 npm run db:push          # Apply migrations
 npm run db:studio        # Open Drizzle Studio
 
@@ -153,34 +133,123 @@ npm run presubmit        # Run before committing
 npm run test             # Run tests
 ```
 
-## Environment Variables
+---
 
-Create `backend/.env` from the example:
+## @kova/agent CLI
 
-```bash
-cp backend/.env.example backend/.env
-```
+The standalone agent package provides a terminal-based interface for AI-powered development.
 
-Required variables:
+### Usage
 
 ```bash
-# Database
-DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
+# Run CLI (no build needed, loads .env from root automatically)
+npm run dev:agent
 
-# Security (generate with: openssl rand -hex 32)
-JWT_SECRET=your_jwt_secret_at_least_32_chars
-ENCRYPTION_KEY=your_64_char_hex_encryption_key
+# Or with arguments
+npm run dev:agent -- --help
+npm run dev:agent -- --project my-app
+npm run dev:agent -- --cwd ~/projects/my-app
+npm run dev:agent -- --prompt "Create a React app"
 
-# ProGet - Internal npm registry for @spreetail packages
-PROGET_API_KEY=your_proget_api_key
-
-# Data Platform - Starburst Galaxy / Trino credentials
-DATA_PLATFORM_HOST=spreetail.routing.trino.galaxy.starburst.io
-DATA_PLATFORM_USER=your_service_account_username
-DATA_PLATFORM_PASSWORD=your_service_account_password
+# Project management
+npm run dev:agent -- projects list
+npm run dev:agent -- projects create my-app
+npm run dev:agent -- projects delete my-app
 ```
 
-**Finding credential values:** ProGet API key and Data Platform service account credentials can be found in the project's [CI/CD Variables](https://gitlab.com/spreetail/engineering/scaled-innovation/app-builder/-/settings/ci_cd) (Settings > CI/CD > Variables).
+### Direct Usage (without npm scripts)
+
+```bash
+# Set env var directly
+export ANTHROPIC_API_KEY=sk-ant-...
+node packages/agent/dist/cli/bin.js
+
+# Or install globally
+cd packages/agent && npm link
+kova-agent --help
+```
+
+### Project Storage
+
+Projects are stored in XDG-compliant locations:
+
+| Platform    | Location                          |
+| ----------- | --------------------------------- |
+| macOS/Linux | `~/.local/share/kova/projects/`   |
+| Windows     | `%LOCALAPPDATA%/kova/projects/`   |
+
+Override with: `KOVA_PROJECTS_DIR=/custom/path`
+
+### Programmatic Usage
+
+```typescript
+import { createAgent } from '@kova/agent';
+
+const agent = createAgent({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+// Stream responses
+for await (const event of agent.streamQuery("Create a hello world app")) {
+  if (event.type === 'text') {
+    console.log(event.text);
+  }
+}
+
+// Or execute and wait
+const result = await agent.executeQuery("Fix the bug in auth.ts");
+console.log(result);
+```
+
+---
+
+## Monorepo Structure
+
+```
+kova/
+├── .env.example           # Environment template (copy to .env)
+├── package.json           # Workspaces root + npm scripts
+├── packages/
+│   └── agent/             # @kova/agent - Standalone AI agent
+│       ├── src/
+│       │   ├── core/      # KovaAgent class (Claude SDK wrapper)
+│       │   ├── config/    # System prompts, defaults
+│       │   ├── tools/     # Tool presets
+│       │   ├── projects/  # XDG project management
+│       │   └── cli/       # Ink-based terminal UI
+│       └── package.json
+├── src/                   # Frontend (React SPA)
+├── backend/               # Backend (Fastify + Node.js)
+└── app-container/         # Docker environment for generated apps
+```
+
+---
+
+## How It Works
+
+### Web Platform Flow
+
+1. User sends a prompt via the chat UI
+2. Backend invokes `@kova/agent` with codebase context
+3. Agent autonomously uses tools (file ops, code search, shell)
+4. Response streams to frontend showing progress
+5. Generated app hot-reloads in the preview iframe
+
+### CLI Flow
+
+1. User runs `npm run dev:agent` with optional flags
+2. CLI creates/opens project in `~/.local/share/kova/projects/`
+3. Agent runs with full tool access
+4. Responses stream to terminal
+
+### App Container Flow
+
+1. Backend spawns Docker container with `@kova/agent`
+2. Container receives env vars from backend
+3. Agent runs inside container with access to `/workspace`
+4. MCP servers provide Spreetail docs and Data Catalog
+
+---
 
 ## Tech Stack
 
@@ -190,19 +259,36 @@ DATA_PLATFORM_PASSWORD=your_service_account_password
 | UI Components | Radix UI, shadcn/ui                                               |
 | Backend       | Fastify, Node.js                                                  |
 | Database      | PostgreSQL, Drizzle ORM                                           |
-| AI            | Vercel AI SDK (multi-provider)                                    |
-| Build         | Vite                                                              |
+| AI Agent      | @kova/agent, Claude Agent SDK                                     |
+| CLI           | Ink (React for CLI)                                               |
+| Build         | Vite, TypeScript                                                  |
 | Testing       | Vitest                                                            |
 
-## Podman Compose
+---
 
-For full stack with Podman:
+## Prerequisites
+
+- Node.js 20+
+- Docker Desktop or Podman (for running generated apps)
+- PostgreSQL (or use Docker Compose)
+
+---
+
+## Podman/Docker Compose
 
 ```bash
+# Build the app-container image
+podman compose build app-container
+
+# Start all services
 podman compose up
+
+# Or specific services
+podman compose up postgres traefik -d
 ```
 
 Services:
 
 - `postgres` - PostgreSQL database (port 5433)
 - `backend` - API server (port 3002)
+- `traefik` - Reverse proxy for app previews (port 8081)

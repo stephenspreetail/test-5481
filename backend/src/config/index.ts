@@ -5,8 +5,8 @@ dotenvConfig();
 
 const configSchema = z.object({
   // Server
-  PORT: z.coerce.number().default(3002),
-  HOST: z.string().default("0.0.0.0"),
+  BACKEND_PORT: z.coerce.number().default(3002),
+  BACKEND_HOST: z.string().default("0.0.0.0"),
   // TODO: when is this set to non-development?
   NODE_ENV: z
     .enum(["development", "production", "test"])
@@ -41,20 +41,18 @@ const configSchema = z.object({
   // Required for @spreetail scoped packages in app containers
   PROGET_API_KEY: z.string().min(1, "PROGET_API_KEY is required"),
 
-  // App Container Settings
-  APP_CONTAINER_IMAGE: z.string().default("kova-app-container:latest"),
-  APP_CONTAINER_IDLE_TIMEOUT_MS: z.coerce.number().default(15 * 60 * 1000),
-
-  // Container Orchestrator Settings
+  // Container Settings
+  CONTAINER_IMAGE: z.string().default("kova-app-container:latest"),
+  CONTAINER_IDLE_TIMEOUT_MS: z.coerce.number().default(15 * 60 * 1000),
   CONTAINER_NETWORK: z.string().default("kova-network"),
+  CONTAINER_AGENT_PORT: z.coerce.number().default(3100),
+  CONTAINER_DEV_PORT: z.coerce.number().default(3000),
+  CONTAINER_SCAN_INTERVAL_MS: z.coerce.number().default(60 * 1000),
+
+  // Preview (Traefik)
   PREVIEW_DOMAIN: z.string().default("localhost"),
   PREVIEW_PORT: z.coerce.number().default(8081),
-  AGENT_PORT: z.coerce.number().default(3100),
-  DEV_SERVER_PORT: z.coerce.number().default(3000),
-
-  // Monitoring Intervals
   TRAEFIK_HEARTBEAT_INTERVAL_MS: z.coerce.number().default(60 * 1000),
-  CONTAINER_SCAN_INTERVAL_MS: z.coerce.number().default(60 * 1000),
 
   // Data Platform (Starburst Galaxy / Trino)
   // These are passed to app containers for data access

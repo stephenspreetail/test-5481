@@ -8,7 +8,6 @@
  */
 
 import Fastify from "fastify";
-import { cpSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { streamQuery } from "./agent.js";
 import { DevServerManager } from "./dev-server.js";
@@ -19,6 +18,7 @@ import type {
   SystemPromptConfig,
 } from "./types.js";
 import { DEFAULT_TOOLS } from "./types.js";
+import { extendKovaAgentPrompt } from "@kova/agent";
 
 // Configuration from environment
 const AGENT_PORT = parseInt(process.env.AGENT_PORT || "3100");
@@ -26,22 +26,10 @@ const DEV_SERVER_PORT = parseInt(process.env.DEV_SERVER_PORT || "3000");
 const WORKSPACE_DIR = process.env.WORKSPACE_DIR || "/workspace";
 const APP_ID = process.env.APP_ID || "unknown";
 
-// Default system prompt config using preset with append
-const DEFAULT_SYSTEM_PROMPT_CONFIG: SystemPromptConfig = {
-  type: "preset",
-  preset: "claude_code",
-  append: `You are Kova, an AI app builder creating modern web applications.
-
-Tech stack preferences:
-- React 18 with TypeScript
-- Vite as the build tool
-- Tailwind CSS for styling
-
-IMPORTANT: The dev server starts AUTOMATICALLY after you create the app files. Do NOT run "npm run dev" or start the server manually.
-
-Use relative file paths from the workspace root.
-Build complete, working applications without asking unnecessary questions.`,
-};
+// Default system prompt: Kova agent prompt + container-specific instructions
+const DEFAULT_SYSTEM_PROMPT_CONFIG = extendKovaAgentPrompt(
+  `IMPORTANT: The dev server starts AUTOMATICALLY after you create the app files. Do NOT run "npm run dev" or start the server manually.`
+);
 
 // Initialize Fastify
 const app = Fastify({
@@ -58,6 +46,7 @@ app.get<{ Reply: HealthResponse }>("/health", async () => {
   return {
     status: "ok",
     devServer: devServerManager.getStatus(),
+    servingPlaceholder: devServerManager.isServingPlaceholder(),
   };
 });
 
@@ -103,6 +92,15 @@ app.post<{ Body: QueryRequest }>("/query", async (request, reply) => {
     }
 
     request.log.info({ chatId }, "Agent query completed");
+
+    // After agent query completes, check if content is now available
+    // This auto-switches from placeholder to real app when agent creates servable content
+    if (devServerManager.isServingPlaceholder()) {
+      const switched = await devServerManager.checkAndRestartIfContentAvailable();
+      if (switched) {
+        request.log.info({ chatId }, "Switched from placeholder to real app content");
+      }
+    }
   } catch (error) {
     request.log.error({ error, chatId }, "Agent query error");
     sendEvent("error", {
@@ -160,67 +158,28 @@ app.post("/dev-server/restart", async (request, reply) => {
 });
 
 /**
- * Recursively list directory contents for debugging
+ * Check if real content is available and switch from placeholder if so
+ * Call this after agent makes changes that might create servable content
  */
-function listDirRecursive(dir: string, prefix = ""): string[] {
-  const results: string[] = [];
+app.post("/dev-server/check-content", async (request, reply) => {
   try {
-    const entries = readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        results.push(`${prefix}${entry.name}/`);
-        results.push(...listDirRecursive(fullPath, `${prefix}  `));
-      } else {
-        results.push(`${prefix}${entry.name}`);
-      }
-    }
+    const wasServingPlaceholder = devServerManager.isServingPlaceholder();
+    const restarted = await devServerManager.checkAndRestartIfContentAvailable();
+    return {
+      success: true,
+      wasServingPlaceholder,
+      restarted,
+      status: devServerManager.getStatus(),
+      servingPlaceholder: devServerManager.isServingPlaceholder(),
+    };
   } catch (error) {
-    results.push(`${prefix}[ERROR reading dir: ${error}]`);
+    reply.status(500).send({
+      error:
+        error instanceof Error ? error.message : "Failed to check content",
+    });
   }
-  return results;
-}
+});
 
-/**
- * Copy bundled skills to project .claude/skills directory
- * This directory uses a named volume mount, so we can write to it
- * without the permission issues of the bind-mounted workspace
- */
-function copySkillsToProjectDir() {
-  const bundledSkillsDir = "/app/skills";
-  const projectSkillsDir = join(WORKSPACE_DIR, ".claude", "skills");
-
-  log.log(`[SKILLS] Bundled skills dir: ${bundledSkillsDir}`);
-  log.log(`[SKILLS] Project skills dir: ${projectSkillsDir}`);
-
-  if (!existsSync(bundledSkillsDir)) {
-    log.log("[SKILLS] No bundled skills directory found, skipping skill setup");
-    return;
-  }
-
-  // Log bundled skills contents
-  log.log("[SKILLS] Bundled skills:");
-  const bundledContents = listDirRecursive(bundledSkillsDir);
-  for (const line of bundledContents) {
-    log.log(`  ${line}`);
-  }
-
-  // Copy to project directory (/workspace/.claude/skills/)
-  // This now uses a named volume, so permissions should work
-  try {
-    cpSync(bundledSkillsDir, projectSkillsDir, { recursive: true });
-    log.log(`[SKILLS] Copied skills to project dir: ${projectSkillsDir}`);
-
-    // Verify copy
-    log.log("[SKILLS] Project skills after copy:");
-    const projectContents = listDirRecursive(projectSkillsDir);
-    for (const line of projectContents) {
-      log.log(`  ${line}`);
-    }
-  } catch (error) {
-    log.error("[SKILLS] Failed to copy skills to project dir:", error);
-  }
-}
 
 /**
  * Main startup function
@@ -232,8 +191,7 @@ async function main() {
     log.log(`Agent port: ${AGENT_PORT}`);
     log.log(`Dev server port: ${DEV_SERVER_PORT}`);
 
-    // Copy bundled skills to project directory (uses named volume mount)
-    copySkillsToProjectDir();
+    // Note: Skills are automatically copied to project by kovaQuery when first query runs
 
     // Start the agent server
     await app.listen({ port: AGENT_PORT, host: "0.0.0.0" });
