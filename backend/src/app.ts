@@ -16,7 +16,6 @@ import { languageModelsRoutes } from "./api/routes/language-models.routes.js";
 import { previewRoutes } from "./api/routes/preview.routes.js";
 import { settingsRoutes } from "./api/routes/settings.routes.js";
 import { templatesRoutes } from "./api/routes/templates.routes.js";
-import { traefikRoutes } from "./api/routes/traefik.routes.js";
 import { appContainerService } from "./services/app-container.service.js";
 import { setupWebSocket } from "./websocket/index.js";
 
@@ -73,7 +72,6 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(workflowAppRoutes, { prefix: "/api/workflows" });
   await app.register(agentRoutes, { prefix: "/api/agent" });
   await app.register(previewRoutes, { prefix: "/api/preview" });
-  await app.register(traefikRoutes, { prefix: "/api/traefik" });
 
   // Initialize app container service (scans existing containers)
   await appContainerService.initialize();

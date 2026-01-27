@@ -1,7 +1,4 @@
-import { config as dotenvConfig } from "dotenv";
 import { z } from "zod";
-
-dotenvConfig();
 
 const configSchema = z.object({
   // Server
@@ -26,6 +23,11 @@ const configSchema = z.object({
     .length(64, "ENCRYPTION_KEY must be 64 hex characters (32 bytes)"),
 
   // Docker
+  // If DOCKER_SOCKET is explicitly set, that path is used.
+  // Otherwise, auto-detection tries these locations in order:
+  //   1. /var/run/docker.sock (default Linux/macOS)
+  //   2. ~/.rd/docker.sock (Rancher Desktop)
+  //   3. ~/.docker/run/docker.sock (Docker Desktop newer versions)
   DOCKER_SOCKET: z.string().default("/var/run/docker.sock"),
   DOCKER_SOCKET_WIN32: z.string().default("//./pipe/docker_engine"),
   APPS_BASE_PATH: z.string().default("/data/kova-apps"),

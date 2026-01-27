@@ -28,7 +28,7 @@ const APP_ID = process.env.APP_ID || "unknown";
 
 // Default system prompt: Kova agent prompt + container-specific instructions
 const DEFAULT_SYSTEM_PROMPT_CONFIG = extendKovaAgentPrompt(
-  `IMPORTANT: The dev server starts AUTOMATICALLY after you create the app files. Do NOT run "npm run dev" or start the server manually.`
+  `IMPORTANT: The dev server starts AUTOMATICALLY after you create the app files. Do NOT run "bun run dev" or start the server manually.`
 );
 
 // Initialize Fastify

@@ -16,9 +16,9 @@ Add these commands to your `package.json`:
 "test:ui": "vitest --ui"
 ```
 
-- `npm run test` - Run tests once
-- `npm run test:watch` - Run tests in watch mode (rerun when files change)
-- `npm run test:ui` - Run tests with UI reporter
+- `bun test` - Run tests once
+- `bun run test:watch` - Run tests in watch mode (rerun when files change)
+- `bun run test:ui` - Run tests with UI reporter
 
 ## Mocking Guidelines
 

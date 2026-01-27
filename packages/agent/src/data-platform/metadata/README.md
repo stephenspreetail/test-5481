@@ -228,7 +228,7 @@ Verify metadata loads correctly:
 
 ```bash
 # Quick test
-npx tsx -e "
+bun -e "
 import { loadMetadataCatalog, getAllTables } from './data-platform/metadata/index.js';
 loadMetadataCatalog();
 console.log('Tables:', getAllTables().map(t => t.fullPath));
@@ -270,5 +270,5 @@ When adding new tables:
 
 3. **Test locally** before committing:
    ```bash
-   npm run build && npm run dev
+   bun run build && bun run dev
    ```

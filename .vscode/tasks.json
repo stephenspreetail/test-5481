@@ -4,7 +4,7 @@
     {
       "label": "Start Backend",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "dev:backend"],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -25,7 +25,7 @@
     {
       "label": "Start Frontend",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "dev:web"],
       "group": "build",
       "isBackground": true,
@@ -43,7 +43,7 @@
     {
       "label": "Start Full Stack (Backend + Frontend)",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "dev:full"],
       "group": "build",
       "isBackground": true,
@@ -61,7 +61,7 @@
     {
       "label": "Build Backend",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "build"],
       "options": {
         "cwd": "${workspaceFolder}/backend"
@@ -72,7 +72,7 @@
     {
       "label": "Build Frontend",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "build:web"],
       "group": "build",
       "problemMatcher": []
@@ -80,7 +80,7 @@
     {
       "label": "Run Tests",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["test"],
       "group": "test",
       "problemMatcher": []
@@ -88,7 +88,7 @@
     {
       "label": "Run Tests (Watch)",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "test:watch"],
       "group": "test",
       "isBackground": true,
@@ -97,7 +97,7 @@
     {
       "label": "Lint",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "lint"],
       "group": "build",
       "problemMatcher": ["$eslint-stylish"]
@@ -105,7 +105,7 @@
     {
       "label": "Type Check",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "ts"],
       "group": "build",
       "problemMatcher": "$tsc"
@@ -113,7 +113,7 @@
     {
       "label": "DB Studio",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "db:studio"],
       "group": "none",
       "isBackground": true,
@@ -122,7 +122,7 @@
     {
       "label": "Backend DB Studio",
       "type": "shell",
-      "command": "npm",
+      "command": "bun",
       "args": ["run", "db:studio"],
       "options": {
         "cwd": "${workspaceFolder}/backend"

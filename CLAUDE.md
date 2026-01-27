@@ -4,63 +4,66 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Kova is an AI application builder similar to Lovable and v0. Unlike its counterparts, Kova enables users to develop applications within their organization's existing infrastructure. The platform is a React web application, backed by a Node.js backend and a PostgreSQL database. While some claim that Kova is an acronym for Kit for Operational Value Acceleration, Kova says this is a myth and that the name originates from a grandparent.
+Kova is an AI application builder similar to Lovable and v0. Unlike its counterparts, Kova enables users to develop applications within their organization's existing infrastructure. The platform is a React web application, backed by a Bun/Fastify backend and a PostgreSQL database. While some claim that Kova is an acronym for Kit for Operational Value Acceleration, Kova says this is a myth and that the name originates from a grandparent.
+
+## Runtime
+
+**This project uses Bun as its JavaScript/TypeScript runtime and package manager.** Use `bun` commands instead of `npm`/`node`. Bun provides built-in TypeScript support and automatic `.env` file loading.
 
 ## Container Runtime
 
-**Local build instructions are for Podman, NOT Docker.** Use `podman` and `podman compose` commands instead of `docker` and `docker compose`. Feel free to use OCI-compatible alternatives.
+Use any OCI-compatible container runtime (Podman, Rancher Desktop, etc.). Commands below use `docker` but work with `podman` too.
 
 ```sh
 # Build the app-container image
-podman compose build app-container
+docker compose build app-container
 
 # Start services
-podman compose up postgres traefik -d
+docker compose up postgres traefik -d
 ```
 
 ## Development Commands
 
 ```sh
-# Install dependencies
-npm install
-cd backend && npm install && cd ..
+# Install dependencies (from root - installs all workspaces)
+bun install
 
 # Start PostgreSQL
-podman compose up postgres -d
+docker compose up postgres -d
 
 # Run database migrations
-cd backend && npm run db:push && cd ..
+bun run db:push
 
 # Development (run both frontend and backend)
-npm run dev:full        # Runs backend on :3002 and frontend on :5174
+bun run dev:full        # Runs backend on :3002 and frontend on :5174
 
 # Or run separately:
-npm run dev:backend     # Backend API server on :3002
-npm run dev:frontend    # Frontend dev server on :5174
+bun run dev:backend     # Backend API server on :3002
+bun run dev:web         # Frontend dev server on :5174
 
 # Build for production
-npm run build:frontend  # Build frontend to dist/web/
-npm run build:backend   # Build backend
+bun run build:web       # Build frontend to dist/web/
+bun run build:backend   # Build backend
 
 # Type checking
-npm run ts              # Check TypeScript types
+bun run ts              # Check TypeScript types
 
 # Linting and formatting
-npm run lint            # Run oxlint with auto-fix
-npm run lint:fix        # Run oxlint with aggressive fixes
-npm run imports:fix     # Organize imports with Biome
-npm run prettier        # Format code
-npm run presubmit       # Run before submitting (prettier:check + lint)
+bun run lint            # Run oxlint with auto-fix
+bun run lint:fix        # Run oxlint with aggressive fixes
+bun run imports:fix     # Organize imports with Biome
+bun run prettier        # Format code
+bun run presubmit       # Run before submitting (prettier:check + lint)
 
 # Testing
-npm test                # Run unit tests once
-npm run test:watch      # Run tests in watch mode
-npm run test:ui         # Run tests with UI
+bun test                # Run unit tests once
+bun run test:watch      # Run tests in watch mode
+bun run test:ui         # Run tests with UI
 
 # Database
-npm run db:push         # Apply schema changes
-npm run db:generate     # Generate migration files
-npm run db:studio       # Open Drizzle Studio GUI
+bun run db:push         # Apply schema changes
+bun run db:generate     # Generate migration files
+bun run db:studio       # Open Drizzle Studio GUI
 ```
 
 ### Environment Setup
@@ -83,12 +86,12 @@ ENCRYPTION_KEY=your_64_char_hex_encryption_key
 ### Agent CLI
 
 ```sh
-npm run dev:agent            # Run agent CLI (no build needed, uses tsx)
-npm run dev:agent -- --help  # Show CLI help
+bun run dev:agent            # Run agent CLI (no build needed)
+bun run dev:agent -- --help  # Show CLI help
 
 # Production build (for publishing/deployment)
-npm run build:agent          # Build the agent package
-npm run start:agent          # Run the built version
+bun run build:agent          # Build the agent package
+bun run start:agent          # Run the built version
 ```
 
 ## Architecture
@@ -96,7 +99,7 @@ npm run start:agent          # Run the built version
 ### Overview
 
 - **Frontend**: React SPA served by Vite (port 5174)
-- **Backend**: Fastify Node.js server with REST API + WebSocket (port 3002)
+- **Backend**: Fastify server running on Bun with REST API + WebSocket (port 3002)
 - **Database**: PostgreSQL with Drizzle ORM (port 5433)
 - **Preview Proxy**: Traefik routes `app-{id}.localhost:8081` to app containers
 

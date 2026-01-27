@@ -3,9 +3,6 @@ services:
   traefik:
     image: traefik:v3.0
     container_name: kova-traefik
-    # environment:
-      # Override HTTP provider endpoint (uses Traefik's env var naming convention)
-      # - TRAEFIK_PROVIDERS_HTTP_ENDPOINT=http://${TRAEFIK_BACKEND_HOST}:${TRAEFIK_BACKEND_PORT}/api/traefik/config
     ports:
       - "8081:8081" # Preview access (app-{id}.localhost:8081) + Dashboard (traefik.localhost:8081)
     volumes:
@@ -13,10 +10,9 @@ services:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       # Dynamic config directory for static routes (dashboard, etc.)
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
-    # extra_hosts:
-    #   # Allow Traefik to reach the backend on host machine (Docker Desktop)
-    #   # Note: Rancher Desktop users may need to comment this out if experiencing connection issues
-    #   - "host.docker.internal:host-gateway"
+      # Docker socket for auto-discovering container routes via labels
+      # Override with DOCKER_SOCKET env var for Podman rootless, etc.
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro
     networks:
       - kova-network
 
@@ -56,7 +52,7 @@ services:
   app-container:
     build:
       context: .
-      dockerfile: app-container/Dockerfile
+      dockerfile: Dockerfile.appcontainer
     image: kova-app-container:latest
     # This container is not meant to run as a service
     # It's just here to build the image

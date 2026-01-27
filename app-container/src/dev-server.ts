@@ -94,8 +94,8 @@ export class DevServerManager {
       const nodeModulesHasContent = nodeModulesExists && readdirSync(nodeModulesPath).length > 0;
 
       if (!nodeModulesHasContent) {
-        log.log("node_modules empty or not found, running npm install...");
-        await this.runNpmInstall(projectDir);
+        log.log("node_modules empty or not found, running bun install...");
+        await this.runBunInstall(projectDir);
       }
     }
 
@@ -116,9 +116,9 @@ export class DevServerManager {
         args = devCommand.args;
         this.servingPlaceholder = false;
       } else if (this.isStaticSite(projectDir)) {
-        // Use npx serve for static HTML sites (no package.json needed)
+        // Use bunx serve for static HTML sites (no package.json needed)
         log.log("Detected static HTML site, using serve");
-        cmd = "npx";
+        cmd = "bunx";
         args = ["serve", "-l", String(this.port), "-s", "."];
         this.servingPlaceholder = false;
       } else {
@@ -126,7 +126,7 @@ export class DevServerManager {
         log.log("No servable content found, serving placeholder page");
         // Assets are at /app/assets, __dirname is /app/dist/src
         const assetsDir = join(__dirname, "..", "..", "assets");
-        cmd = "npx";
+        cmd = "bunx";
         args = ["serve", "-l", String(this.port), "-s", assetsDir];
         projectDir = assetsDir; // Override projectDir for serve command
         this.servingPlaceholder = true;
@@ -199,11 +199,11 @@ export class DevServerManager {
   }
 
   /**
-   * Run npm install in the project directory
+   * Run bun install in the project directory
    */
-  private async runNpmInstall(projectDir: string): Promise<void> {
+  private async runBunInstall(projectDir: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const installProcess = spawn("npm", ["install"], {
+      const installProcess = spawn("bun", ["install"], {
         cwd: projectDir,
         stdio: "inherit",
         shell: true,
@@ -211,10 +211,10 @@ export class DevServerManager {
 
       installProcess.on("close", (code) => {
         if (code === 0) {
-          log.log("npm install completed");
+          log.log("bun install completed");
           resolve();
         } else {
-          reject(new Error(`npm install failed with code ${code}`));
+          reject(new Error(`bun install failed with code ${code}`));
         }
       });
 
@@ -244,7 +244,7 @@ export class DevServerManager {
       if (allDeps.vite) {
         log.log("Detected Vite project");
         return {
-          cmd: "npx",
+          cmd: "bunx",
           args: ["vite", "--port", String(this.port), "--host", "0.0.0.0"],
         };
       }
@@ -252,7 +252,7 @@ export class DevServerManager {
       if (allDeps.next) {
         log.log("Detected Next.js project");
         return {
-          cmd: "npx",
+          cmd: "bunx",
           args: [
             "next",
             "dev",
@@ -267,7 +267,7 @@ export class DevServerManager {
       if (allDeps["@angular/cli"]) {
         log.log("Detected Angular project");
         return {
-          cmd: "npx",
+          cmd: "bunx",
           args: [
             "ng",
             "serve",
@@ -282,16 +282,16 @@ export class DevServerManager {
       if (allDeps["react-scripts"]) {
         log.log("Detected Create React App project");
         return {
-          cmd: "npx",
+          cmd: "bunx",
           args: ["react-scripts", "start"],
         };
       }
 
       // Check if there's a dev script defined
       if (pkg.scripts?.dev) {
-        log.log("Found dev script, using npm run dev");
+        log.log("Found dev script, using bun run dev");
         return {
-          cmd: "npm",
+          cmd: "bun",
           args: [
             "run",
             "dev",

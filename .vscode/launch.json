@@ -6,8 +6,8 @@
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "--inspect", "packages/agent/src/cli/bin.ts"],
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--inspect", "packages/agent/src/cli/bin.ts"],
       "args": ["--cwd", "${workspaceFolder}"],
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
@@ -19,8 +19,8 @@
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/backend",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "--inspect", "src/index.ts"],
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--inspect", "src/index.ts"],
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "development"

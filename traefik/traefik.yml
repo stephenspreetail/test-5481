@@ -8,14 +8,11 @@ entryPoints:
     address: ":8081"
 
 providers:
-  # HTTP provider for dynamic routing (backend serves route config)
-  # This polls the backend for route configuration every 2 seconds
-  http:
-    # To override, set TRAEFIK_PROVIDERS_HTTP_ENDPOINT env var in docker-compose.yml
-    # Local: host.docker.internal (Docker) or <your-ip> (Podman/Windows)
-    # Dev/Prod: backend (container network)
-    endpoint: "http://host.docker.internal/api/traefik/config"
-    pollInterval: 2s
+  # Docker provider - auto-discovers routes via container labels
+  # Works with any OCI runtime (Docker, Podman, Rancher Desktop)
+  docker:
+    exposedByDefault: false
+    network: kova-network
 
   # File provider for static routes (dashboard, etc.)
   file:

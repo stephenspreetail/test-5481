@@ -28,31 +28,39 @@ An AI app builder. Build full-stack web applications through natural language co
 │         ▼                    ▼                    ▼             │
 │  ┌────────────┐    ┌─────────────────┐    ┌──────────────┐     │
 │  │ PostgreSQL │    │  @kova/agent    │    │ App Container│     │
-│  │  (Drizzle) │    │ (Claude SDK)    │    │   (Docker)   │     │
+│  │  (Drizzle) │    │ (Claude SDK)    │    │  (Container) │     │
 │  └────────────┘    └─────────────────┘    └──────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) 1.0+
+- Container runtime (free, open source options):
+  - [Rancher Desktop](https://rancherdesktop.io/)
+  - [Podman](https://podman.io/)
+- PostgreSQL (or use Docker Compose)
 
 ## Quick Start
 
 ```bash
 # 1. Install dependencies
-npm install
+bun install
 
-# 2. Configure environment (single .env at root)
+# 2. Configure environment
 cp .env.example .env
-# Edit .env with your settings (see below)
+# Edit .env with your settings (see Environment Setup below)
 
-# 3. Start PostgreSQL
-docker compose up postgres -d
+# 3. Start PostgreSQL and Traefik (reverse proxy for app previews)
+docker compose up postgres traefik -d
 
 # 4. Run database migrations
-npm run db:push
+bun run db:push
 
 # 5. Start development
-npm run dev:full        # Full platform (backend + frontend)
+bun run dev:full        # Full platform (backend + frontend)
 # OR
-npm run dev:agent       # CLI only (no build needed)
+bun run dev:agent       # CLI only (no build needed)
 ```
 
 Open http://localhost:5174 for the web UI.
@@ -90,6 +98,8 @@ DATA_PLATFORM_PASSWORD=your_service_account_password
 
 **Finding Spreetail credentials:** See [CI/CD Variables](https://gitlab.com/spreetail/engineering/scaled-innovation/app-builder/-/settings/ci_cd).
 
+> **Note:** Bun automatically expands `$VAR` in `.env` files. If your password contains `$`, escape it with `\$`. Example: `pa$$word` becomes `pa\$\$word`. See [Bun docs](https://bun.com/docs/runtime/environment-variables).
+
 ### For CLI Only
 
 If you just want to use the agent CLI, you need:
@@ -112,25 +122,25 @@ DATA_PLATFORM_PASSWORD=your_service_account_password
 
 ```bash
 # Full Platform
-npm run dev:full         # Backend + Frontend (ports 3002, 5174)
-npm run dev:backend      # Backend only
-npm run dev:web          # Frontend only
+bun run dev:full         # Backend + Frontend (ports 3002, 5174) - Ctrl+C stops all
+bun run dev:backend      # Backend only
+bun run dev:web          # Frontend only
 
 # Agent CLI
-npm run dev:agent        # Run agent CLI (no build needed, uses tsx)
-npm run build:agent      # Build for production/publishing
-npm run start:agent      # Run the built version
+bun run dev:agent        # Run agent CLI (no build needed)
+bun run build:agent      # Build for production/publishing
+bun run start:agent      # Run the built version
 
 # Database
-npm run db:push          # Apply migrations
-npm run db:studio        # Open Drizzle Studio
+bun run db:push          # Apply migrations
+bun run db:studio        # Open Drizzle Studio
 
 # Quality
-npm run ts               # Type check
-npm run lint             # Lint with oxlint
-npm run prettier         # Format code
-npm run presubmit        # Run before committing
-npm run test             # Run tests
+bun run ts               # Type check
+bun run lint             # Lint with oxlint
+bun run prettier         # Format code
+bun run presubmit        # Run before committing
+bun run test             # Run tests
 ```
 
 ---
@@ -143,29 +153,29 @@ The standalone agent package provides a terminal-based interface for AI-powered 
 
 ```bash
 # Run CLI (no build needed, loads .env from root automatically)
-npm run dev:agent
+bun run dev:agent
 
 # Or with arguments
-npm run dev:agent -- --help
-npm run dev:agent -- --project my-app
-npm run dev:agent -- --cwd ~/projects/my-app
-npm run dev:agent -- --prompt "Create a React app"
+bun run dev:agent -- --help
+bun run dev:agent -- --project my-app
+bun run dev:agent -- --cwd ~/projects/my-app
+bun run dev:agent -- --prompt "Create a React app"
 
 # Project management
-npm run dev:agent -- projects list
-npm run dev:agent -- projects create my-app
-npm run dev:agent -- projects delete my-app
+bun run dev:agent -- projects list
+bun run dev:agent -- projects create my-app
+bun run dev:agent -- projects delete my-app
 ```
 
-### Direct Usage (without npm scripts)
+### Direct Usage (without bun scripts)
 
 ```bash
 # Set env var directly
 export ANTHROPIC_API_KEY=sk-ant-...
-node packages/agent/dist/cli/bin.js
+bun packages/agent/dist/cli/bin.js
 
 # Or install globally
-cd packages/agent && npm link
+cd packages/agent && bun link
 kova-agent --help
 ```
 
@@ -208,7 +218,7 @@ console.log(result);
 ```
 kova/
 ├── .env.example           # Environment template (copy to .env)
-├── package.json           # Workspaces root + npm scripts
+├── package.json           # Workspaces root + bun scripts
 ├── packages/
 │   └── agent/             # @kova/agent - Standalone AI agent
 │       ├── src/
@@ -219,8 +229,8 @@ kova/
 │       │   └── cli/       # Ink-based terminal UI
 │       └── package.json
 ├── src/                   # Frontend (React SPA)
-├── backend/               # Backend (Fastify + Node.js)
-└── app-container/         # Docker environment for generated apps
+├── backend/               # Backend (Fastify + Bun)
+└── app-container/         # Container environment for generated apps
 ```
 
 ---
@@ -237,14 +247,14 @@ kova/
 
 ### CLI Flow
 
-1. User runs `npm run dev:agent` with optional flags
+1. User runs `bun run dev:agent` with optional flags
 2. CLI creates/opens project in `~/.local/share/kova/projects/`
 3. Agent runs with full tool access
 4. Responses stream to terminal
 
 ### App Container Flow
 
-1. Backend spawns Docker container with `@kova/agent`
+1. Backend spawns container with `@kova/agent`
 2. Container receives env vars from backend
 3. Agent runs inside container with access to `/workspace`
 4. MCP servers provide Spreetail docs and Data Catalog
@@ -255,9 +265,10 @@ kova/
 
 | Layer         | Technology                                                        |
 | ------------- | ----------------------------------------------------------------- |
+| Runtime       | Bun                                                               |
 | Frontend      | React 19, TanStack Router, TanStack Query, Jotai, Tailwind CSS v4 |
 | UI Components | Radix UI, shadcn/ui                                               |
-| Backend       | Fastify, Node.js                                                  |
+| Backend       | Fastify, Bun                                                      |
 | Database      | PostgreSQL, Drizzle ORM                                           |
 | AI Agent      | @kova/agent, Claude Agent SDK                                     |
 | CLI           | Ink (React for CLI)                                               |
@@ -266,25 +277,19 @@ kova/
 
 ---
 
-## Prerequisites
+## Container Compose
 
-- Node.js 20+
-- Docker Desktop or Podman (for running generated apps)
-- PostgreSQL (or use Docker Compose)
-
----
-
-## Podman/Docker Compose
+Works with any OCI-compatible container runtime (Docker, Podman, Rancher Desktop, etc.):
 
 ```bash
 # Build the app-container image
-podman compose build app-container
+docker compose build app-container
 
 # Start all services
-podman compose up
+docker compose up
 
 # Or specific services
-podman compose up postgres traefik -d
+docker compose up postgres traefik -d
 ```
 
 Services:
@@ -292,3 +297,15 @@ Services:
 - `postgres` - PostgreSQL database (port 5433)
 - `backend` - API server (port 3002)
 - `traefik` - Reverse proxy for app previews (port 8081)
+
+### Runtime-Specific Setup
+
+**Rancher Desktop** (macOS/Windows/Linux): Use "dockerd" engine mode (Preferences → Container Engine → dockerd). The default socket path works.
+
+**Podman Desktop** (macOS/Windows): Default socket path works. No additional configuration needed.
+
+**Podman rootless** (Linux only): Enable the socket and configure the path:
+```bash
+systemctl --user enable --now podman.socket
+echo "DOCKER_SOCKET=$XDG_RUNTIME_DIR/podman/podman.sock" >> .env
+```

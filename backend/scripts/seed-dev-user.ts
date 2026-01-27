@@ -1,15 +1,14 @@
 /**
  * Seed script to create a development user and output tokens
  *
- * Usage: npx tsx scripts/seed-dev-user.ts
+ * Usage: bun run scripts/seed-dev-user.ts
  *
  * Then copy the accessToken to browser localStorage:
  *   localStorage.setItem("accessToken", "<token>")
  *   localStorage.setItem("refreshToken", "<token>")
  */
 
-import { config } from "dotenv";
-config();
+// Note: Bun automatically loads .env files - no dotenv needed
 
 const API_URL = process.env.API_URL || "http://localhost:3002";
 const DEV_USER = {

@@ -94,9 +94,19 @@ All app containers join `kova-network` (bridge network). This allows:
 
 Traefik provides preview URLs like `http://app-{id}.localhost:8081`:
 
-1. Traefik polls `GET /api/traefik/config` every 2 seconds
-2. Backend returns routes for all running containers
+1. Containers are created with Traefik labels for automatic route discovery
+2. Traefik's Docker provider watches for container changes via Docker socket
 3. Traefik routes `app-{id}.localhost:8081` → `http://app-{id}:3000`
+
+Labels set on each container:
+```typescript
+Labels: {
+  "traefik.enable": "true",
+  "traefik.http.routers.app-{id}.rule": "Host(`app-{id}.localhost`)",
+  "traefik.http.routers.app-{id}.entrypoints": "preview",
+  "traefik.http.services.app-{id}.loadbalancer.server.port": "3000",
+}
+```
 
 ## App Container Image
 
@@ -138,12 +148,17 @@ Binds: [
 
 ### Traefik Host Access
 
-`host.docker.internal` doesn't work reliably with Podman on Windows.
+Traefik uses the Docker provider to discover routes via container labels. Ensure Traefik can access the Docker socket:
 
-**Solution**: Use the actual Windows host IP in `traefik/traefik.yml`:
 ```yaml
-http:
-  endpoint: "http://192.168.x.x:3002/api/traefik/config"
+# docker-compose.yml
+volumes:
+  - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro
+```
+
+For Podman on Linux, set `DOCKER_SOCKET` in your `.env`:
+```sh
+DOCKER_SOCKET=$XDG_RUNTIME_DIR/podman/podman.sock
 ```
 
 ## Key Files
@@ -155,8 +170,7 @@ http:
 | `app-container/src/server.ts` | Agent server entry point |
 | `app-container/src/agent.ts` | Claude Agent SDK wrapper |
 | `app-container/src/dev-server.ts` | Dev server manager |
-| `traefik/traefik.yml` | Traefik static config |
-| `backend/src/api/routes/traefik.routes.ts` | Dynamic route generation |
+| `traefik/traefik.yml` | Traefik static config (Docker provider) |
 
 ## Troubleshooting
 

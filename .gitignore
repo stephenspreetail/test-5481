@@ -105,4 +105,4 @@ nul
 docs/spreeform/
 
 tmpclaude*
-.playwright-mcp/
+.playwright-mcp/backend/.env
