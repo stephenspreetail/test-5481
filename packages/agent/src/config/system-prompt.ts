@@ -42,12 +42,15 @@ When building any UI:
 - Only fall back to raw shadcn/ui if a specific component isn't available in Spreeform
 
 After installing and setting up Spreeform:
-- Remove all @import directives for Tailwind CSS from style.css (e.g., @import 'tailwindcss/base', @import 'tailwindcss/components', @import 'tailwindcss/utilities')
-- Remove any other custom CSS from style.css
-- Spreeform handles its own CSS configuration
+- Replace ALL contents of styles.css with exactly this:
+  @import '@spreetail/spreeform';
+  @source '../node_modules/@spreetail/spreeform/';
+  @source './**/*.{ts,tsx}';
+- The @source directives are REQUIRED - they tell Tailwind to scan Spreeform for utility classes
+- Do NOT keep any Tailwind @import directives or custom CSS
 
 When starting a new project:
-1. Initialize with TanStack Start: npm create @tanstack/start@latest .
+1. Initialize with TanStack Start: bun create @tanstack/start@latest .
    (The CLI is fully automated - NO interactive prompts, NO need for piping input)
 2. Dependencies are automatically installed during initialization
 3. Clean up demo files: Delete src/routes/demo/ and src/data/

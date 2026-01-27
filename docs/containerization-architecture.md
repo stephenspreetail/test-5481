@@ -378,7 +378,7 @@ ANTHROPIC_API_KEY=sk-ant-...           # API key for Claude Agent SDK
 | Agent URL | `localhost:31100` | `app-123.default.svc:3100` |
 | Port Allocation | Manual in-memory | Service port allocation |
 | Volumes | Named volumes | PersistentVolumeClaims |
-| Routing | Traefik HTTP provider | Ingress/IngressRoute |
+| Routing | Traefik Docker labels | Ingress/IngressRoute |
 | Logging | Container logs stream | Pod logs API |
 | Health Check | Manual HTTP polling | K8s probes |
 

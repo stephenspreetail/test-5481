@@ -5,7 +5,7 @@ Standalone Kova AI Agent package for autonomous software development tasks. A th
 ## Installation
 
 ```bash
-npm install @kova/agent
+bun add @kova/agent
 ```
 
 ## Quick Start
@@ -134,17 +134,17 @@ The CLI provides an interactive terminal UI for using the agent outside the web 
 
 ```bash
 # From repository root (loads .env automatically)
-npm run agent                          # Start chat (auto-creates new project)
-npm run agent -- --project my-app      # Open or create named project
-npm run agent -- --cwd ~/projects/foo  # Work in specific directory
-npm run agent -- --prompt "Build X"    # Send initial message
+bun run agent                          # Start chat (auto-creates new project)
+bun run agent -- --project my-app      # Open or create named project
+bun run agent -- --cwd ~/projects/foo  # Work in specific directory
+bun run agent -- --prompt "Build X"    # Send initial message
 
 # Project management
-npm run agent -- projects list         # List all projects
-npm run agent -- projects create foo   # Create new project
-npm run agent -- projects delete foo   # Delete a project
+bun run agent -- projects list         # List all projects
+bun run agent -- projects create foo   # Create new project
+bun run agent -- projects delete foo   # Delete a project
 
-# Direct usage (after npm link or global install)
+# Direct usage (after bun link or global install)
 kova-agent --help
 ```
 
@@ -154,13 +154,13 @@ Projects are stored in XDG-compliant locations (see below).
 
 ```bash
 # Build
-npm run build
+bun run build
 
 # Watch mode
-npm run dev
+bun run dev
 
 # Test
-npm test
+bun test
 ```
 
 ## License

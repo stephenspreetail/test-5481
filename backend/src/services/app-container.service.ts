@@ -1,7 +1,7 @@
 /**
  * App Container Service
  * Manages containers for running Claude Agent SDK + Dev Server per app
- * Traefik HTTP provider polls /api/traefik/config for routing
+ * Traefik discovers routes via Docker labels on containers
  */
 
 import Docker from "dockerode";
@@ -17,8 +17,36 @@ function createDockerClient(): Docker {
     // Windows uses named pipe
     return new Docker({ socketPath: config.DOCKER_SOCKET_WIN32 });
   }
-  // Unix-based systems use socket path from config
-  return new Docker({ socketPath: config.DOCKER_SOCKET });
+
+  // If DOCKER_SOCKET is explicitly set in env, use it
+  if (process.env.DOCKER_SOCKET) {
+    console.log(
+      `[AppContainerService] Using Docker socket from env: ${config.DOCKER_SOCKET}`,
+    );
+    return new Docker({ socketPath: config.DOCKER_SOCKET });
+  }
+
+  // Auto-detect from common locations
+  const socketPaths = [
+    "/var/run/docker.sock", // Default Linux/macOS
+    `${process.env.HOME}/.rd/docker.sock`, // Rancher Desktop
+    `${process.env.HOME}/.docker/run/docker.sock`, // Docker Desktop (newer)
+  ];
+
+  for (const socketPath of socketPaths) {
+    if (existsSync(socketPath)) {
+      console.log(
+        `[AppContainerService] Auto-detected Docker socket: ${socketPath}`,
+      );
+      return new Docker({ socketPath });
+    }
+  }
+
+  // No socket found - warn and use default (will fail with clear error)
+  console.warn(
+    `[AppContainerService] No Docker socket found at: ${socketPaths.join(", ")}`,
+  );
+  return new Docker({ socketPath: "/var/run/docker.sock" });
 }
 
 /**
@@ -31,6 +59,8 @@ function toDockerPath(hostPath: string): string {
 
 /**
  * Resolve the apps base path to an absolute path
+ * Relative paths are resolved from the project root (parent of backend/)
+ * so that ./backend/apps in .env works regardless of where the server runs from
  */
 function resolveAppsBasePath(): string {
   const basePath = config.APPS_BASE_PATH;
@@ -38,8 +68,9 @@ function resolveAppsBasePath(): string {
   if (resolve(basePath) === basePath) {
     return basePath;
   }
-  // Resolve relative to current working directory
-  return resolve(process.cwd(), basePath);
+  // Resolve relative to project root (this file is at backend/src/services/)
+  const projectRoot = resolve(import.meta.dir, "../../..");
+  return resolve(projectRoot, basePath);
 }
 
 const docker = createDockerClient();
@@ -552,6 +583,11 @@ class AppContainerService {
           "kova.app-container": "true",
           "kova.app.id": appId.toString(),
           "kova.user.id": userId.toString(),
+          // Traefik labels for automatic routing via Docker provider
+          "traefik.enable": "true",
+          [`traefik.http.routers.${containerName}.rule`]: `Host(\`${containerName}.${config.PREVIEW_DOMAIN}\`)`,
+          [`traefik.http.routers.${containerName}.entrypoints`]: "preview",
+          [`traefik.http.services.${containerName}.loadbalancer.server.port`]: config.CONTAINER_DEV_PORT.toString(),
         },
         Tty: true,
       });
@@ -565,8 +601,8 @@ class AppContainerService {
       // Start container
       await container.start();
 
-      // Note: Traefik HTTP provider polls /api/traefik/config for routes
-      // Routes are generated dynamically from appContainers map
+      // Note: Traefik discovers routes via Docker labels on the container
+      // See Labels in createContainer() above
 
       // Update container state
       const containerInfoAfterStart = appContainers.get(appId);
@@ -842,7 +878,7 @@ class AppContainerService {
   }
 
   /**
-   * Get all running containers (for Traefik HTTP provider)
+   * Get all running containers
    */
   getRunningContainers(): Map<number, AppContainerInfo> {
     const running = new Map<number, AppContainerInfo>();

@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 /**
  * Reset Database Script
  *
@@ -6,12 +6,10 @@
  * WARNING: This will delete ALL data in the database.
  */
 
-import { config } from 'dotenv';
+// Note: Bun automatically loads .env files - no dotenv needed
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import { Client } from 'pg';
-
-config();
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://kova:kova_dev_password@localhost:5433/kova';
 

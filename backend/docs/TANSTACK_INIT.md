@@ -17,7 +17,7 @@ We chose CLI + Cleanup over alternatives (gitpick examples, manual setup) becaus
 
 ```bash
 # 1. Initialize with TanStack Start CLI (fully automated, no prompts)
-npm create @tanstack/start@latest .
+bun create @tanstack/start@latest .
 
 # 2. Clean up demo files
 rm -rf src/routes/demo/ src/data/
@@ -54,7 +54,7 @@ createServerFn({ method: 'POST' })
 
 ### ❌ Piping Input to CLI
 ```bash
-echo -e "y\\ny\\n" | npm create @tanstack/start@latest .  // WRONG - not needed
+echo -e "y\\ny\\n" | bun create @tanstack/start@latest .  // WRONG - not needed
 ```
 **Correct**: Direct execution (CLI is fully automated now)
 
@@ -62,9 +62,9 @@ echo -e "y\\ny\\n" | npm create @tanstack/start@latest .  // WRONG - not needed
 
 **Initialization:**
 ```bash
-npm create @tanstack/start@latest .
+bun create @tanstack/start@latest .
 rm -rf src/routes/demo/ src/data/
-npm run dev
+bun run dev
 ```
 
 **Key Packages:**

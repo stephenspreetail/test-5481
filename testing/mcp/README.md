@@ -8,15 +8,15 @@ This directory contains a minimal stdio MCP server for local testing.
 
 ### Requirements
 
-- **Node 20+** (same as the repo engines)
+- **Bun 1.0+** (same as the repo engines)
 - Uses the repo dependency `@modelcontextprotocol/sdk` and `zod`
 
 ### Launch
 
-- **Via Node**:
+- **Via Bun**:
 
   ```bash
-  node testing/fake-stdio-mcp-server.mjs
+  bun testing/fake-stdio-mcp-server.mjs
   ```
 
 - **Via script** (adds a stable entrypoint path):

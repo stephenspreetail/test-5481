@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 /**
  * Clear Apps Script
  *
@@ -6,12 +6,10 @@
  * This removes all app directories that are mounted to docker containers.
  */
 
-import { config } from 'dotenv';
+// Note: Bun automatically loads .env files - no dotenv needed
 import { execSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-
-config();
 
 // Get APPS_BASE_PATH from env or use default
 const APPS_BASE_PATH = process.env.APPS_BASE_PATH || '/data/kova-apps';
