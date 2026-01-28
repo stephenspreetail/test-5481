@@ -16,6 +16,7 @@ const copies: CopyTask[] = [
     dest: "dist/data-platform/metadata/dbt",
   },
   { src: "src/skills", dest: "dist/skills" },
+  { src: "src/templates", dest: "dist/templates" },
 ];
 
 for (const { src, dest } of copies) {

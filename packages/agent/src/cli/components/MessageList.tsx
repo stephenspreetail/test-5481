@@ -17,7 +17,7 @@ function ToolCallDisplay({ toolCall }: { toolCall: ToolCall }): React.ReactEleme
         {">"} {toolCall.name}
       </Text>
       {toolCall.result !== undefined && (
-        <Text color="gray" dimColor>
+        <Text color="cyan">
           {typeof toolCall.result === "string"
             ? toolCall.result.slice(0, 100) + (toolCall.result.length > 100 ? "..." : "")
             : "[result]"}
@@ -33,10 +33,10 @@ function MessageItem({ message }: { message: Message }): React.ReactElement {
   return (
     <Box flexDirection="column" marginBottom={1}>
       <Box>
-        <Text color={isUser ? "green" : "blue"} bold>
+        <Text color={isUser ? "green" : "cyan"} bold>
           {isUser ? "You" : "Kova"}
         </Text>
-        <Text color="gray" dimColor>
+        <Text color="magenta">
           {" "}
           {message.timestamp.toLocaleTimeString()}
         </Text>
@@ -62,7 +62,7 @@ export function MessageList({ messages }: MessageListProps): React.ReactElement 
   if (messages.length === 0) {
     return (
       <Box marginBottom={1}>
-        <Text color="gray" dimColor>
+        <Text color="cyan">
           No messages yet. Start a conversation!
         </Text>
       </Box>

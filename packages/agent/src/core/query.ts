@@ -14,7 +14,7 @@
 
 import { query, type Options as SDKOptions } from "@anthropic-ai/claude-agent-sdk";
 import type { SDKMessage as SDKMessageType } from "@anthropic-ai/claude-agent-sdk";
-import { existsSync, mkdirSync, cpSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, cpSync, readdirSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,19 +45,33 @@ let dataCatalogInitialized = false;
 // =============================================================================
 
 /**
+ * Get the directory where bundled assets are located (skills, templates)
+ */
+function getBundledAssetDir(assetType: "skills" | "templates"): string {
+  const currentFile = fileURLToPath(import.meta.url);
+  const currentDir = dirname(currentFile);
+  // Assets are at ../<assetType> relative to core/query.js (in dist)
+  const distDir = join(currentDir, "..", assetType);
+  if (existsSync(distDir)) {
+    return distDir;
+  }
+  // Fallback for development
+  const srcDir = join(currentDir, "..", "..", assetType);
+  return srcDir;
+}
+
+/**
  * Get the directory where bundled skills are located
  */
 function getBundledSkillsDir(): string {
-  const currentFile = fileURLToPath(import.meta.url);
-  const currentDir = dirname(currentFile);
-  // Skills are at ../skills relative to core/query.js (in dist)
-  const distSkillsDir = join(currentDir, "..", "skills");
-  if (existsSync(distSkillsDir)) {
-    return distSkillsDir;
-  }
-  // Fallback for development
-  const srcSkillsDir = join(currentDir, "..", "..", "skills");
-  return srcSkillsDir;
+  return getBundledAssetDir("skills");
+}
+
+/**
+ * Get the directory where bundled templates are located
+ */
+function getBundledTemplatesDir(): string {
+  return getBundledAssetDir("templates");
 }
 
 /**
@@ -74,6 +88,7 @@ function ensureSkillsInProject(cwd: string): void {
 
   // Check if bundled skills exist
   if (!existsSync(bundledSkillsDir)) {
+    console.warn(`[kova] Skills not found at ${bundledSkillsDir}`);
     skillsEnsuredForCwd.add(cwd);
     return;
   }
@@ -84,12 +99,14 @@ function ensureSkillsInProject(cwd: string): void {
     bundledSkills = readdirSync(bundledSkillsDir, { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
-  } catch {
+  } catch (err) {
+    console.warn(`[kova] Failed to read skills directory: ${err}`);
     skillsEnsuredForCwd.add(cwd);
     return;
   }
 
   if (bundledSkills.length === 0) {
+    console.warn(`[kova] No skills found in ${bundledSkillsDir}`);
     skillsEnsuredForCwd.add(cwd);
     return;
   }
@@ -98,13 +115,15 @@ function ensureSkillsInProject(cwd: string): void {
   if (!existsSync(projectSkillsDir)) {
     try {
       mkdirSync(projectSkillsDir, { recursive: true });
-    } catch {
+    } catch (err) {
+      console.warn(`[kova] Failed to create skills directory: ${err}`);
       skillsEnsuredForCwd.add(cwd);
       return;
     }
   }
 
   // Copy each bundled skill if not already present
+  const copiedSkills: string[] = [];
   for (const skillName of bundledSkills) {
     const srcSkillDir = join(bundledSkillsDir, skillName);
     const destSkillDir = join(projectSkillsDir, skillName);
@@ -113,13 +132,96 @@ function ensureSkillsInProject(cwd: string): void {
     if (!existsSync(destSkillDir)) {
       try {
         cpSync(srcSkillDir, destSkillDir, { recursive: true });
-      } catch {
+        copiedSkills.push(skillName);
+      } catch (err) {
+        console.warn(`[kova] Failed to copy skill ${skillName}: ${err}`);
         // Continue with other skills if one fails
       }
     }
   }
 
+  if (copiedSkills.length > 0) {
+    console.log(`[kova] Copied skills: ${copiedSkills.join(", ")}`);
+  }
+
   skillsEnsuredForCwd.add(cwd);
+}
+
+/** Track which cwds have had templates copied to avoid redundant work */
+const templatesEnsuredForCwd = new Set<string>();
+
+/**
+ * Copy bundled templates to project's .claude/templates/ directory
+ * This allows the agent to find templates with a consistent path
+ */
+function ensureTemplatesInProject(cwd: string): void {
+  if (templatesEnsuredForCwd.has(cwd)) {
+    return;
+  }
+
+  const bundledTemplatesDir = getBundledTemplatesDir();
+  const projectTemplatesDir = join(cwd, ".claude", "templates");
+
+  // Check if bundled templates exist
+  if (!existsSync(bundledTemplatesDir)) {
+    console.warn(`[kova] Templates not found at ${bundledTemplatesDir}`);
+    templatesEnsuredForCwd.add(cwd);
+    return;
+  }
+
+  // Get list of bundled template directories
+  let bundledTemplates: string[];
+  try {
+    bundledTemplates = readdirSync(bundledTemplatesDir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+  } catch (err) {
+    console.warn(`[kova] Failed to read templates directory: ${err}`);
+    templatesEnsuredForCwd.add(cwd);
+    return;
+  }
+
+  if (bundledTemplates.length === 0) {
+    console.warn(`[kova] No templates found in ${bundledTemplatesDir}`);
+    templatesEnsuredForCwd.add(cwd);
+    return;
+  }
+
+  // Ensure project .claude/templates directory exists
+  if (!existsSync(projectTemplatesDir)) {
+    try {
+      mkdirSync(projectTemplatesDir, { recursive: true });
+    } catch (err) {
+      console.warn(`[kova] Failed to create templates directory: ${err}`);
+      templatesEnsuredForCwd.add(cwd);
+      return;
+    }
+  }
+
+  // Copy each bundled template (always overwrite to ensure latest version)
+  const copiedTemplates: string[] = [];
+  for (const templateName of bundledTemplates) {
+    const srcTemplateDir = join(bundledTemplatesDir, templateName);
+    const destTemplateDir = join(projectTemplatesDir, templateName);
+
+    try {
+      // Remove existing template to ensure clean copy
+      if (existsSync(destTemplateDir)) {
+        rmSync(destTemplateDir, { recursive: true, force: true });
+      }
+      cpSync(srcTemplateDir, destTemplateDir, { recursive: true });
+      copiedTemplates.push(templateName);
+    } catch (err) {
+      console.warn(`[kova] Failed to copy template ${templateName}: ${err}`);
+      // Continue with other templates if one fails
+    }
+  }
+
+  if (copiedTemplates.length > 0) {
+    console.log(`[kova] Copied templates: ${copiedTemplates.join(", ")}`);
+  }
+
+  templatesEnsuredForCwd.add(cwd);
 }
 
 /**
@@ -230,9 +332,10 @@ export async function* kovaQuery(
   prompt: string,
   options: KovaQueryOptions = {}
 ): AsyncGenerator<SDKMessage> {
-  // Setup: skills + data catalog
+  // Setup: skills + templates + data catalog
   if (options.cwd) {
     ensureSkillsInProject(options.cwd);
+    ensureTemplatesInProject(options.cwd);
   }
   ensureDataCatalogInitialized();
 
