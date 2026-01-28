@@ -14,6 +14,18 @@
 
 import * as path from "node:path";
 import * as os from "node:os";
+import { fileURLToPath } from "node:url";
+
+/**
+ * Get the directory where this module is located (for accessing bundled assets)
+ */
+function getPackageDir(): string {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  // In dist: dist/projects/paths.js -> go up 2 levels to dist/
+  // In src: src/projects/paths.ts -> go up 2 levels to src/
+  return path.resolve(__dirname, "..");
+}
 
 /**
  * Get the home directory
@@ -163,4 +175,25 @@ export function sanitizeProjectName(name: string): string {
     sanitized = "project";
   }
   return sanitized;
+}
+
+/**
+ * Get the templates directory (bundled with the package)
+ */
+export function getTemplatesDir(): string {
+  return path.join(getPackageDir(), "templates");
+}
+
+/**
+ * Get a specific template path
+ */
+export function getTemplatePath(templateName: string): string {
+  return path.join(getTemplatesDir(), templateName);
+}
+
+/**
+ * Get the TanStack Start template path
+ */
+export function getTanStackStartTemplatePath(): string {
+  return getTemplatePath("tanstack-start");
 }

@@ -50,7 +50,7 @@ export function Input({
         {">"}{" "}
       </Text>
       {isDisabled ? (
-        <Text color="gray" dimColor>
+        <Text color="yellow">
           {placeholder}
         </Text>
       ) : (

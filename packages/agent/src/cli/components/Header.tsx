@@ -18,19 +18,19 @@ export function Header({ projectName, sessionId }: HeaderProps): React.ReactElem
           Kova Agent
         </Text>
         {projectName && (
-          <Text color="gray"> - {projectName}</Text>
+          <Text color="magenta"> - {projectName}</Text>
         )}
       </Box>
       {sessionId && (
-        <Text color="gray" dimColor>
+        <Text color="cyan">
           Session: {sessionId.slice(0, 8)}...
         </Text>
       )}
-      <Text color="gray" dimColor>
+      <Text color="blue">
         Press Enter to send. Esc Esc to clear. Ctrl+C or /exit to quit.
       </Text>
       <Box marginTop={1}>
-        <Text color="gray">{"─".repeat(60)}</Text>
+        <Text color="blue">{"─".repeat(60)}</Text>
       </Box>
     </Box>
   );

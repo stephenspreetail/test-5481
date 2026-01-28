@@ -77,6 +77,10 @@ export {
   getSettingsPath,
   validateProjectName,
   sanitizeProjectName,
+  // Template paths
+  getTemplatesDir,
+  getTemplatePath,
+  getTanStackStartTemplatePath,
   type Project,
   type ProjectMetadata,
   type ProjectHistory,
