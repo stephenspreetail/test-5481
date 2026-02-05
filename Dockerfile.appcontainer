@@ -13,8 +13,7 @@ FROM oven/bun:1-debian AS agent-builder
 WORKDIR /build
 
 # Copy agent package files
-COPY packages/agent/package*.json ./
-COPY packages/agent/bun.lock* ./
+COPY packages/agent/package.json ./
 
 # Install dependencies
 RUN bun install
@@ -62,8 +61,7 @@ WORKDIR /app
 COPY --from=agent-builder /build/*.tgz /tmp/kova-agent.tgz
 
 # Copy package files
-COPY app-container/package*.json ./
-COPY app-container/bun.lock* ./
+COPY app-container/package.json ./
 
 # Replace workspace:* with the local tarball path, then install
 RUN sed -i 's|"@kova/agent": "workspace:\*"|"@kova/agent": "file:/tmp/kova-agent.tgz"|' package.json && \

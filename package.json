@@ -20,6 +20,7 @@
     "dev:web": "bun run vite --config vite.web.config.mts",
     "build:web": "bun run vite build --config vite.web.config.mts",
     "preview:web": "bun run vite preview --config vite.web.config.mts",
+    "dev:backend": "bun run --cwd backend dev",
     "build:backend": "bun run --cwd backend build",
     "start:backend": "bun run --cwd backend start",
     "dev:full": "concurrently -k \"bun run --cwd backend dev\" \"bun run dev:web\"",
@@ -41,7 +42,8 @@
     "dev:agent": "bun run packages/agent/src/cli/bin.ts",
     "build:agent": "bun run --cwd packages/agent build",
     "start:agent": "bun packages/agent/dist/cli/bin.js",
-    "container:build": "docker compose --env-file /dev/null build app-container"
+    "container:build": "docker compose --env-file /dev/null build app-container",
+    "start:podman": "powershell -ExecutionPolicy Bypass -File ./scripts/start-podman.ps1"
   },
   "keywords": [],
   "devDependencies": {

@@ -11,7 +11,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import { Client } from 'pg';
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://kova:kova_dev_password@localhost:5433/kova';
+const DATABASE_URL = process.env.DATABASE_URL;
 
 async function resetDatabase() {
   console.log('🔥 Starting database reset...');
