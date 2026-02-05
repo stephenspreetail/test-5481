@@ -12,9 +12,37 @@ import { broadcastAppOutput } from "../websocket/handlers/app-output.handler.js"
 
 // Initialize container client based on platform
 function createDockerClient(): Docker {
+  // If DOCKER_HOST is set, parse and use it (supports tcp:// and unix://)
+  // This is the standard way to configure Docker/Podman clients
+  if (process.env.DOCKER_HOST) {
+    const dockerHost = process.env.DOCKER_HOST;
+    console.log(`[AppContainerService] Using DOCKER_HOST: ${dockerHost}`);
+
+    if (dockerHost.startsWith("tcp://")) {
+      const url = new URL(dockerHost);
+      return new Docker({
+        host: url.hostname,
+        port: url.port || "2375",
+        protocol: "http",
+      });
+    }
+
+    if (dockerHost.startsWith("unix://")) {
+      return new Docker({ socketPath: dockerHost.replace("unix://", "") });
+    }
+
+    if (dockerHost.startsWith("npipe://")) {
+      return new Docker({ socketPath: dockerHost.replace("npipe://", "") });
+    }
+
+    // Assume it's a socket path
+    return new Docker({ socketPath: dockerHost });
+  }
+
   // Check if we're on Windows
   if (process.platform === "win32") {
     // Windows uses named pipe
+    console.log(`[AppContainerService] Windows detected, using pipe: ${config.DOCKER_SOCKET_WIN32}`);
     return new Docker({ socketPath: config.DOCKER_SOCKET_WIN32 });
   }
 
