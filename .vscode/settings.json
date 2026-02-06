@@ -12,5 +12,6 @@
     "**/dist": true
   },
 
-  "typescript.preferences.importModuleSpecifier": "non-relative"
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "claudeCode.disableLoginPrompt": false
 }

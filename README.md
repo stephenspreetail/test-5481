@@ -79,7 +79,15 @@ cp .env.example .env
 
 ```bash
 # Claude Agent SDK (REQUIRED for all modes)
+# Option 1: Direct Anthropic API
 ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+
+# Option 2: AWS Bedrock (alternative to ANTHROPIC_API_KEY)
+# See docs/aws-bedrock-setup.md for full setup guide
+# Linux/macOS: source ./scripts/refresh-aws-sso.sh
+# Windows:     .\scripts\refresh-aws-sso.ps1
+# Script automatically sets: CLAUDE_CODE_USE_BEDROCK, AWS_AUTH_MODE, AWS_REGION,
+#                            AGENT_MODEL, and AWS credentials
 
 # Database (REQUIRED for web platform)
 DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova

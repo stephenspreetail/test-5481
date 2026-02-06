@@ -39,6 +39,19 @@ const configSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AGENT_MODEL: z.string().default("claude-opus-4-5-20251101"),
 
+  // AWS Bedrock (alternative to Anthropic API)
+  // Set CLAUDE_CODE_USE_BEDROCK=1 and configure AWS credentials
+  CLAUDE_CODE_USE_BEDROCK: z.string().optional(),
+  AWS_REGION: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_SESSION_TOKEN: z.string().optional(),
+
+  // AWS authentication mode
+  // "explicit" - Pass credentials to containers (local dev with SSO)
+  // "pod-identity" - Let containers discover credentials (EKS with Pod Identity)
+  AWS_AUTH_MODE: z.enum(["explicit", "pod-identity"]).default("explicit"),
+
   // ProGet (Internal npm registry)
   // Required for @spreetail scoped packages in app containers
   PROGET_API_KEY: z.string().min(1, "PROGET_API_KEY is required"),
