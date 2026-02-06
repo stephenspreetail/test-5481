@@ -231,11 +231,28 @@ async function startInteractiveMode(args: CLIArgs): Promise<void> {
     console.log("");
   }
 
-  // Check for API key
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("Error: ANTHROPIC_API_KEY environment variable not set");
-    console.log("Set it with: export ANTHROPIC_API_KEY=your-api-key");
+  // Check for API key or Bedrock credentials
+  const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
+  const hasBedrockCreds =
+    process.env.CLAUDE_CODE_USE_BEDROCK === "1" &&
+    !!process.env.AWS_REGION &&
+    (!!process.env.AWS_ACCESS_KEY_ID || process.env.AWS_AUTH_MODE === "pod-identity");
+
+  if (!hasAnthropicKey && !hasBedrockCreds) {
+    console.error("Error: No authentication credentials found");
+    console.log("");
+    console.log("Option 1: Anthropic API");
+    console.log("  export ANTHROPIC_API_KEY=your-api-key");
+    console.log("");
+    console.log("Option 2: AWS Bedrock");
+    console.log("  Linux/macOS: source ./scripts/refresh-aws-sso.sh");
+    console.log("  Windows:     .\\scripts\\refresh-aws-sso.ps1");
+    console.log("");
     process.exit(1);
+  }
+
+  if (hasBedrockCreds) {
+    console.log("Using AWS Bedrock for authentication");
   }
 
   // Start the Ink app - config.cwd sets working directory, systemPrompt defaults to KOVA_AGENT_APPEND

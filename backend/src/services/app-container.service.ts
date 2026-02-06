@@ -533,7 +533,21 @@ class AppContainerService {
       `DATA_PLATFORM_HOST=${config.DATA_PLATFORM_HOST}`,
       `DATA_PLATFORM_USER=${config.DATA_PLATFORM_USER}`,
       `DATA_PLATFORM_PASSWORD=${config.DATA_PLATFORM_PASSWORD}`,
+      // AWS Bedrock flag (always pass this)
+      `CLAUDE_CODE_USE_BEDROCK=${config.CLAUDE_CODE_USE_BEDROCK || ""}`,
+      `AWS_REGION=${config.AWS_REGION || ""}`,
     ];
+
+    // Conditionally add AWS credentials based on auth mode
+    // In "explicit" mode (local dev): Pass credentials explicitly
+    // In "pod-identity" mode (EKS): Let AWS SDK discover credentials from Pod Identity
+    if (config.AWS_AUTH_MODE === "explicit") {
+      envArray.push(
+        `AWS_ACCESS_KEY_ID=${config.AWS_ACCESS_KEY_ID || ""}`,
+        `AWS_SECRET_ACCESS_KEY=${config.AWS_SECRET_ACCESS_KEY || ""}`,
+        `AWS_SESSION_TOKEN=${config.AWS_SESSION_TOKEN || ""}`
+      );
+    }
 
     // Update state to starting
     appContainers.set(appId, {

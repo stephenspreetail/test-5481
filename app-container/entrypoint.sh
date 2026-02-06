@@ -30,6 +30,11 @@
 
 set -e
 
+# Fix ownership of /workspace bind mount
+# The host directory may be owned by the host user (e.g., UID 1000),
+# but we need it owned by kova (UID 1001) inside the container
+chown kova:kova /workspace 2>/dev/null || true
+
 # Ensure the named volume mount point exists and has correct ownership
 # node_modules is mounted as a named volume: app-{id}-modules:/workspace/node_modules
 # This fixes npm bin-links/symlink issues on Windows bind mounts
