@@ -49,6 +49,7 @@ export class ApiClient {
     this.baseUrl = config.baseUrl;
     this.getAccessTokenFn = config.getAccessToken;
     this.onUnauthorized = config.onUnauthorized;
+    this.refreshToken = localStorage.getItem("refreshToken");
   }
 
   private get accessToken(): string | null {
@@ -345,6 +346,15 @@ export class ApiClient {
 
   async getAppStatus(appId: number): Promise<{ status: string; url?: string }> {
     return this.request(`/api/apps/${appId}/status`);
+  }
+
+  /**
+   * Check if the preview URL is ready (backend proxies the request to avoid CORS issues)
+   */
+  async checkPreviewHealth(
+    appId: number,
+  ): Promise<{ ready: boolean; status: number; reason?: string }> {
+    return this.request(`/api/preview/${appId}/health`);
   }
 
   subscribeToAppOutput(appId: number, callbacks: AppOutputCallbacks): void {

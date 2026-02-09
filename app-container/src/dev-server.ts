@@ -26,6 +26,8 @@ export class DevServerManager {
   private maxRestarts = 3;
   private restartDelay = 2000; // ms
   private servingPlaceholder = false;
+  private lastRestartTime = 0;
+  private restartDebounceMs = 500; // Debounce rapid restart requests
 
   constructor(workspaceDir: string, port: number = 3000) {
     this.workspaceDir = workspaceDir;
@@ -164,6 +166,12 @@ export class DevServerManager {
         ) {
           this.status = "running";
           log.log("Server is running");
+
+          // Only emit the "real content ready" signal if NOT serving placeholder
+          // The backend uses this to know when to broadcast the preview URL
+          if (!this.servingPlaceholder) {
+            log.log("[kova-real-content-ready]");
+          }
         }
       });
 
@@ -404,8 +412,15 @@ export class DevServerManager {
         resolve();
       }, 10000);
 
+      // Force kill timer - must be cleared when process exits normally
+      let forceKillTimeout: NodeJS.Timeout | null = null;
+
       this.process.on("close", () => {
         clearTimeout(timeout);
+        if (forceKillTimeout) {
+          clearTimeout(forceKillTimeout);
+          forceKillTimeout = null;
+        }
         this.process = null;
         this.status = "stopped";
         log.log("Server stopped");
@@ -427,8 +442,8 @@ export class DevServerManager {
         this.process.kill("SIGTERM");
       }
 
-      // Force kill after timeout
-      setTimeout(() => {
+      // Force kill after timeout (cleared above if process exits normally)
+      forceKillTimeout = setTimeout(() => {
         if (this.process && pid) {
           log.log("Force killing server (SIGKILL)...");
           try {
@@ -443,8 +458,22 @@ export class DevServerManager {
 
   /**
    * Restart the dev server
+   * Includes debouncing to prevent rapid successive restarts
    */
   async restart(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRestart = now - this.lastRestartTime;
+
+    // Debounce: if a restart was triggered recently, skip this one
+    if (timeSinceLastRestart < this.restartDebounceMs) {
+      log.log(
+        `Restart debounced (${timeSinceLastRestart}ms since last restart, threshold: ${this.restartDebounceMs}ms)`,
+      );
+      return;
+    }
+
+    this.lastRestartTime = now;
+    log.log("Restarting dev server...");
     await this.stop();
     await this.start();
   }

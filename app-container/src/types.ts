@@ -38,6 +38,8 @@ export interface QueryRequest {
   allowedTools?: string[];
   /** System prompt config (preset with append) or legacy string */
   systemPrompt?: SystemPromptConfig | string;
+  /** Model to use for the query */
+  model?: string;
 }
 
 /**

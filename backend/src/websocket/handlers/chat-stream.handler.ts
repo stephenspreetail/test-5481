@@ -7,6 +7,7 @@ import {
   isWorkflowAnalysisPrompt,
 } from "../../prompts/system_prompt.js";
 import { appContainerService } from "../../services/app-container.service.js";
+import { config } from "../../config/index.js";
 import {
   generateAppName,
   generateChatTitle,
@@ -274,6 +275,7 @@ export async function handleChatStream(
         chatId: chatId.toString(),
         allowedTools: ["Read", "Glob", "Grep", "Write", "Edit", "Bash", "Skill"],
         ...(systemPrompt && { systemPrompt }), // Only include if defined
+        ...(config.AGENT_MODEL && { model: config.AGENT_MODEL }),
       }),
       signal: abortController.signal,
     });
@@ -402,10 +404,9 @@ export async function handleChatStream(
       chatSessions.set(chatId, newSessionId);
     }
 
-    // Restart dev server if files were updated (async, don't block)
-    if (updatedFiles) {
-      restartDevServer(containerPorts.agentUrl);
-    }
+    // Note: Dev server restart is handled by the container itself
+    // The container's server.ts calls checkAndRestartIfContentAvailable() after the agent query completes
+    // This avoids duplicate restart triggers and race conditions
 
     // Send completion
     sendEnd(
@@ -596,23 +597,3 @@ async function generateAndUpdateTitle(
   }
 }
 
-/**
- * Restart the dev server in the container after files are updated
- */
-async function restartDevServer(agentUrl: string): Promise<void> {
-  try {
-    console.log(`[CHAT] Restarting dev server at ${agentUrl}`);
-    const response = await fetch(`${agentUrl}/dev-server/restart`, {
-      method: "POST",
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (response.ok) {
-      console.log("[CHAT] Dev server restart triggered successfully");
-    } else {
-      console.warn("[CHAT] Dev server restart failed:", response.status);
-    }
-  } catch (error) {
-    console.error("[CHAT] Failed to restart dev server:", error);
-  }
-}

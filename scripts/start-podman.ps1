@@ -4,6 +4,9 @@
 
 $ErrorActionPreference = "Stop"
 
+# Default port for Podman TCP API
+$DEFAULT_DOCKER_PORT = "2375"
+
 Write-Host "Starting Podman setup for Kova..." -ForegroundColor Cyan
 
 # Check if Podman machine is running
@@ -32,20 +35,27 @@ $envFile = Join-Path $PSScriptRoot "../.env"
 if (Test-Path $envFile) {
     $content = Get-Content $envFile -Raw
 
-    if ($content -match "DOCKER_HOST=tcp://[\d\.]+:2375") {
-        $currentIp = [regex]::Match($content, "DOCKER_HOST=tcp://([\d\.]+):2375").Groups[1].Value
+    # Update DOCKER_URL_HOST
+    if ($content -match "DOCKER_URL_HOST=[\d\.]+") {
+        $currentIp = [regex]::Match($content, "DOCKER_URL_HOST=([\d\.]+)").Groups[1].Value
         if ($currentIp -eq $ip) {
-            Write-Host "DOCKER_HOST already set to tcp://${ip}:2375" -ForegroundColor Green
+            Write-Host "DOCKER_URL_HOST already set to $ip" -ForegroundColor Green
         } else {
-            $content = $content -replace "DOCKER_HOST=tcp://[\d\.]+:2375", "DOCKER_HOST=tcp://${ip}:2375"
+            $content = $content -replace "DOCKER_URL_HOST=[\d\.]+", "DOCKER_URL_HOST=$ip"
             Set-Content $envFile $content -NoNewline
-            Write-Host "Updated DOCKER_HOST in .env to tcp://${ip}:2375" -ForegroundColor Green
+            Write-Host "Updated DOCKER_URL_HOST in .env to $ip" -ForegroundColor Green
         }
-    } elseif ($content -match "DOCKER_HOST=") {
-        Write-Host "WARNING: DOCKER_HOST exists but in unexpected format. Please update manually." -ForegroundColor Yellow
+    } elseif ($content -match "DOCKER_URL_HOST=") {
+        Write-Host "WARNING: DOCKER_URL_HOST exists but in unexpected format. Please update manually." -ForegroundColor Yellow
     } else {
-        Add-Content $envFile "`nDOCKER_HOST=tcp://${ip}:2375"
-        Write-Host "Added DOCKER_HOST=tcp://${ip}:2375 to .env" -ForegroundColor Green
+        Add-Content $envFile "`nDOCKER_URL_HOST=$ip"
+        Write-Host "Added DOCKER_URL_HOST=$ip to .env" -ForegroundColor Green
+    }
+
+    # Ensure DOCKER_URL_PORT is set
+    if ($content -notmatch "DOCKER_URL_PORT=") {
+        Add-Content $envFile "`nDOCKER_URL_PORT=$DEFAULT_DOCKER_PORT"
+        Write-Host "Added DOCKER_URL_PORT=$DEFAULT_DOCKER_PORT to .env" -ForegroundColor Green
     }
 } else {
     Write-Host "WARNING: .env file not found at $envFile" -ForegroundColor Yellow
@@ -55,7 +65,7 @@ if (Test-Path $envFile) {
 Write-Host "`nVerifying Podman API connection..." -ForegroundColor Yellow
 
 try {
-    $response = Invoke-RestMethod -Uri "http://${ip}:2375/version" -TimeoutSec 5
+    $response = Invoke-RestMethod -Uri "http://${ip}:${DEFAULT_DOCKER_PORT}/version" -TimeoutSec 5
     Write-Host "Connected to Podman $($response.Version)" -ForegroundColor Green
 } catch {
     Write-Host "WARNING: Could not verify connection. The TCP service may not be running." -ForegroundColor Yellow

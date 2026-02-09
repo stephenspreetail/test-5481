@@ -273,6 +273,7 @@ function buildEnvironment(apiKey?: string): Record<string, string> {
  */
 function buildSDKOptions(options: KovaQueryOptions): SDKOptions {
   const sdkOptions: SDKOptions = {
+    model: options.model || process.env.AGENT_MODEL,
     allowedTools: options.allowedTools || DEFAULT_TOOLS,
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,

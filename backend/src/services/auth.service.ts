@@ -1,11 +1,26 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { and, eq, lt } from "drizzle-orm";
+import { config } from "../config/index.js";
 import { db } from "../db/index.js";
 import { refreshTokens, userSettings, users } from "../db/schema.js";
 
 const SALT_ROUNDS = 12;
-const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+
+/** Parse a duration string (e.g. "7d", "24h", "30m") to milliseconds. */
+function parseDurationMs(duration: string): number {
+  const match = duration.match(/^(\d+)\s*(d|h|m|s)$/);
+  if (!match) throw new Error(`Invalid duration format: "${duration}"`);
+  const value = Number(match[1]);
+  const unit = match[2];
+  const multipliers: Record<string, number> = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  };
+  return value * multipliers[unit];
+}
 
 export interface User {
   id: number;
@@ -122,8 +137,9 @@ class AuthService {
    * Store a refresh token
    */
   async storeRefreshToken(userId: number, token: string): Promise<void> {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+    const expiresAt = new Date(
+      Date.now() + parseDurationMs(config.JWT_REFRESH_EXPIRES_IN),
+    );
 
     await db.insert(refreshTokens).values({
       userId,

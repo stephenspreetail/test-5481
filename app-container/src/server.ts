@@ -8,15 +8,10 @@
  */
 
 import Fastify from "fastify";
-import { join } from "node:path";
 import { streamQuery } from "./agent.js";
 import { DevServerManager } from "./dev-server.js";
 import { appContainerLog as log } from "./logger.js";
-import type {
-  HealthResponse,
-  QueryRequest,
-  SystemPromptConfig,
-} from "./types.js";
+import type { HealthResponse, QueryRequest } from "./types.js";
 import { DEFAULT_TOOLS } from "./types.js";
 import { extendKovaAgentPrompt } from "@kova/agent";
 
@@ -28,7 +23,7 @@ const APP_ID = process.env.APP_ID || "unknown";
 
 // Default system prompt: Kova agent prompt + container-specific instructions
 const DEFAULT_SYSTEM_PROMPT_CONFIG = extendKovaAgentPrompt(
-  `IMPORTANT: The dev server starts AUTOMATICALLY after you create the app files. Do NOT run "bun run dev" or start the server manually.`
+  `The dev server is managed automatically - do NOT run "bun dev", "bun run dev", or start any dev server manually. The app preview updates automatically when you save files.`
 );
 
 // Initialize Fastify
@@ -55,7 +50,7 @@ app.get<{ Reply: HealthResponse }>("/health", async () => {
  * Returns Server-Sent Events stream
  */
 app.post<{ Body: QueryRequest }>("/query", async (request, reply) => {
-  const { prompt, sessionId, chatId, allowedTools, systemPrompt } =
+  const { prompt, sessionId, chatId, allowedTools, systemPrompt, model } =
     request.body;
 
   if (!prompt) {
@@ -87,6 +82,7 @@ app.post<{ Body: QueryRequest }>("/query", async (request, reply) => {
       sessionId,
       allowedTools: allowedTools || (DEFAULT_TOOLS as unknown as string[]),
       systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT_CONFIG,
+      model,
     })) {
       sendEvent(event.type, event);
     }

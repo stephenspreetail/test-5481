@@ -46,7 +46,9 @@ export {
 export {
   // System prompts
   DEFAULT_KOVA_SYSTEM_PROMPT,
+  CLI_SYSTEM_PROMPT,
   KOVA_AGENT_APPEND,
+  CLI_DEV_SERVER_INSTRUCTION,
   extendKovaAgentPrompt,
   WORKFLOW_ANALYSIS_APPEND,
   constructWorkflowAnalysisPromptConfig,

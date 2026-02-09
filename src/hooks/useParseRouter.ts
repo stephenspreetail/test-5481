@@ -21,13 +21,16 @@ export function useParseRouter(appId: number | null) {
     refreshApp,
   } = useLoadApp(appId);
 
+  // Only load router file if app has files (avoid 404 for newly created apps)
+  const hasFiles = app?.files && app.files.length > 0;
+
   // Load router related file to extract routes for non-Next apps
   const {
     content: routerContent,
     loading: routerFileLoading,
     error: routerFileError,
     refreshFile,
-  } = useLoadAppFile(appId, "src/App.tsx");
+  } = useLoadAppFile(hasFiles ? appId : null, "src/App.tsx");
 
   // Detect Next.js app by presence of next.config.* in file list
   const isNextApp = useMemo(() => {

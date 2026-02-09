@@ -20,6 +20,7 @@ import {
   getCredentialsPath,
   createProjectEnvFile,
 } from "../config/credentials.js";
+import { CLI_SYSTEM_PROMPT } from "../config/system-prompt.js";
 
 interface CLIArgs {
   command?: string;
@@ -255,10 +256,14 @@ async function startInteractiveMode(args: CLIArgs): Promise<void> {
     console.log("Using AWS Bedrock for authentication");
   }
 
-  // Start the Ink app - config.cwd sets working directory, systemPrompt defaults to KOVA_AGENT_APPEND
-  render(
+  if (hasBedrockCreds) {
+    console.log("Using AWS Bedrock for authentication");
+  }
+
+   // Start the Ink app - CLI mode includes instruction to run dev server manually
+ render(
     React.createElement(App, {
-      config: { cwd },
+      config: { cwd, systemPrompt: CLI_SYSTEM_PROMPT },
       projectName,
       cwd,
       initialPrompt: args.prompt,

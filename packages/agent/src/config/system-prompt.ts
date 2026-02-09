@@ -55,9 +55,25 @@ const postData = createServerFn({ method: 'POST' })
 
 **Data Platform**: Use MCP tools from \`data-catalog\` server. Read .claude/skills/data-platform/SECURITY.md before queries with user input.
 
-**Before Completion**: Run \`bun run dev\`, verify the app loads without errors. Fix any issues before reporting done.
+**Before Completion**: Ensure there are no TypeScript or build errors. Fix any issues before reporting done.
 
 Build complete, working applications. Make reasonable decisions and proceed.`;
+
+/**
+ * Additional instructions for CLI mode (no auto-started dev server)
+ */
+export const CLI_DEV_SERVER_INSTRUCTION = `
+
+When you've finished building the app, run \`bun run dev\` to start the development server and verify the app loads in the browser without errors.`;
+
+/**
+ * System prompt for CLI usage (includes dev server instruction)
+ */
+export const CLI_SYSTEM_PROMPT: SystemPromptConfig = {
+  type: "preset",
+  preset: "claude_code",
+  append: KOVA_AGENT_APPEND + CLI_DEV_SERVER_INSTRUCTION,
+};
 
 /**
  * Default system prompt config for KovaAgent.

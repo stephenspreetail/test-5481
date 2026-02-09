@@ -10,71 +10,57 @@ import { resolve } from "node:path";
 import { config } from "../config/index.js";
 import { broadcastAppOutput } from "../websocket/handlers/app-output.handler.js";
 
-// Initialize container client based on platform
+// Initialize container client based on DOCKER_USE_SOCKET config toggle
+// DOCKER_USE_SOCKET=0 → TCP mode via DOCKER_URL_HOST, DOCKER_URL_PORT
+// DOCKER_USE_SOCKET=1 → Socket mode via DOCKER_SOCKET
 function createDockerClient(): Docker {
-  // If DOCKER_HOST is set, parse and use it (supports tcp:// and unix://)
-  // This is the standard way to configure Docker/Podman clients
-  if (process.env.DOCKER_HOST) {
-    const dockerHost = process.env.DOCKER_HOST;
-    console.log(`[AppContainerService] Using DOCKER_HOST: ${dockerHost}`);
+  if (config.DOCKER_USE_SOCKET === "0") {
+    // TCP mode (DOCKER_USE_SOCKET=0)
+    const host = config.DOCKER_URL_HOST!;
+    const port = config.DOCKER_URL_PORT!;
+    console.log(`[AppContainerService] TCP mode: ${host}:${port}`);
 
-    if (dockerHost.startsWith("tcp://")) {
-      const url = new URL(dockerHost);
-      return new Docker({
-        host: url.hostname,
-        port: url.port || "2375",
-        protocol: "http",
-      });
+    return new Docker({
+      host,
+      port,
+      protocol: "http",
+    });
+
+  } else if (config.DOCKER_USE_SOCKET === "1") {
+    // Socket mode (DOCKER_USE_SOCKET=1)
+    if (config.DOCKER_SOCKET) {
+      console.log(`[AppContainerService] Socket mode: using DOCKER_SOCKET=${config.DOCKER_SOCKET}`);
+      return new Docker({ socketPath: config.DOCKER_SOCKET });
     }
 
-    if (dockerHost.startsWith("unix://")) {
-      return new Docker({ socketPath: dockerHost.replace("unix://", "") });
+    // Auto-detect from common locations
+    const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+    const socketPaths = [
+      "/var/run/docker.sock",                    // Default Linux/macOS
+      `${homeDir}/.rd/docker.sock`,              // Rancher Desktop
+      `${homeDir}/.docker/run/docker.sock`,      // Docker Desktop (newer)
+    ];
+
+    for (const socketPath of socketPaths) {
+      if (existsSync(socketPath)) {
+        console.log(`[AppContainerService] Socket mode: auto-detected ${socketPath}`);
+        return new Docker({ socketPath });
+      }
     }
 
-    if (dockerHost.startsWith("npipe://")) {
-      return new Docker({ socketPath: dockerHost.replace("npipe://", "") });
-    }
-
-    // Assume it's a socket path
-    return new Docker({ socketPath: dockerHost });
-  }
-
-  // Check if we're on Windows
-  if (process.platform === "win32") {
-    // Windows uses named pipe
-    console.log(`[AppContainerService] Windows detected, using pipe: ${config.DOCKER_SOCKET_WIN32}`);
-    return new Docker({ socketPath: config.DOCKER_SOCKET_WIN32 });
-  }
-
-  // If DOCKER_SOCKET is explicitly set in env, use it
-  if (process.env.DOCKER_SOCKET) {
-    console.log(
-      `[AppContainerService] Using Docker socket from env: ${config.DOCKER_SOCKET}`,
+    // No socket found — fail with clear error
+    const searched = socketPaths.join(", ");
+    console.error(
+      `[AppContainerService] Socket mode: no Docker socket found at: ${searched}. ` +
+      `Set DOCKER_SOCKET explicitly, or switch to TCP mode with DOCKER_USE_SOCKET=0 ` +
+      `and DOCKER_URL_HOST and DOCKER_URL_PORT.`,
     );
-    return new Docker({ socketPath: config.DOCKER_SOCKET });
+
+    return new Docker({ socketPath: "/var/run/docker.sock" });
+
+  } else {
+    throw new Error(`Invalid DOCKER_USE_SOCKET value: ${config.DOCKER_USE_SOCKET}`);
   }
-
-  // Auto-detect from common locations
-  const socketPaths = [
-    "/var/run/docker.sock", // Default Linux/macOS
-    `${process.env.HOME}/.rd/docker.sock`, // Rancher Desktop
-    `${process.env.HOME}/.docker/run/docker.sock`, // Docker Desktop (newer)
-  ];
-
-  for (const socketPath of socketPaths) {
-    if (existsSync(socketPath)) {
-      console.log(
-        `[AppContainerService] Auto-detected Docker socket: ${socketPath}`,
-      );
-      return new Docker({ socketPath });
-    }
-  }
-
-  // No socket found - warn and use default (will fail with clear error)
-  console.warn(
-    `[AppContainerService] No Docker socket found at: ${socketPaths.join(", ")}`,
-  );
-  return new Docker({ socketPath: "/var/run/docker.sock" });
 }
 
 /**
@@ -520,7 +506,6 @@ class AppContainerService {
 
     // Environment variables for the container
     const envArray = [
-      `ANTHROPIC_API_KEY=${config.ANTHROPIC_API_KEY || ""}`,
       `APP_ID=${appId}`,
       `WORKSPACE_DIR=/workspace`,
       `AGENT_PORT=${config.CONTAINER_AGENT_PORT}`,
@@ -533,20 +518,29 @@ class AppContainerService {
       `DATA_PLATFORM_HOST=${config.DATA_PLATFORM_HOST}`,
       `DATA_PLATFORM_USER=${config.DATA_PLATFORM_USER}`,
       `DATA_PLATFORM_PASSWORD=${config.DATA_PLATFORM_PASSWORD}`,
-      // AWS Bedrock flag (always pass this)
+      // LLM provider toggle (always pass so container knows which mode)
       `CLAUDE_CODE_USE_BEDROCK=${config.CLAUDE_CODE_USE_BEDROCK || ""}`,
-      `AWS_REGION=${config.AWS_REGION || ""}`,
+      // Agent configuration
+      `AGENT_MODEL=${config.AGENT_MODEL}`,
+      `VERBOSE_AGENT_LOGGING=${config.VERBOSE_AGENT_LOGGING}`,
     ];
 
-    // Conditionally add AWS credentials based on auth mode
-    // In "explicit" mode (local dev): Pass credentials explicitly
-    // In "pod-identity" mode (EKS): Let AWS SDK discover credentials from Pod Identity
-    if (config.AWS_AUTH_MODE === "explicit") {
-      envArray.push(
-        `AWS_ACCESS_KEY_ID=${config.AWS_ACCESS_KEY_ID || ""}`,
-        `AWS_SECRET_ACCESS_KEY=${config.AWS_SECRET_ACCESS_KEY || ""}`,
-        `AWS_SESSION_TOKEN=${config.AWS_SESSION_TOKEN || ""}`
-      );
+    // Conditionally add LLM credentials based on provider mode
+    if (config.CLAUDE_CODE_USE_BEDROCK === "0") {
+      // Anthropic API mode: pass the API key
+      envArray.push(`ANTHROPIC_API_KEY=${config.ANTHROPIC_API_KEY || ""}`);
+    } else if (config.CLAUDE_CODE_USE_BEDROCK === "1") {
+      // Bedrock mode: always pass region
+      envArray.push(`AWS_REGION=${config.AWS_REGION || ""}`);
+      // In "explicit" mode (local dev): pass STS credentials
+      // In "pod-identity" mode (EKS): let AWS SDK discover credentials from Pod Identity
+      if (config.AWS_AUTH_MODE === "explicit") {
+        envArray.push(
+          `AWS_ACCESS_KEY_ID=${config.AWS_ACCESS_KEY_ID || ""}`,
+          `AWS_SECRET_ACCESS_KEY=${config.AWS_SECRET_ACCESS_KEY || ""}`,
+          `AWS_SESSION_TOKEN=${config.AWS_SESSION_TOKEN || ""}`
+        );
+      }
     }
 
     // Update state to starting
@@ -610,7 +604,10 @@ class AppContainerService {
             // Named volume for node_modules - stored on Linux filesystem
             // This fixes npm bin-links issues on Windows where bind mounts don't support chmod/symlinks
             `app-${appId}-modules:/workspace/node_modules`,
-            // Note: Skills are automatically copied by KovaAgent to /workspace/.claude/skills/
+            // Named volume for .claude directory - stored on Linux filesystem
+            // This fixes chmod errors on Windows where bind mounts don't support Unix permissions
+            // The Claude Agent SDK requires chmod for writing config/state files
+            `app-${appId}-claude:/workspace/.claude`,
           ],
           // Agent port exposed to host for direct access
           PortBindings: {
@@ -716,25 +713,19 @@ class AppContainerService {
           // Broadcast to WebSocket subscribers
           broadcastAppOutput(appId, "stdout", trimmedLine);
 
-          // Check if dev server is ready and send proxy URL
-          if (
-            !proxyStartedSent &&
-            (trimmedLine.includes("Local:") ||
-              trimmedLine.includes("ready in") ||
-              trimmedLine.includes("listening on") ||
-              trimmedLine.includes("started server") ||
-              trimmedLine.includes("Accepting connections") ||
-              trimmedLine.includes("Serving!") ||
-              trimmedLine.includes("Server is running"))
-          ) {
+          // Check if dev server is ready with REAL content (not placeholder)
+          // The container emits "[kova-real-content-ready]" only when serving actual app content
+          // This prevents broadcasting the preview URL while still building the app
+          if (!proxyStartedSent && trimmedLine.includes("[kova-real-content-ready]")) {
             proxyStartedSent = true;
-            // Extract the original URL from the log (e.g., http://localhost:3000)
-            const urlMatch = trimmedLine.match(/https?:\/\/[^\s]+/);
-            const originalUrl = urlMatch ? urlMatch[0] : "http://localhost:3000";
 
-            const proxyMessage = `[kova-proxy-server]started=[${previewUrl}]original=[${originalUrl}]`;
-            console.log(`[Container ${appId}] Broadcasting proxy URL: ${proxyMessage}`);
-            broadcastAppOutput(appId, "info", proxyMessage);
+            const proxyMessage = `[kova-proxy-server]started=[${previewUrl}]original=[http://localhost:3000]`;
+            // Delay broadcast slightly to give Traefik time to discover the container
+            // Otherwise the frontend may try to load the preview before Traefik routes are ready
+            setTimeout(() => {
+              console.log(`[Container ${appId}] Broadcasting proxy URL: ${proxyMessage}`);
+              broadcastAppOutput(appId, "info", proxyMessage);
+            }, 1500);
           }
         }
       });

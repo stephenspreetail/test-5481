@@ -16,29 +16,36 @@
 # Stop on errors
 $ErrorActionPreference = "Stop"
 
-# -----------------------------------------------------------------------------
-# Configuration - Edit these values
-# -----------------------------------------------------------------------------
-$AWS_PROFILE = if ($env:AWS_SSO_PROFILE) { $env:AWS_SSO_PROFILE } else { "spreetail-dev" }
-$AWS_REGION = if ($env:AWS_REGION) { $env:AWS_REGION } else { "us-east-1" }
+# =============================================================================
+# Setup and Configuration
+# =============================================================================
 
-# Bedrock model to use (optional, defaults to Sonnet 4.5)
+# -----------------------------------------------------------------------------
+# Configuration Defaults
+# -----------------------------------------------------------------------------
 # Available models:
-#   us.anthropic.claude-sonnet-4-5-20250929-v1:0  (recommended - fast, smart)
-#   us.anthropic.claude-sonnet-4-20250514-v1:0    (previous Sonnet version)
-#   us.anthropic.claude-opus-4-5-20251101-v1:0    (most capable, expensive)
-$BEDROCK_MODEL = if ($env:BEDROCK_MODEL) { $env:BEDROCK_MODEL } else { "us.anthropic.claude-sonnet-4-5-20250929-v1:0" }
+#   us.anthropic.claude-sonnet-4-5-20250929-v1:0
+#   us.anthropic.claude-sonnet-4-20250514-v1:0
+#   us.anthropic.claude-opus-4-5-20251101-v1:0
+#
+# AWS Authentication Mode:
+# - "explicit" (default, set by script): Pass credentials explicitly (local dev with SSO).
+# - "pod-identity": Let containers discover credentials (EKS/K8s with Pod Identity).
+#   For EKS deployment, set AWS_AUTH_MODE=pod-identity in your ConfigMap/Deployment.
+# -----------------------------------------------------------------------------
+$DEFAULT_AWS_PROFILE = "spreetail-dev"
+$DEFAULT_AWS_REGION = "us-east-1"
+$DEFAULT_CLAUDE_CODE_USE_BEDROCK = "1"    # Enable Bedrock integration
+$DEFAULT_AWS_AUTH_MODE = "explicit"       # Local dev uses explicit credentials
+$DEFAULT_BEDROCK_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+$AWS_PROFILE = if ($env:AWS_SSO_PROFILE) { $env:AWS_SSO_PROFILE } else { $DEFAULT_AWS_PROFILE }
+$AWS_REGION = if ($env:AWS_REGION) { $env:AWS_REGION } else { $DEFAULT_AWS_REGION }
+$BEDROCK_MODEL = if ($env:BEDROCK_MODEL) { $env:BEDROCK_MODEL } else { $DEFAULT_BEDROCK_MODEL }
 
 # -----------------------------------------------------------------------------
 # Helper functions
 # -----------------------------------------------------------------------------
-function Write-Header {
-    Write-Host "==============================================================================" -ForegroundColor Yellow
-    Write-Host "AWS SSO Credential Refresh" -ForegroundColor Yellow
-    Write-Host "==============================================================================" -ForegroundColor Yellow
-    Write-Host ""
-}
-
 function Write-Success {
     param([string]$Message)
     Write-Host $Message -ForegroundColor Green
@@ -54,12 +61,17 @@ function Write-Info {
     Write-Host $Message -ForegroundColor Yellow
 }
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Main script
-# -----------------------------------------------------------------------------
-Write-Header
+# =============================================================================
+Write-Host "==============================================================================" -ForegroundColor Yellow
+Write-Host "AWS SSO Credential Refresh" -ForegroundColor Yellow
+Write-Host "==============================================================================" -ForegroundColor Yellow
+Write-Host ""
 
-# Check if AWS CLI is installed
+# -----------------------------------------------------------------------------
+# Step 1: Check if AWS CLI is installed
+# -----------------------------------------------------------------------------
 try {
     $null = Get-Command aws -ErrorAction Stop
 } catch {
@@ -69,9 +81,9 @@ try {
 }
 
 # -----------------------------------------------------------------------------
-# Step 1: Login with AWS SSO
+# Step 2: Login with AWS SSO
 # -----------------------------------------------------------------------------
-Write-Success "Step 1: Logging into AWS SSO..."
+Write-Success "Step 2: Logging into AWS SSO..."
 Write-Host "Profile: $AWS_PROFILE"
 Write-Host ""
 
@@ -87,9 +99,9 @@ Write-Success "[OK] AWS SSO login successful"
 Write-Host ""
 
 # -----------------------------------------------------------------------------
-# Step 2: Export credentials as environment variables
+# Step 3: Export credentials as environment variables
 # -----------------------------------------------------------------------------
-Write-Success "Step 2: Exporting credentials to environment..."
+Write-Success "Step 3: Exporting credentials to environment..."
 Write-Host ""
 
 try {
@@ -101,6 +113,7 @@ try {
     }
 
     # Parse and set environment variables
+    # This will set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN
     $credentialsJson -split "`n" | ForEach-Object {
         if ($_ -match '^(AWS_[^=]+)=(.+)$') {
             $varName = $matches[1]
@@ -115,18 +128,18 @@ try {
 }
 
 # Set additional required variables
-$env:CLAUDE_CODE_USE_BEDROCK = "1"
+$env:CLAUDE_CODE_USE_BEDROCK = $DEFAULT_CLAUDE_CODE_USE_BEDROCK
+$env:AWS_AUTH_MODE = $DEFAULT_AWS_AUTH_MODE
 $env:AWS_REGION = $AWS_REGION
 $env:AGENT_MODEL = $BEDROCK_MODEL
-$env:AWS_AUTH_MODE = "explicit"  # Local dev uses explicit credentials
 
 Write-Success "[OK] Credentials exported"
 Write-Host ""
 
 # -----------------------------------------------------------------------------
-# Step 3: Verify credentials are working
+# Step 4: Verify credentials are working
 # -----------------------------------------------------------------------------
-Write-Success "Step 3: Verifying credentials..."
+Write-Success "Step 4: Verifying credentials..."
 Write-Host ""
 
 try {
@@ -150,12 +163,12 @@ Write-Success "[OK] AWS SSO credentials are ready!"
 Write-Info "=============================================================================="
 Write-Host ""
 Write-Host "Environment variables set:"
-Write-Host "  CLAUDE_CODE_USE_BEDROCK=1"
-Write-Host "  AWS_AUTH_MODE=explicit (local dev mode)"
+Write-Host "  CLAUDE_CODE_USE_BEDROCK=$env:CLAUDE_CODE_USE_BEDROCK"
+Write-Host "  AWS_AUTH_MODE=$env:AWS_AUTH_MODE"
 Write-Host "  AWS_REGION=$env:AWS_REGION"
 Write-Host "  AGENT_MODEL=$env:AGENT_MODEL"
 Write-Host "  AWS_ACCESS_KEY_ID=$($env:AWS_ACCESS_KEY_ID.Substring(0, 10))... (hidden)"
-Write-Host "  AWS_SECRET_ACCESS_KEY=*** (hidden)"
+Write-Host "  AWS_SECRET_ACCESS_KEY=$($env:AWS_SECRET_ACCESS_KEY.Substring(0, 3))*** (hidden)"
 Write-Host "  AWS_SESSION_TOKEN=$($env:AWS_SESSION_TOKEN.Substring(0, 10))... (hidden)"
 Write-Host ""
 Write-Success "Next steps:"

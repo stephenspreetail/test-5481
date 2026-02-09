@@ -21,6 +21,7 @@ const settingsSchema = z.object({
   selectedTemplateId: z.string().optional(),
   selectedChatMode: z.enum(["build", "ask", "agent"]).optional(),
   enableAutoFixProblems: z.boolean().optional(),
+  lastShownReleaseNotesVersion: z.string().optional(),
 });
 
 const setSecretSchema = z.object({

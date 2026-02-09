@@ -19,8 +19,10 @@ export interface KovaQueryOptions {
   systemPrompt?: SystemPromptConfig | string;
   /** Maximum turns for the agent */
   maxTurns?: number;
-  /** MCP server configurations (merged with defaults) */
+  /** MCP server configurations */
   mcpServers?: Record<string, McpServerConfig>;
-  /** Anthropic API key (defaults to ANTHROPIC_API_KEY env var) */
+  /** AI Provider API key */
   apiKey?: string;
+  /** Model to use */
+  model?: string;
 }
