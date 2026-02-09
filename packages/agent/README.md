@@ -4,9 +4,27 @@ Standalone Kova AI Agent package for autonomous software development tasks. A th
 
 ## Installation
 
+This is a **local workspace package** (not published to npm).
+
+### Within the monorepo
+
+From another package in the workspace:
+
 ```bash
-bun add @kova/agent
+bun add @kova/agent@workspace:*
 ```
+
+Or add directly to your `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@kova/agent": "workspace:*"
+  }
+}
+```
+
+Then run `bun install` from the workspace root.
 
 ## Quick Start
 

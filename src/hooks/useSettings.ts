@@ -2,7 +2,7 @@ import { getClient } from "@/client/api/client_factory";
 import { type UserSettings } from "@/lib/schemas";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePostHog } from "posthog-js/react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAppVersion } from "./useAppVersion";
 
 const TELEMETRY_CONSENT_KEY = "kovaTelemetryConsent";
@@ -82,9 +82,12 @@ export function useSettings() {
     },
   });
 
-  const updateSettings = async (newSettings: Partial<UserSettings>) => {
-    return updateSettingsMutation.mutateAsync(newSettings);
-  };
+  const updateSettings = useCallback(
+    async (newSettings: Partial<UserSettings>) => {
+      return updateSettingsMutation.mutateAsync(newSettings);
+    },
+    [updateSettingsMutation.mutateAsync],
+  );
 
   return {
     settings: settings ?? null,

@@ -4,6 +4,7 @@ import jwt from "@fastify/jwt";
 import websocket from "@fastify/websocket";
 import Fastify, { FastifyInstance, FastifyError } from "fastify";
 import { config } from "./config/index.js";
+import packageJson from "../../package.json";
 
 import { agentRoutes } from "./api/routes/agent.routes.js";
 import { appExecutionRoutes } from "./api/routes/app-execution.routes.js";
@@ -39,6 +40,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(cors, {
     origin: config.CORS_ORIGIN,
     credentials: true,
+    maxAge: 86400, // Cache preflight responses for 24 hours
   });
 
   await app.register(cookie);
@@ -58,7 +60,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Health check endpoint
   app.get("/health", async () => {
-    return { status: "ok", timestamp: new Date().toISOString() };
+    return { status: "ok", version: packageJson.version, timestamp: new Date().toISOString() };
   });
 
   // Register API routes

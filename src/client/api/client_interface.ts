@@ -365,7 +365,7 @@ export interface IApiClient {
   // =====================
   // Release Notes
   // =====================
-  doesReleaseNoteExist(version: string): Promise<boolean>;
+  doesReleaseNoteExist(params: { version: string }): Promise<{ exists: boolean; url?: string }>;
 
   // =====================
   // Portal Migration

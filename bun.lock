@@ -16,6 +16,7 @@
         "@ai-sdk/xai": "^2.0.16",
         "@babel/parser": "^7.28.5",
         "@biomejs/biome": "^1.9.4",
+        "@kova/agent": "workspace:*",
         "@lexical/react": "^0.33.1",
         "@modelcontextprotocol/sdk": "^1.17.5",
         "@monaco-editor/react": "^4.7.0-rc.0",

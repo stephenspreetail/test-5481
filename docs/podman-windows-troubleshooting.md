@@ -141,7 +141,15 @@ The WSL IP can change after restarts. Run:
 bun run start:podman
 ```
 
-This updates `DOCKER_HOST` in `.env` with the current IP.
+This updates `DOCKER_URL_HOST` in `.env` with the current IP.
+
+**Note:** When using TCP mode, you need to set all three variables in `.env`:
+
+```
+DOCKER_USE_SOCKET=0
+DOCKER_URL_HOST=<WSL2-IP>
+DOCKER_URL_PORT=2375
+```
 
 ### Manual TCP API start (if needed)
 
@@ -161,5 +169,5 @@ podman machine ssh podman-machine-default "podman system service --time=0 tcp:0.
 ## Related Files
 
 - `scripts/start-podman.ps1` - Updates WSL IP in .env
-- `.env` - Contains `DOCKER_HOST` for TCP API connection
+- `.env` - Contains `DOCKER_USE_SOCKET`, `DOCKER_URL_HOST`, and `DOCKER_URL_PORT` for TCP API connection
 - `backend/src/services/app-container.service.ts` - Container orchestration

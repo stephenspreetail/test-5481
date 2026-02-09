@@ -28,9 +28,7 @@ const RESET = "\x1b[0m";
  */
 function isVerbose(): boolean {
   return (
-    process.env.VERBOSE_AGENT_LOGGING === "true" ||
-    process.env.DEBUG_CLAUDE_AGENT_SDK === "true" ||
-    true // Always verbose for now during debugging
+    process.env.VERBOSE_AGENT_LOGGING === "1"
   );
 }
 
@@ -200,6 +198,8 @@ export interface AgentQueryOptions {
   allowedTools?: string[];
   /** System prompt configuration */
   systemPrompt?: SystemPromptConfig | string;
+  /** Model to use for the query */
+  model?: string;
 }
 
 // =============================================================================
@@ -343,11 +343,15 @@ export async function* streamQuery(
   }
 
   try {
+    // Resolve model: explicit option > AGENT_MODEL env var (passed from backend) > kovaQuery default
+    const model = options.model || process.env.AGENT_MODEL;
+
     for await (const message of kovaQuery(prompt, {
       cwd: absoluteCwd,
       sessionId: options.sessionId,
       allowedTools: options.allowedTools,
       systemPrompt: options.systemPrompt,
+      model,
     })) {
       messageCount++;
 

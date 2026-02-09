@@ -162,6 +162,10 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const { routes: availableRoutes } = useParseRouter(selectedAppId);
   const { restartApp } = useRunApp();
 
+  // State for URL readiness check (prevents 502 Bad Gateway on initial load)
+  const [isUrlReady, setIsUrlReady] = useState(false);
+  const [urlCheckAttempts, setUrlCheckAttempts] = useState(0);
+
   // Navigation state
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
@@ -294,6 +298,67 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       setCanGoForward(false);
     }
   }, [appUrl]);
+
+  // Check if URL is ready before showing iframe (prevents 502 Bad Gateway)
+  useEffect(() => {
+    if (!appUrl || !selectedAppId) {
+      setIsUrlReady(false);
+      setUrlCheckAttempts(0);
+      return;
+    }
+
+    // Reset state when URL changes
+    setIsUrlReady(false);
+    setUrlCheckAttempts(0);
+
+    const maxAttempts = 15;
+    const checkInterval = 1000; // 1 second between checks
+    let cancelled = false;
+
+    const checkUrl = async (attempt: number) => {
+      if (cancelled) return;
+
+      if (attempt >= maxAttempts) {
+        // Give up and show iframe anyway - user can manually refresh
+        console.log(`[PreviewIframe] URL check timed out after ${maxAttempts} attempts, showing iframe anyway`);
+        setIsUrlReady(true);
+        return;
+      }
+
+      try {
+        // Use backend health check endpoint to avoid CORS issues
+        // This makes a real HTTP request and returns the actual status code
+        const result = await getClient().checkPreviewHealth(selectedAppId);
+
+        if (result.ready) {
+          console.log(`[PreviewIframe] URL check succeeded on attempt ${attempt + 1} (status: ${result.status})`);
+          if (!cancelled) setIsUrlReady(true);
+        } else {
+          // Not ready yet - retry
+          console.log(`[PreviewIframe] URL check not ready on attempt ${attempt + 1} (status: ${result.status}, reason: ${result.reason})`);
+          if (!cancelled) {
+            setUrlCheckAttempts(attempt + 1);
+            setTimeout(() => checkUrl(attempt + 1), checkInterval);
+          }
+        }
+      } catch (error) {
+        // API error - retry
+        console.log(`[PreviewIframe] URL check failed on attempt ${attempt + 1}:`, error);
+        if (!cancelled) {
+          setUrlCheckAttempts(attempt + 1);
+          setTimeout(() => checkUrl(attempt + 1), checkInterval);
+        }
+      }
+    };
+
+    // Start checking after a short delay
+    const timeoutId = setTimeout(() => checkUrl(0), 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [appUrl, selectedAppId]);
 
   // Function to navigate back
   const handleNavigateBack = () => {
@@ -582,6 +647,16 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
             <p className="text-gray-600 dark:text-gray-300">
               Starting your app server...
+            </p>
+          </div>
+        ) : !isUrlReady ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
+            <p className="text-gray-600 dark:text-gray-300">
+              Waiting for preview to be ready...
+              {urlCheckAttempts > 0 && (
+                <span className="text-xs ml-2">({urlCheckAttempts}/15)</span>
+              )}
             </p>
           </div>
         ) : (
