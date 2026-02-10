@@ -23,4 +23,12 @@ export default defineConfig({
     tanstackStart(),
     viteReact(),
   ],
+  server: {
+    host: '0.0.0.0', // Listen on all interfaces
+    allowedHosts: [
+      '.dev.toolkit.co', // Local k3d development (kova-app-*.dev.toolkit.co)
+      '.local.tk.dev', // EKS development
+      '.kova.eks.prod.tk.dev', // EKS production
+    ],
+  },
 })

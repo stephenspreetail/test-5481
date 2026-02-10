@@ -42,26 +42,25 @@ export async function previewRoutes(app: FastifyInstance) {
         return { ready: false, status: 503, reason: "container_not_running" };
       }
 
-      // Check dev server status via the container's agent health endpoint
-      // (port 3100, mapped to host). We can't use previewUrl (*.localhost DNS
-      // doesn't resolve in Bun/Node on Windows).
+      // Make a request to the preview URL (via Istio Gateway) to check actual status
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
 
       try {
-        const response = await fetch(`${containerPorts.agentUrl}/health`, {
+        const response = await fetch(containerPorts.previewUrl, {
+          method: "HEAD",
           signal: controller.signal,
         });
 
-        const health = await response.json() as { status: string; devServer?: string; servingPlaceholder?: boolean };
-
-        if (health.devServer === "running" && !health.servingPlaceholder) {
-          return { ready: true, status: 200 };
+        // 502/503/504 means Gateway is up but backend isn't ready yet
+        if (response.status === 502 || response.status === 503 || response.status === 504) {
+          return { ready: false, status: response.status, reason: "gateway_error" };
         }
 
-        return { ready: false, status: 503, reason: `devServer: ${health.devServer}` };
+        // Any other response means the server is up
+        return { ready: true, status: response.status };
       } catch (error: any) {
-        // Agent server not reachable
+        // Network error - server not reachable
         return { ready: false, status: 0, reason: error.message || "network_error" };
       } finally {
         clearTimeout(timeout);

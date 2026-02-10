@@ -14,6 +14,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
     "fastify": "^5.3.0",
     "pino-pretty": "^13.0.0",
+    "serve": "^14.2.4",
     "zod": "^3.24.0"
   },
   "devDependencies": {

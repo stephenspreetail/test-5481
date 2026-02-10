@@ -1,0 +1,32 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kova-eks
+  namespace: istio-system
+spec:
+  # Secret name where cert will be stored (referenced by Istio Gateway)
+  secretName: kova-tls-cert
+
+  # Certificate duration and renewal
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days before expiration
+
+  # Issuer reference (uses cluster's Let's Encrypt issuer)
+  issuerRef:
+    name: letsencrypt-prod-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+  # Common name (use wildcard as primary)
+  commonName: "*.kova.eks.dev01.tk.dev"
+
+  # DNS names covered by this certificate
+  # Wildcard covers: app-1.kova.eks.dev01.tk.dev, app-2.kova.eks.dev01.tk.dev, etc.
+  dnsNames:
+    - "*.kova.eks.dev01.tk.dev"
+
+  # Use DNS01 challenge for wildcard certs
+  # (Route53 DNS validation via cert-manager)
+  privateKey:
+    algorithm: RSA
+    size: 2048

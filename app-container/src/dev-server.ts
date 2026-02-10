@@ -26,6 +26,7 @@ export class DevServerManager {
   private maxRestarts = 3;
   private restartDelay = 2000; // ms
   private servingPlaceholder = false;
+  private managedControl = true; // Are we managing the process, or has control been released?
   private lastRestartTime = 0;
   private restartDebounceMs = 500; // Debounce rapid restart requests
 
@@ -118,18 +119,19 @@ export class DevServerManager {
         args = devCommand.args;
         this.servingPlaceholder = false;
       } else if (this.isStaticSite(projectDir)) {
-        // Use bunx serve for static HTML sites (no package.json needed)
+        // Use serve for static HTML sites (no package.json needed)
+        // Use npx to run serve from app-container's node_modules
         log.log("Detected static HTML site, using serve");
-        cmd = "bunx";
-        args = ["serve", "-l", String(this.port), "-s", "."];
+        cmd = "/app/node_modules/.bin/serve";
+        args = ["-l", String(this.port), "-s", "."];
         this.servingPlaceholder = false;
       } else {
         // Serve placeholder page while waiting for content
         log.log("No servable content found, serving placeholder page");
         // Assets are at /app/assets, __dirname is /app/dist/src
         const assetsDir = join(__dirname, "..", "..", "assets");
-        cmd = "bunx";
-        args = ["serve", "-l", String(this.port), "-s", assetsDir];
+        cmd = "/app/node_modules/.bin/serve";
+        args = ["-l", String(this.port), "-s", assetsDir];
         projectDir = assetsDir; // Override projectDir for serve command
         this.servingPlaceholder = true;
       }
@@ -141,10 +143,10 @@ export class DevServerManager {
         env: {
           ...process.env,
           PORT: String(this.port),
-          // Allow Vite to accept connections from Traefik proxy (Vite 5.4.12+/6+/7+ security feature)
+          // Allow Vite to accept connections from Gateway (Vite 5.4.12+/6+/7+ security feature)
           // This env var adds hosts to the allowedHosts list without modifying vite.config
           // Format: comma-separated list of hosts or patterns
-          __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: ".localhost,app-*",
+          __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: ".localhost,.dev.toolkit.co,kova-app-*",
         },
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
@@ -183,7 +185,8 @@ export class DevServerManager {
         log.log(`Process exited with code ${code}`);
         this.process = null;
 
-        if (this.status === "running" && this.restartCount < this.maxRestarts) {
+        // If we're in managed control mode and server crashes, auto-restart
+        if (this.managedControl && this.status === "running" && this.restartCount < this.maxRestarts) {
           log.log(`Restarting (attempt ${this.restartCount + 1}/${this.maxRestarts})...`);
           this.restartCount++;
           setTimeout(() => this.start(), this.restartDelay);
@@ -432,11 +435,25 @@ export class DevServerManager {
       if (pid) {
         try {
           log.log(`Killing process tree (PID: ${pid})...`);
+          // Kill entire process group (shell + bunx + serve/vite)
           process.kill(-pid, "SIGTERM");
         } catch (e) {
           // Fallback to regular kill if process group kill fails
           log.log("Process group kill failed, using regular kill");
           this.process?.kill("SIGTERM");
+        }
+
+        // Also try to kill any lingering processes on the port
+        // This is necessary because shell spawning can leave orphaned processes
+        try {
+          const { execSync } = require("node:child_process");
+          log.log(`Checking for processes on port ${this.port}...`);
+          execSync(`lsof -ti:${this.port} | xargs -r kill -9 2>/dev/null || true`, {
+            shell: true,
+            stdio: "ignore",
+          });
+        } catch (e) {
+          // Ignore errors (lsof might not be available)
         }
       } else {
         this.process.kill("SIGTERM");
@@ -452,7 +469,7 @@ export class DevServerManager {
             this.process?.kill("SIGKILL");
           }
         }
-      }, 5000);
+      }, 3000); // Reduced from 5s to 3s
     });
   }
 
@@ -475,6 +492,60 @@ export class DevServerManager {
     this.lastRestartTime = now;
     log.log("Restarting dev server...");
     await this.stop();
+
+    // Wait a bit for the port to be released
+    // In containers, the OS might need time to fully clean up the socket
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     await this.start();
+  }
+
+  /**
+   * Release control of the dev server to allow external commands (like Claude running `bun dev`)
+   * Stops the managed process and marks control as released
+   */
+  async releaseControl(): Promise<void> {
+    if (!this.managedControl) {
+      log.log("Control already released");
+      return;
+    }
+
+    log.log("Releasing dev server control to external process...");
+    this.managedControl = false;
+
+    if (this.process) {
+      await this.stop();
+      log.log("Managed dev server stopped, control released");
+    } else {
+      log.log("No managed process running, control released");
+    }
+  }
+
+  /**
+   * Reclaim control of the dev server after external process exits
+   * Restarts the managed process
+   */
+  async reclaimControl(): Promise<void> {
+    if (this.managedControl) {
+      log.log("Control already managed");
+      return;
+    }
+
+    log.log("Reclaiming dev server control...");
+    this.managedControl = true;
+
+    // Wait for port to be fully released
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Restart the managed dev server
+    await this.start();
+    log.log("Dev server control reclaimed");
+  }
+
+  /**
+   * Check if control is currently managed by this class
+   */
+  isManagedControl(): boolean {
+    return this.managedControl;
   }
 }

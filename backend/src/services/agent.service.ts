@@ -35,3 +35,8 @@ export {
 if (config.ANTHROPIC_API_KEY) {
   process.env.ANTHROPIC_API_KEY = config.ANTHROPIC_API_KEY;
 }
+
+// Pass Azure Foundry base URL to agent if configured
+if (config.ANTHROPIC_BASE_URL) {
+  process.env.ANTHROPIC_BASE_URL = config.ANTHROPIC_BASE_URL;
+}

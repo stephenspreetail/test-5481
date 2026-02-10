@@ -1,0 +1,53 @@
+stages:
+  - deploy-certs
+
+###############################################################################
+# Global Variables
+###############################################################################
+variables:
+  AWS_REGION: us-east-1
+  AWS_ROLE: GitLabEksDeployRole
+  KUBEPIPE_IMAGE: $KUBEPIPE_BUILDER_URL:latest
+
+###############################################################################
+# Templates
+###############################################################################
+
+# Base template for AWS/Kubernetes operations
+.kube_deploy:
+  image: $KUBEPIPE_IMAGE
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: https://gitlab.com
+  before_script:
+    # Authenticate to AWS using kubepipe's aws-login script
+    - source aws-login --aws-account ${AWS_ACCOUNT_ID} --aws-role ${AWS_ROLE} --aws-region ${AWS_REGION} --k8s-cluster-name ${CLUSTER_NAME}
+    # Verify kubectl is configured
+    - kubectl cluster-info
+    - kubectl get nodes
+  tags:
+    - dev-aks-runner
+  only:
+    - main
+    - merge_requests
+  when: manual
+
+###############################################################################
+# Jobs - Deploy Local Dev Certificates
+###############################################################################
+
+# Deploy local dev certificate to dev01-eks-ops cluster
+# This provisions a Let's Encrypt certificate for *.kova-apps.local.tk.dev
+# DNS record (*.kova-apps.local.tk.dev → 127.0.0.1) must be created manually in internal DNS
+deploy-local-dev-cert:
+  extends: .kube_deploy
+  stage: deploy-certs
+  variables:
+    CLUSTER_NAME: dev01-eks-ops
+    AWS_ACCOUNT_ID: "851725519214"
+  script:
+    - chmod +x scripts/deploy-local-dev-certs.sh
+    - ./scripts/deploy-local-dev-certs.sh
+  environment:
+    name: dev01-eks-ops/local-dev-certs
+    action: prepare

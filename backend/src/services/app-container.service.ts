@@ -1,75 +1,22 @@
 /**
  * App Container Service
  * Manages containers for running Claude Agent SDK + Dev Server per app
- * Traefik discovers routes via Docker labels on containers
+ * Uses orchestrator abstraction (Docker/Podman or Kubernetes)
  */
 
-import Docker from "dockerode";
 import { existsSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { config } from "../config/index.js";
 import { broadcastAppOutput } from "../websocket/handlers/app-output.handler.js";
-
-// Initialize container client based on DOCKER_USE_SOCKET config toggle
-// DOCKER_USE_SOCKET=0 → TCP mode via DOCKER_URL_HOST, DOCKER_URL_PORT
-// DOCKER_USE_SOCKET=1 → Socket mode via DOCKER_SOCKET
-function createDockerClient(): Docker {
-  if (config.DOCKER_USE_SOCKET === "0") {
-    // TCP mode (DOCKER_USE_SOCKET=0)
-    const host = config.DOCKER_URL_HOST!;
-    const port = config.DOCKER_URL_PORT!;
-    console.log(`[AppContainerService] TCP mode: ${host}:${port}`);
-
-    return new Docker({
-      host,
-      port,
-      protocol: "http",
-    });
-
-  } else if (config.DOCKER_USE_SOCKET === "1") {
-    // Socket mode (DOCKER_USE_SOCKET=1)
-    if (config.DOCKER_SOCKET) {
-      console.log(`[AppContainerService] Socket mode: using DOCKER_SOCKET=${config.DOCKER_SOCKET}`);
-      return new Docker({ socketPath: config.DOCKER_SOCKET });
-    }
-
-    // Auto-detect from common locations
-    const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-    const socketPaths = [
-      "/var/run/docker.sock",                    // Default Linux/macOS
-      `${homeDir}/.rd/docker.sock`,              // Rancher Desktop
-      `${homeDir}/.docker/run/docker.sock`,      // Docker Desktop (newer)
-    ];
-
-    for (const socketPath of socketPaths) {
-      if (existsSync(socketPath)) {
-        console.log(`[AppContainerService] Socket mode: auto-detected ${socketPath}`);
-        return new Docker({ socketPath });
-      }
-    }
-
-    // No socket found — fail with clear error
-    const searched = socketPaths.join(", ");
-    console.error(
-      `[AppContainerService] Socket mode: no Docker socket found at: ${searched}. ` +
-      `Set DOCKER_SOCKET explicitly, or switch to TCP mode with DOCKER_USE_SOCKET=0 ` +
-      `and DOCKER_URL_HOST and DOCKER_URL_PORT.`,
-    );
-
-    return new Docker({ socketPath: "/var/run/docker.sock" });
-
-  } else {
-    throw new Error(`Invalid DOCKER_USE_SOCKET value: ${config.DOCKER_USE_SOCKET}`);
-  }
-}
-
-/**
- * Convert a path to Docker-compatible format for bind mounts
- */
-function toDockerPath(hostPath: string): string {
-  // Ensure forward slashes for consistency in the bind mount string
-  return hostPath.replace(/\\/g, "/");
-}
+import { createOrchestrator } from "./orchestrator/index.js";
+import type { ContainerInfo, ContainerState } from "./orchestrator/types.js";
+import {
+  buildLlmEnvironment,
+  buildLlmProviderConfig,
+} from "./llm-provider.service.js";
+import { buildK8sEnvironmentConfig } from "./k8s-environment.service.js";
+import { generateAgentToken } from "./agent-auth.service.js";
 
 /**
  * Resolve the apps base path to an absolute path
@@ -83,26 +30,19 @@ function resolveAppsBasePath(): string {
     return basePath;
   }
   // Resolve relative to project root (this file is at backend/src/services/)
-  const projectRoot = resolve(import.meta.dir, "../../..");
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const projectRoot = resolve(currentDir, "../../..");
   return resolve(projectRoot, basePath);
 }
 
-const docker = createDockerClient();
+const orchestrator = createOrchestrator();
 const appsBasePath = resolveAppsBasePath();
-
-// Port allocation ranges
-const AGENT_PORT_MIN = 31100;
-const AGENT_PORT_MAX = 31999;
-
-const allocatedAgentPorts = new Set<number>();
-
-// Container state
-type ContainerState = "none" | "starting" | "running" | "stopping";
 
 export interface AppContainerInfo {
   containerId: string | null;
   containerName: string;
-  agentPort: number;
+  agentUrl: string;
+  previewUrl: string;
   userId: number;
   state: ContainerState;
   lastActivityAt: number;
@@ -110,6 +50,23 @@ export interface AppContainerInfo {
 
 // Track running containers by appId
 const appContainers = new Map<number, AppContainerInfo>();
+
+// Map appId to ContainerInfo from orchestrator
+function toAppContainerInfo(
+  appId: number,
+  userId: number,
+  containerInfo: ContainerInfo
+): AppContainerInfo {
+  return {
+    containerId: containerInfo.containerId,
+    containerName: containerInfo.containerName,
+    agentUrl: containerInfo.agentUrl,
+    previewUrl: containerInfo.previewUrl,
+    userId,
+    state: containerInfo.state,
+    lastActivityAt: containerInfo.lastActivityAt,
+  };
+}
 
 // Mutex to prevent concurrent container operations for the same app
 const containerOperationLocks = new Map<number, Promise<any>>();
@@ -127,9 +84,8 @@ export interface StartContainerConfig {
 }
 
 export interface ContainerPorts {
-  agentPort: number;
   agentUrl: string;
-  previewUrl: string; // Traefik URL: http://app-{id}.localhost:8081
+  previewUrl: string;
 }
 
 class AppContainerService {
@@ -139,7 +95,7 @@ class AppContainerService {
 
   constructor() {
     this.idleTimeoutMs = config.CONTAINER_IDLE_TIMEOUT_MS;
-    this.containerImage = config.CONTAINER_IMAGE;
+    this.containerImage = buildK8sEnvironmentConfig().containerImage;
     this.containerScanIntervalMs = config.CONTAINER_SCAN_INTERVAL_MS;
   }
 
@@ -159,39 +115,37 @@ class AppContainerService {
       `[${timestamp}] [AppContainerService] config: container image: ${this.containerImage}`,
     );
     console.log(
+      `[${timestamp}] [AppContainerService] config: orchestrator type: kubectl (Kubernetes)`,
+    );
+    console.log(
       `[${timestamp}] [AppContainerService] config: container scan interval: ${this.containerScanIntervalMs}ms`,
     );
     console.log(
       `[${timestamp}] [AppContainerService] config: idle timeout interval (${this.idleTimeoutMs}ms)`,
     );
 
+    // Initialize orchestrator
+    await orchestrator.initialize();
+
     if (idleCheckInterval) {
       clearInterval(idleCheckInterval);
     }
 
     // Periodically scan for containers and stop idle ones
-    // This catches manually-started containers and removes stale entries
     idleCheckInterval = setInterval(() => {
-      const timestamp = new Date().toLocaleString();
       this.scanExistingContainers();
       this.stopIdleContainers();
     }, this.containerScanIntervalMs);
 
-    // Scan for existing containers and populate allocated ports
+    // Scan for existing containers
     await this.scanExistingContainers();
 
     console.log(`[${timestamp}] [AppContainerService] initialized`);
   }
 
   /**
-   * This method is essentially “reconcile container reality → in-memory maps”
+   * Reconcile container reality → in-memory maps
    * (handles the case where backend restarts but containers are still running)
-   *  - List running managed containers
-   *  - Build a set of running appIds
-   *  - Skip containers already tracked
-   *  - Extract the agent host port (best-effort)
-   *  - Insert newly discovered containers into appContainers
-   *  - Remove stale entries from appContainers for containers no longer running
    */
   private async scanExistingContainers(): Promise<void> {
     console.log(
@@ -199,23 +153,17 @@ class AppContainerService {
     );
 
     try {
-      const containers = await docker.listContainers({
-        all: false, // Only running containers
-        filters: {
-          label: ["kova.app-container=true"],
-        },
-      });
+      const containers = await orchestrator.listContainers();
 
       // Track which appIds we found running
       const runningAppIds = new Set<number>();
 
       for (const containerInfo of containers) {
-        const appIdStr = containerInfo.Labels?.["kova.app.id"];
-        const userIdStr = containerInfo.Labels?.["kova.user.id"];
+        // Extract appId from container name (app-{id})
+        const match = containerInfo.containerName.match(/^app-(\d+)$/);
+        if (!match) continue;
 
-        if (!appIdStr) continue;
-
-        const appId = parseInt(appIdStr, 10);
+        const appId = parseInt(match[1], 10);
         runningAppIds.add(appId);
 
         // Skip if we already know about this container
@@ -223,45 +171,27 @@ class AppContainerService {
           continue;
         }
 
-        const userId = userIdStr ? parseInt(userIdStr, 10) : 0;
-        const containerName =
-          containerInfo.Names?.[0]?.replace(/^\//, "") || `app-${appId}`;
-
-        // Find the agent port from port bindings (may be 0 if not exposed)
-        let agentPort = 0;
-        for (const port of containerInfo.Ports || []) {
-          if (port.PrivatePort === 3100 && port.PublicPort) {
-            agentPort = port.PublicPort;
-            break;
-          }
-        }
-
-        // Mark port as allocated if found
-        if (agentPort > 0) {
-          allocatedAgentPorts.add(agentPort);
-        }
-
-        // Track this container (even without agent port - needed for Traefik routing)
+        // Track this container (userId defaults to 0 - could be enhanced)
         appContainers.set(appId, {
-          containerId: containerInfo.Id,
-          containerName,
-          agentPort,
-          userId,
-          state: "running",
-          lastActivityAt: Date.now(),
+          containerId: containerInfo.containerId,
+          containerName: containerInfo.containerName,
+          agentUrl: containerInfo.agentUrl,
+          previewUrl: containerInfo.previewUrl,
+          userId: 0, // Can't determine from orchestrator - would need labels
+          state: containerInfo.state,
+          lastActivityAt: containerInfo.lastActivityAt,
         });
 
         console.log(
-          `[${new Date().toLocaleString()}] [AppContainerService] discovered container ${containerName} (appId: ${appId}, agentPort: ${agentPort || "none"})`,
+          `[${new Date().toLocaleString()}] [AppContainerService] discovered container ${containerInfo.containerName} (appId: ${appId})`,
         );
       }
 
       // Remove stale entries for containers no longer running
-      // BUT don't remove entries in "starting" state - they might not be in the container's list yet
+      // BUT don't remove entries in "starting" state
       for (const [appId, info] of appContainers.entries()) {
         if (!runningAppIds.has(appId)) {
           if (info.state === "starting") {
-            // Container is still starting, don't remove it yet
             console.log(
               `[${new Date().toLocaleString()}] [AppContainerService] Skipping stale check for app-${appId} (still in starting state)`,
             );
@@ -270,9 +200,6 @@ class AppContainerService {
           console.log(
             `[${new Date().toLocaleString()}] [AppContainerService] Removing stale container entry: app-${appId} (state: ${info.state})`,
           );
-          if (info.agentPort > 0) {
-            allocatedAgentPorts.delete(info.agentPort);
-          }
           appContainers.delete(appId);
         }
       }
@@ -298,37 +225,15 @@ class AppContainerService {
     }
 
     await this.stopAllContainers();
+    await orchestrator.shutdown();
     console.log("[AppContainerService] Shutdown complete");
   }
 
   /**
-   * Allocate an available agent port
-   */
-  private allocateAgentPort(): number {
-    for (let port = AGENT_PORT_MIN; port <= AGENT_PORT_MAX; port++) {
-      if (!allocatedAgentPorts.has(port)) {
-        allocatedAgentPorts.add(port);
-        return port;
-      }
-    }
-    throw new Error("No available agent ports");
-  }
-
-  /**
-   * Release an allocated agent port
-   */
-  private releasePort(agentPort: number): void {
-    allocatedAgentPorts.delete(agentPort);
-  }
-
-  /**
    * Start an app container (or return existing if already running)
-   * Connects to kova-network and configures Traefik routing
    */
   async startContainer(cfg: StartContainerConfig): Promise<ContainerPorts> {
     const { appId, userId, appPath } = cfg;
-    const containerName = `app-${appId}`;
-    const previewUrl = `http://${containerName}.${config.PREVIEW_DOMAIN}:${config.PREVIEW_PORT}`;
 
     // Use mutex to prevent concurrent container operations for the same app
     const existingLock = containerOperationLocks.get(appId);
@@ -340,7 +245,7 @@ class AppContainerService {
         const result = await existingLock;
         // Previous operation succeeded, return its result
         console.log(
-          `[AppContainerService] Previous operation succeeded, reusing container on port ${result.agentPort}`,
+          `[AppContainerService] Previous operation succeeded, reusing container`,
         );
         this.recordActivity(appId, "agent");
         return result;
@@ -355,22 +260,17 @@ class AppContainerService {
     // After waiting, check if container is now running (another request may have started it)
     const existing = appContainers.get(appId);
     if (existing && existing.state === "running" && existing.containerId) {
-      try {
-        const container = docker.getContainer(existing.containerId);
-        const info = await container.inspect();
-        if (info.State.Running) {
-          console.log(
-            `[AppContainerService] Container ${containerName} is now running (after lock wait), reusing`,
-          );
-          this.recordActivity(appId, "agent");
-          return {
-            agentPort: existing.agentPort,
-            agentUrl: `http://localhost:${existing.agentPort}`,
-            previewUrl,
-          };
-        }
-      } catch {
-        // Container doesn't exist, continue with creation
+      // Verify with orchestrator
+      const containerInfo = await orchestrator.getContainer(appId);
+      if (containerInfo && containerInfo.state === "running") {
+        console.log(
+          `[AppContainerService] Container app-${appId} is now running (after lock wait), reusing`,
+        );
+        this.recordActivity(appId, "agent");
+        return {
+          agentUrl: containerInfo.agentUrl,
+          previewUrl: containerInfo.previewUrl,
+        };
       }
     }
 
@@ -394,7 +294,6 @@ class AppContainerService {
   ): Promise<ContainerPorts> {
     const { appId, userId, appPath } = cfg;
     const containerName = `app-${appId}`;
-    const previewUrl = `http://${containerName}.${config.PREVIEW_DOMAIN}:${config.PREVIEW_PORT}`;
 
     // Check if container is already running
     const existing = appContainers.get(appId);
@@ -403,7 +302,6 @@ class AppContainerService {
       existing
         ? JSON.stringify({
             containerId: existing.containerId?.slice(0, 12),
-            agentPort: existing.agentPort,
             state: existing.state,
           })
         : "none",
@@ -415,54 +313,34 @@ class AppContainerService {
       existing.containerId
     ) {
       // Verify the container is actually running
-      try {
-        const container = docker.getContainer(existing.containerId);
-        const info = await container.inspect();
+      const containerInfo = await orchestrator.getContainer(appId);
+      if (containerInfo && containerInfo.state === "running") {
+        // Container is actually running, return existing
+        this.recordActivity(appId, "agent");
         console.log(
-          `[AppContainerService] Container ${containerName} inspect: Running=${info.State.Running}, Status=${info.State.Status}`,
+          `[AppContainerService] Reusing existing container ${containerName}`,
         );
-        if (info.State.Running) {
-          // Container is actually running, return existing
-          this.recordActivity(appId, "agent");
-          console.log(
-            `[AppContainerService] Reusing existing container ${containerName} on port ${existing.agentPort}`,
-          );
-          return {
-            agentPort: existing.agentPort,
-            agentUrl: `http://localhost:${existing.agentPort}`,
-            previewUrl,
-          };
-        } else {
-          // Container exists but not running, clean up and recreate
-          console.log(
-            `[AppContainerService] Container ${containerName} not running (Status=${info.State.Status}), will recreate`,
-          );
-          this.releasePort(existing.agentPort);
-          appContainers.delete(appId);
-          // Also try to remove the stopped container
+        return {
+          agentUrl: containerInfo.agentUrl,
+          previewUrl: containerInfo.previewUrl,
+        };
+      } else {
+        // Container not running, clean up and recreate
+        console.log(
+          `[AppContainerService] Container ${containerName} not running, will recreate`,
+        );
+        appContainers.delete(appId);
+        // Try to remove stopped container
+        if (existing.containerId) {
           try {
-            await container.remove({ force: true });
-            console.log(
-              `[AppContainerService] Removed stopped container ${containerName}`,
-            );
-          } catch (removeErr) {
-            console.log(
-              `[AppContainerService] Failed to remove stopped container: ${removeErr}`,
-            );
+            await orchestrator.stopContainer(existing.containerId);
+          } catch (err) {
+            console.log(`[AppContainerService] Failed to cleanup: ${err}`);
           }
         }
-      } catch (inspectError: any) {
-        // Container doesn't exist, clean up stale entry
-        console.log(
-          `[AppContainerService] Container ${containerName} inspect failed: ${inspectError.message}`,
-        );
-        this.releasePort(existing.agentPort);
-        appContainers.delete(appId);
       }
     }
 
-    // Allocate port for agent access from host
-    const agentPort = this.allocateAgentPort();
 
     // Full path on server (resolve to absolute path)
     const fullAppPath = resolve(appsBasePath, appPath);
@@ -475,53 +353,66 @@ class AppContainerService {
       );
     }
 
-    // Convert to Docker-compatible path for volume mount
-    const dockerAppPath = toDockerPath(fullAppPath);
+    // Build LLM provider environment variables
+    const llmProviderConfig = buildLlmProviderConfig();
+    const llmEnv = buildLlmEnvironment(llmProviderConfig);
+
+    // Get K8s environment config to determine port strategy
+    const k8sEnv = buildK8sEnvironmentConfig();
+
+    // Port allocation strategy:
+    // - EKS: Use fixed standard ports (no conflicts with ClusterIP services)
+    // - Local k3d: Use unique ports per app (needed for hostNetwork)
+    let agentPort: number;
+    let devPort: number;
+    if (k8sEnv.isEKS) {
+      // EKS: Fixed standard ports
+      agentPort = 3100;
+      devPort = 3000;
+    } else {
+      // Local k3d: Unique ports (31000 + appId)
+      const basePort = 31000 + appId;
+      agentPort = basePort - 100;
+      devPort = basePort;
+    }
+
+    // Generate agent API authentication token
+    // Token is passed to container and required for all agent API calls
+    // Prevents unauthorized access since agent API is externally exposed
+    const agentToken = generateAgentToken(appId, userId);
+    console.log(`[AppContainerService] Generated agent token for app ${appId}`);
 
     // Environment variables for the container
-    const envArray = [
-      `APP_ID=${appId}`,
-      `WORKSPACE_DIR=/workspace`,
-      `AGENT_PORT=${config.CONTAINER_AGENT_PORT}`,
-      `DEV_SERVER_PORT=${config.CONTAINER_DEV_PORT}`,
+    const env = {
+      // LLM Provider credentials (Anthropic API, Azure, or Bedrock)
+      ...llmEnv,
+      // Container metadata
+      APP_ID: appId.toString(),
+      WORKSPACE_DIR: "/workspace",
+      AGENT_PORT: agentPort.toString(),
+      DEV_SERVER_PORT: devPort.toString(),
+      // Agent API authentication
+      AGENT_TOKEN: agentToken,
+      // Cluster identifier (for tracking app location)
+      K8S_CLUSTER: k8sEnv.clusterIdentifier,
       // Store Claude sessions in workspace (persisted via bind mount)
-      `CLAUDE_CONFIG_DIR=/workspace/.claude`,
+      CLAUDE_CONFIG_DIR: "/workspace/.claude",
       // ProGet API key for internal npm packages
-      `PROGET_API_KEY=${config.PROGET_API_KEY || ""}`,
+      PROGET_API_KEY: config.PROGET_API_KEY || "",
       // Data Platform credentials (Starburst Galaxy / Trino)
-      `DATA_PLATFORM_HOST=${config.DATA_PLATFORM_HOST}`,
-      `DATA_PLATFORM_USER=${config.DATA_PLATFORM_USER}`,
-      `DATA_PLATFORM_PASSWORD=${config.DATA_PLATFORM_PASSWORD}`,
-      // LLM provider toggle (always pass so container knows which mode)
-      `CLAUDE_CODE_USE_BEDROCK=${config.CLAUDE_CODE_USE_BEDROCK || ""}`,
+      DATA_PLATFORM_HOST: config.DATA_PLATFORM_HOST,
+      DATA_PLATFORM_USER: config.DATA_PLATFORM_USER,
+      DATA_PLATFORM_PASSWORD: config.DATA_PLATFORM_PASSWORD,
       // Agent configuration
-      `AGENT_MODEL=${config.AGENT_MODEL}`,
-      `VERBOSE_AGENT_LOGGING=${config.VERBOSE_AGENT_LOGGING}`,
-    ];
-
-    // Conditionally add LLM credentials based on provider mode
-    if (config.CLAUDE_CODE_USE_BEDROCK === "0") {
-      // Anthropic API mode: pass the API key
-      envArray.push(`ANTHROPIC_API_KEY=${config.ANTHROPIC_API_KEY || ""}`);
-    } else if (config.CLAUDE_CODE_USE_BEDROCK === "1") {
-      // Bedrock mode: always pass region
-      envArray.push(`AWS_REGION=${config.AWS_REGION || ""}`);
-      // In "explicit" mode (local dev): pass STS credentials
-      // In "pod-identity" mode (EKS): let AWS SDK discover credentials from Pod Identity
-      if (config.AWS_AUTH_MODE === "explicit") {
-        envArray.push(
-          `AWS_ACCESS_KEY_ID=${config.AWS_ACCESS_KEY_ID || ""}`,
-          `AWS_SECRET_ACCESS_KEY=${config.AWS_SECRET_ACCESS_KEY || ""}`,
-          `AWS_SESSION_TOKEN=${config.AWS_SESSION_TOKEN || ""}`
-        );
-      }
-    }
+      VERBOSE_AGENT_LOGGING: config.VERBOSE_AGENT_LOGGING,
+    };
 
     // Update state to starting
     appContainers.set(appId, {
       containerId: null,
       containerName,
-      agentPort,
+      agentUrl: "", // Will be updated after spawn
+      previewUrl: "", // Will be updated after spawn
       userId,
       state: "starting",
       lastActivityAt: Date.now(),
@@ -535,111 +426,40 @@ class AppContainerService {
       console.log(
         `[AppContainerService] Timestamp: ${new Date().toISOString()}`,
       );
-      console.log(`[AppContainerService] Agent port: ${agentPort}`);
       console.log(`[AppContainerService] App path: ${fullAppPath}`);
-      console.log(`[AppContainerService] Docker path: ${dockerAppPath}`);
-      console.log(`[AppContainerService] Preview URL: ${previewUrl}`);
       console.log(`===========================================\n`);
 
-      // Remove existing container with same name if any
-      try {
-        const existingContainer = docker.getContainer(containerName);
-        console.log(
-          `[AppContainerService] Found existing container ${containerName}, removing with force=true (will send SIGKILL)`,
-        );
-        await existingContainer.remove({ force: true });
-        console.log(
-          `[AppContainerService] Removed existing container: ${containerName}`,
-        );
-      } catch (removeError: any) {
-        // Container doesn't exist, which is fine
-        if (removeError.statusCode !== 404) {
-          console.log(
-            `[AppContainerService] Remove container ${containerName} error: ${removeError.message}`,
-          );
-        }
-      }
-
-      // Create container connected to kova-network for Traefik routing
-      const container = await docker.createContainer({
-        Image: this.containerImage,
-        name: containerName,
-        WorkingDir: "/app",
-        Env: envArray,
-        ExposedPorts: {
-          "3000/tcp": {}, // Dev server
-          "3100/tcp": {}, // Agent server
-        },
-        HostConfig: {
-          NetworkMode: config.CONTAINER_NETWORK,
-          Binds: [
-            `${dockerAppPath}:/workspace:rw`,
-            // Named volume for node_modules - stored on Linux filesystem
-            // This fixes npm bin-links issues on Windows where bind mounts don't support chmod/symlinks
-            `app-${appId}-modules:/workspace/node_modules`,
-            // Named volume for .claude directory - stored on Linux filesystem
-            // This fixes chmod errors on Windows where bind mounts don't support Unix permissions
-            // The Claude Agent SDK requires chmod for writing config/state files
-            `app-${appId}-claude:/workspace/.claude`,
-          ],
-          // Agent port exposed to host for direct access
-          PortBindings: {
-            "3100/tcp": [{ HostPort: agentPort.toString() }],
-          },
-          Memory: 2 * 1024 * 1024 * 1024, // 2GB (Claude Code CLI needs more memory)
-          MemorySwap: 4 * 1024 * 1024 * 1024, // 4GB with swap
-          CpuPeriod: 100000,
-          CpuQuota: 200000, // 200% CPU (2 cores)
-        },
-        Labels: {
-          "kova.app-container": "true",
-          "kova.app.id": appId.toString(),
-          "kova.user.id": userId.toString(),
-          // Traefik labels for automatic routing via Docker provider
-          "traefik.enable": "true",
-          [`traefik.http.routers.${containerName}.rule`]: `Host(\`${containerName}.${config.PREVIEW_DOMAIN}\`)`,
-          [`traefik.http.routers.${containerName}.entrypoints`]: "preview",
-          [`traefik.http.services.${containerName}.loadbalancer.server.port`]: config.CONTAINER_DEV_PORT.toString(),
-        },
-        Tty: true,
+      // Spawn container via orchestrator
+      const containerInfo = await orchestrator.spawnContainer({
+        appId,
+        userId,
+        appPath: fullAppPath,
+        image: this.containerImage,
+        env,
       });
 
-      // Update container id as soon as it's known (even before start)
-      const containerInfo = appContainers.get(appId);
-      if (containerInfo) {
-        containerInfo.containerId = container.id;
-      }
-
-      // Start container
-      await container.start();
-
-      // Note: Traefik discovers routes via Docker labels on the container
-      // See Labels in createContainer() above
-
       // Update container state
-      const containerInfoAfterStart = appContainers.get(appId);
-      if (containerInfoAfterStart) {
-        containerInfoAfterStart.state = "running";
+      const appInfo = appContainers.get(appId);
+      if (appInfo) {
+        appInfo.containerId = containerInfo.containerId;
+        appInfo.agentUrl = containerInfo.agentUrl;
+        appInfo.previewUrl = containerInfo.previewUrl;
+        appInfo.state = containerInfo.state;
       }
 
-      // Stream container logs to WebSocket subscribers
-      this.streamContainerLogs(appId, container, previewUrl);
-
-      // Monitor container for exit
-      this.monitorContainer(appId, container);
+      // Start log streaming (platform-specific)
+      this.startLogStreaming(appId, containerInfo);
 
       console.log(
-        `[AppContainerService] Container started: ${containerName} (agent: ${agentPort}, preview: ${previewUrl})`,
+        `[AppContainerService] Container started: ${containerName} (preview: ${containerInfo.previewUrl})`,
       );
 
       return {
-        agentPort,
-        agentUrl: `http://localhost:${agentPort}`,
-        previewUrl,
+        agentUrl: containerInfo.agentUrl,
+        previewUrl: containerInfo.previewUrl,
       };
     } catch (error: any) {
       // Cleanup on error
-      this.releasePort(agentPort);
       appContainers.delete(appId);
       console.error(
         `[AppContainerService] Failed to start container for app ${appId}:`,
@@ -650,121 +470,47 @@ class AppContainerService {
   }
 
   /**
-   * Stream container logs to WebSocket subscribers
-   * Note: Container uses Tty: true, so logs are raw (not multiplexed)
+   * Start log streaming for a container
+   * Platform-specific implementation (Docker logs API vs kubectl logs)
    */
-  private async streamContainerLogs(
+  private async startLogStreaming(
     appId: number,
-    container: Docker.Container,
-    previewUrl: string,
+    containerInfo: ContainerInfo,
   ): Promise<void> {
-    try {
-      const logStream = await container.logs({
-        follow: true,
-        stdout: true,
-        stderr: true,
-        timestamps: false,
-      });
-
-      // Track if we've sent the proxy server started message
-      let proxyStartedSent = false;
-
-      // With Tty: true, logs are raw text (not multiplexed with 8-byte headers)
-      logStream.on("data", (chunk: Buffer) => {
-        const output = chunk.toString("utf8");
-
-        // Process each line
-        for (const line of output.split("\n")) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine) continue;
-
-          // Log to console for debugging
-          console.log(`[Container ${appId}] stdout: ${trimmedLine}`);
-
-          // Broadcast to WebSocket subscribers
-          broadcastAppOutput(appId, "stdout", trimmedLine);
-
-          // Check if dev server is ready with REAL content (not placeholder)
-          // The container emits "[kova-real-content-ready]" only when serving actual app content
-          // This prevents broadcasting the preview URL while still building the app
-          if (!proxyStartedSent && trimmedLine.includes("[kova-real-content-ready]")) {
-            proxyStartedSent = true;
-
-            const proxyMessage = `[kova-proxy-server]started=[${previewUrl}]original=[http://localhost:3000]`;
-            // Delay broadcast slightly to give Traefik time to discover the container
-            // Otherwise the frontend may try to load the preview before Traefik routes are ready
-            setTimeout(() => {
-              console.log(`[Container ${appId}] Broadcasting proxy URL: ${proxyMessage}`);
-              broadcastAppOutput(appId, "info", proxyMessage);
-            }, 1500);
-          }
-        }
-      });
-
-      logStream.on("error", (err) => {
-        console.error(`[AppContainerService] Log stream error for app ${appId}:`, err);
-      });
-
-      logStream.on("end", () => {
-        console.log(`[AppContainerService] Log stream ended for app ${appId}`);
-      });
-    } catch (error) {
-      console.error(
-        `[AppContainerService] Failed to stream logs for app ${appId}:`,
-        error,
-      );
-    }
-  }
-
-  /**
-   * Monitor container for exit
-   */
-  private async monitorContainer(
-    appId: number,
-    container: Docker.Container,
-  ): Promise<void> {
-    try {
-      const result = await container.wait();
-      console.log(
-        `[AppContainerService] Container exited for app ${appId}:`,
-        result,
-      );
-      this.handleContainerExit(appId);
-    } catch (error) {
-      console.error(
-        `[AppContainerService] Error monitoring container for app ${appId}:`,
-        error,
-      );
-    }
-  }
-
-  /**
-   * Handle container exit
-   */
-  private handleContainerExit(appId: number): void {
-    const containerInfo = appContainers.get(appId);
-    if (containerInfo) {
-      this.releasePort(containerInfo.agentPort);
-      appContainers.delete(appId);
-    }
+    // TODO: Implement log streaming using kubectl logs -f or Kubernetes API watch
+    console.log(
+      `[AppContainerService] K8s log streaming not yet implemented for app ${appId}`,
+    );
+    // For now, just broadcast a startup message
+    broadcastAppOutput(
+      appId,
+      "info",
+      `[kova-proxy-server]started=[${containerInfo.previewUrl}]original=[http://localhost:3000]`,
+    );
   }
 
   /**
    * Stop an app container
    */
-  async stopContainer(appId: number, reason?: string): Promise<void> {
-    // CRITICAL DEBUG: This MUST appear before "Container stopped"
-    // Build ID: 20260104-2130
+  async stopContainer(
+    appId: number,
+    options?: { reason?: string; deletePersistentStorage?: boolean },
+  ): Promise<void> {
+    const reason = options?.reason;
+    const deletePersistentStorage = options?.deletePersistentStorage || false;
+
     console.log(
       `\n\n\n*************************************************************`,
     );
-    console.log(`***** STOP CONTAINER CALLED - BUILD 20260104-2130 *****`);
+    console.log(`***** STOP CONTAINER CALLED *****`);
     console.log(`***** App ID: ${appId}, Reason: ${reason || "NONE"} *****`);
+    console.log(
+      `***** Delete Storage: ${deletePersistentStorage ? "YES" : "NO"} *****`,
+    );
     console.log(
       `*************************************************************\n`,
     );
 
-    // Log call stack to trace who's calling stopContainer
     const stack = new Error().stack;
     console.log(`\n========== STOP CONTAINER DEBUG ==========`);
     console.log(`[AppContainerService] stopContainer called for app ${appId}`);
@@ -778,25 +524,25 @@ class AppContainerService {
 
     const containerInfo = appContainers.get(appId);
 
-    if (!containerInfo || containerInfo.state === "none") {
+    if (!containerInfo || containerInfo.state === "stopped") {
       console.log(
-        `[AppContainerService] stopContainer: app ${appId} already stopped (no entry or state=none)`,
+        `[AppContainerService] stopContainer: app ${appId} already stopped`,
       );
-      return; // Already stopped
+      return;
     }
 
     if (containerInfo.state === "stopping") {
       console.log(
         `[AppContainerService] stopContainer: app ${appId} already stopping`,
       );
-      return; // Already stopping
+      return;
     }
 
     if (containerInfo.state === "starting") {
       console.log(
         `[AppContainerService] stopContainer: app ${appId} is still starting, will not stop`,
       );
-      return; // Don't stop containers that are still starting
+      return;
     }
 
     console.log(
@@ -805,28 +551,42 @@ class AppContainerService {
     containerInfo.state = "stopping";
 
     try {
-      const containerHandle =
-        containerInfo.containerId ?? containerInfo.containerName;
-      console.log(
-        `[AppContainerService] Stopping container ${containerHandle} (will send SIGTERM, wait 10s)`,
-      );
-      const container = docker.getContainer(containerHandle);
-      await container.stop({ t: 10 }); // 10 second timeout
-      console.log(
-        `[AppContainerService] Container stopped for app ${appId} [BUILD-20260104-2130]`,
-      );
-    } catch (error: any) {
-      // Container might already be stopped
-      if (!error.message?.includes("is not running")) {
-        console.error(
-          `[AppContainerService] Error stopping container for app ${appId}:`,
-          error,
+      if (containerInfo.containerId) {
+        console.log(
+          `[AppContainerService] Stopping container ${containerInfo.containerId}`,
         );
+        await orchestrator.stopContainer(containerInfo.containerId);
+        console.log(
+          `[AppContainerService] Container stopped for app ${appId}`,
+        );
+
+        // Delete persistent storage if requested (app is being permanently deleted)
+        if (deletePersistentStorage) {
+          console.log(
+            `[AppContainerService] Deleting persistent storage for app ${appId}`,
+          );
+          try {
+            await orchestrator.deletePersistentStorage(appId);
+            console.log(
+              `[AppContainerService] Persistent storage deleted for app ${appId}`,
+            );
+          } catch (error: any) {
+            console.error(
+              `[AppContainerService] Failed to delete persistent storage for app ${appId}:`,
+              error,
+            );
+            // Don't throw - container is already stopped
+          }
+        }
       }
+    } catch (error: any) {
+      console.error(
+        `[AppContainerService] Error stopping container for app ${appId}:`,
+        error,
+      );
     }
 
     // Cleanup
-    this.releasePort(containerInfo.agentPort);
     appContainers.delete(appId);
   }
 
@@ -840,12 +600,9 @@ class AppContainerService {
       return null;
     }
 
-    const previewUrl = `http://${containerInfo.containerName}.${config.PREVIEW_DOMAIN}:${config.PREVIEW_PORT}`;
-
     return {
-      agentPort: containerInfo.agentPort,
-      agentUrl: `http://localhost:${containerInfo.agentPort}`,
-      previewUrl,
+      agentUrl: containerInfo.agentUrl,
+      previewUrl: containerInfo.previewUrl,
     };
   }
 
@@ -859,19 +616,16 @@ class AppContainerService {
     const containerInfo = appContainers.get(appId);
 
     if (!containerInfo) {
-      return { state: "none" };
+      return { state: "pending" };
     }
-
-    const previewUrl = `http://${containerInfo.containerName}.${config.PREVIEW_DOMAIN}:${config.PREVIEW_PORT}`;
 
     return {
       state: containerInfo.state,
       ports:
         containerInfo.state === "running"
           ? {
-              agentPort: containerInfo.agentPort,
-              agentUrl: `http://localhost:${containerInfo.agentPort}`,
-              previewUrl,
+              agentUrl: containerInfo.agentUrl,
+              previewUrl: containerInfo.previewUrl,
             }
           : undefined,
     };
@@ -904,26 +658,30 @@ class AppContainerService {
    * Check if container has been idle for longer than the timeout and stop it if so
    */
   private async stopIdleContainers(): Promise<void> {
-    const now = Date.now();
+    try {
+      const cleanedCount = await orchestrator.cleanupIdleContainers(
+        this.idleTimeoutMs,
+      );
 
-    for (const [appId, containerInfo] of appContainers.entries()) {
-      if (containerInfo.state !== "running") {
-        continue;
-      }
-
-      const idleTime = now - containerInfo.lastActivityAt;
-      if (idleTime > this.idleTimeoutMs) {
-        const idleMinutes = Math.round(idleTime / 60000);
+      if (cleanedCount > 0) {
+        const idleMinutes = Math.round(this.idleTimeoutMs / 60000);
         console.log(`\n========== IDLE TIMEOUT ==========`);
-        console.log(`[AppContainerService] Container for app ${appId} has been idle for ${idleMinutes} minutes`);
-        console.log(`[AppContainerService] Idle timeout threshold: ${Math.round(this.idleTimeoutMs / 60000)} minutes`);
-        console.log(`[AppContainerService] Stopping container due to IDLE TIMEOUT`);
-        console.log(`==================================\n`);
-        await this.stopContainer(
-          appId,
-          `IDLE TIMEOUT: no activity for ${idleMinutes} minutes`,
+        console.log(
+          `[AppContainerService] Cleaned up ${cleanedCount} idle container(s)`,
         );
+        console.log(
+          `[AppContainerService] Idle timeout threshold: ${idleMinutes} minutes`,
+        );
+        console.log(`==================================\n`);
+
+        // Refresh our container map
+        await this.scanExistingContainers();
       }
+    } catch (error) {
+      console.error(
+        "[AppContainerService] Error during idle container cleanup:",
+        error,
+      );
     }
   }
 
@@ -937,7 +695,9 @@ class AppContainerService {
 
     await Promise.all(
       userContainers.map(([appId]) =>
-        this.stopContainer(appId, `user ${userId} containers cleanup`),
+        this.stopContainer(appId, {
+          reason: `user ${userId} containers cleanup`,
+        }),
       ),
     );
   }
@@ -948,7 +708,7 @@ class AppContainerService {
   async stopAllContainers(): Promise<void> {
     const allAppIds = Array.from(appContainers.keys());
     await Promise.all(
-      allAppIds.map((appId) => this.stopContainer(appId, "shutdown")),
+      allAppIds.map((appId) => this.stopContainer(appId, { reason: "shutdown" })),
     );
   }
 
@@ -956,20 +716,9 @@ class AppContainerService {
    * Ensure the container image exists (build if needed)
    */
   async ensureImageExists(): Promise<void> {
-    try {
-      await docker.getImage(this.containerImage).inspect();
-      console.log(`[AppContainerService] Image ${this.containerImage} exists`);
-    } catch (error: any) {
-      if (error.statusCode === 404) {
-        console.log(
-          `[AppContainerService] Image ${this.containerImage} not found, please build it first`,
-        );
-        throw new Error(
-          `Container image ${this.containerImage} not found. Run '<docker> compose build app-container' first.`,
-        );
-      }
-      throw error;
-    }
+    console.log(
+      `[AppContainerService] Using Kubernetes - image ${this.containerImage} will be pulled by cluster`,
+    );
   }
 }
 

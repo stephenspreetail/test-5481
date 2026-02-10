@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Known Issues & Fixes
+
+### Corporate VPN + k3d Network Issue
+
+**Problem**: Pods in k3d cannot reach external package registries (npm, apt, etc.) when a corporate VPN with transparent proxy is active.
+
+**Solution**: Use `hostNetwork: true` in pod specs. This allows pods to use the host's network stack, letting the VPN client (Axis) handle split-tunneling automatically for both external (npm) and internal (ProGet) resources.
+
+**Files Modified**:
+- `backend/src/services/orchestrator/k8s.orchestrator.ts` - Added `hostNetwork: true`
+- `backend/src/services/orchestrator/kubectl.orchestrator.ts` - Added `hostNetwork: true`
+
 ## Project Overview
 
 Kova is an AI application builder similar to Lovable and v0. Unlike its counterparts, Kova enables users to develop applications within their organization's existing infrastructure. The platform is a React web application, backed by a Bun/Fastify backend and a PostgreSQL database. While some claim that Kova is an acronym for Kit for Operational Value Acceleration, Kova says this is a myth and that the name originates from a grandparent.
@@ -12,7 +24,18 @@ Kova is an AI application builder similar to Lovable and v0. Unlike its counterp
 
 ## Container Runtime
 
-Use any OCI-compatible container runtime (Podman, Rancher Desktop, etc.). Commands below use `docker` but work with `podman` too.
+**For Kubernetes (k3d):**
+
+```sh
+# Build and import app-container image into k3d
+docker build -f Dockerfile.appcontainer -t kova-app-container:latest .
+k3d image import kova-app-container:latest -c kova-dev
+
+# Rebuild after changes to app-container
+docker build -f Dockerfile.appcontainer -t kova-app-container:latest . && k3d image import kova-app-container:latest -c kova-dev
+```
+
+**For Docker/Podman (legacy):**
 
 ```sh
 # Build the app-container image
@@ -22,17 +45,54 @@ docker compose build app-container
 docker compose up postgres traefik -d
 ```
 
+## Quick Start (Local Development)
+
+> Full walkthrough with prerequisites and troubleshooting: **[docs/local-dev-quickstart.md](docs/local-dev-quickstart.md)**
+
+**Prerequisites:** Bun, Docker, k3d, kubectl, and the `dev01-eks-app-ro` kubectl context (for TLS cert).
+
+```sh
+# 1. Install dependencies and configure environment
+bun install
+cp .env.example .env              # then fill in API keys + secrets
+
+# 2. Create k3d cluster (includes Istio, TLS cert, PostgreSQL)
+bun run scripts/cluster-up.ts
+
+# 3. Label namespace and build app container
+kubectl apply -f manifests/kova/namespace-kova-apps.yaml
+bun run container:rebuild
+
+# 4. Set up database and seed dev user
+bun run db:push
+bun run dev:backend &             # seed script needs the REST API running
+sleep 3 && bun run --cwd backend seed:dev-user
+kill %1 2>/dev/null
+
+# 5. Start the application
+bun run dev:full                  # Backend :3002 + Frontend :5174
+```
+
+Login at `http://localhost:5174/login` with:
+- **Email**: `dev@kova.local`
+- **Password**: `devpassword123`
+
+Teardown: `bun run scripts/cluster-down.ts` (add `--volumes` for full cleanup).
+
 ## Development Commands
 
 ```sh
 # Install dependencies (from root - installs all workspaces)
 bun install
 
-# Start PostgreSQL
-docker compose up postgres -d
+# Start PostgreSQL (via K8s)
+kubectl apply -f manifests/kova/
 
 # Run database migrations
 bun run db:push
+
+# Create dev user account
+bun run --cwd backend seed:dev-user
 
 # Development (run both frontend and backend)
 bun run dev:full        # Runs backend on :3002 and frontend on :5174
@@ -74,13 +134,30 @@ Copy `.env.example` to `.env` at the repository root and configure:
 cp .env.example .env
 ```
 
+Generate security keys:
+
+```sh
+# Generate JWT_SECRET (32+ characters)
+openssl rand -hex 32
+
+# Generate ENCRYPTION_KEY (must be exactly 64 hex characters)
+openssl rand -hex 32
+```
+
 Required variables:
 
 ```sh
-ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+# Azure Foundry Anthropic endpoint (Spreetail internal)
+ANTHROPIC_API_KEY=7jIL0zSfScariKPeWg7nrthptFKxOvIVXCPF9PkCZjTWzgsxHBJ6JQQJ99BLACHYHv6XJ3w3AAAAACOGaDtA
+ANTHROPIC_BASE_URL=https://tk-dot-dev-foundry-resource.openai.azure.com/anthropic
+AGENT_MODEL=claude-sonnet-4-5
+
+# Database
 DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
-JWT_SECRET=your_jwt_secret_at_least_32_chars
-ENCRYPTION_KEY=your_64_char_hex_encryption_key
+
+# Security keys (generated above)
+JWT_SECRET=<output from first openssl command>
+ENCRYPTION_KEY=<output from second openssl command>
 ```
 
 ### Agent CLI

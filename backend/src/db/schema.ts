@@ -94,6 +94,11 @@ export const apps = pgTable("apps", {
   // Commands
   installCommand: text("install_command"),
   startCommand: text("start_command"),
+  // Orchestration context
+  // Which K8s cluster this app is deployed to (e.g., "dev01-eks-app-admin")
+  k8sCluster: varchar("k8s_cluster", { length: 255 }),
+  // JWT token for agent API authentication (prevents unauthorized access)
+  agentToken: varchar("agent_token", { length: 500 }),
   // Context
   chatContext: jsonb("chat_context"),
   isFavorite: boolean("is_favorite").notNull().default(false),

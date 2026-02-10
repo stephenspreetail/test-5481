@@ -98,6 +98,12 @@ export interface ContainerOrchestrator {
   cleanupIdleContainers(maxIdleMs: number): Promise<number>;
 
   /**
+   * Delete persistent storage for an app (PVC/volume)
+   * Called when an app is permanently deleted
+   */
+  deletePersistentStorage(appId: number): Promise<void>;
+
+  /**
    * Shutdown the orchestrator (cleanup resources)
    */
   shutdown(): Promise<void>;

@@ -154,6 +154,36 @@ app.post("/dev-server/restart", async (request, reply) => {
 });
 
 /**
+ * Release control to allow external process (Claude running `bun dev`)
+ */
+app.post("/dev-server/release-control", async (request, reply) => {
+  try {
+    await devServerManager.releaseControl();
+    return { success: true, status: devServerManager.getStatus() };
+  } catch (error) {
+    reply.status(500).send({
+      error:
+        error instanceof Error ? error.message : "Failed to release control",
+    });
+  }
+});
+
+/**
+ * Reclaim control after external process exits
+ */
+app.post("/dev-server/reclaim-control", async (request, reply) => {
+  try {
+    await devServerManager.reclaimControl();
+    return { success: true, status: devServerManager.getStatus() };
+  } catch (error) {
+    reply.status(500).send({
+      error:
+        error instanceof Error ? error.message : "Failed to reclaim control",
+    });
+  }
+});
+
+/**
  * Check if real content is available and switch from placeholder if so
  * Call this after agent makes changes that might create servable content
  */
