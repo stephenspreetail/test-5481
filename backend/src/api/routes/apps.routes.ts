@@ -6,6 +6,7 @@ import { z } from "zod";
 import { config } from "../../config/index.js";
 import { db } from "../../db/index.js";
 import { apps, chats, messages } from "../../db/schema.js";
+import { appContainerService } from "../../services/app-container.service.js";
 import { secretService } from "../../services/secret.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
@@ -206,9 +207,10 @@ export async function appsRoutes(app: FastifyInstance) {
     const user = request.user!;
     const { id } = request.params as { id: string };
 
+    const appId = parseInt(id);
     const result = await db
       .delete(apps)
-      .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId)))
+      .where(and(eq(apps.id, appId), eq(apps.userId, user.userId)))
       .returning();
 
     if (result.length === 0) {
@@ -216,7 +218,16 @@ export async function appsRoutes(app: FastifyInstance) {
       return;
     }
 
-    // TODO: Also delete app files from storage
+    // Stop container and clean up resources (including PVC)
+    try {
+      await appContainerService.stopContainer(appId, {
+        reason: "app deleted",
+        deletePersistentStorage: true,
+      });
+    } catch (error) {
+      console.error(`[DELETE /api/apps/${id}] Failed to stop container:`, error);
+      // Continue anyway - app is already deleted from DB
+    }
 
     return { success: true };
   });

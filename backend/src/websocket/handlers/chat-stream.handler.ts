@@ -1,5 +1,6 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { WebSocket } from "ws";
+import { config } from "../../config/index.js";
 import { db } from "../../db/index.js";
 import { apps, chats, messages } from "../../db/schema.js";
 import {
@@ -7,7 +8,6 @@ import {
   isWorkflowAnalysisPrompt,
 } from "../../prompts/system_prompt.js";
 import { appContainerService } from "../../services/app-container.service.js";
-import { config } from "../../config/index.js";
 import {
   generateAppName,
   generateChatTitle,

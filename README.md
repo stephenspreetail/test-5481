@@ -78,16 +78,27 @@ cp .env.example .env
 ### Required Variables
 
 ```bash
-# Claude Agent SDK (REQUIRED for all modes)
-# Option 1: Direct Anthropic API
-ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+# LLM Provider (REQUIRED for all modes)
+# Choose ONE of three options:
 
-# Option 2: AWS Bedrock (alternative to ANTHROPIC_API_KEY)
+# Option 1: Azure Foundry (Spreetail Internal - Recommended)
+# Defaults: Spreetail Foundry URL + claude-opus-4-6 model
+LLM_PROVIDER=azure
+ANTHROPIC_API_KEY=your-azure-foundry-api-key
+
+# Option 2: Direct Anthropic API
+# Defaults to claude-opus-4-6 model
+# LLM_PROVIDER=anthropic
+# ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+
+# Option 3: AWS Bedrock
+# Defaults to claude-sonnet-4-5-20250929-v1:0 model (cost-optimized)
 # See docs/aws-bedrock-setup.md for full setup guide
-# Linux/macOS: source ./scripts/refresh-aws-sso.sh
-# Windows:     .\scripts\refresh-aws-sso.ps1
-# Script automatically sets: CLAUDE_CODE_USE_BEDROCK, AWS_AUTH_MODE, AWS_REGION,
-#                            AGENT_MODEL, and AWS credentials
+# Run script: source ./scripts/refresh-aws-sso.sh (Linux/macOS)
+# LLM_PROVIDER=bedrock
+# CLAUDE_CODE_USE_BEDROCK=1
+# AWS_REGION=us-east-1
+# AWS_AUTH_MODE=explicit
 
 # Database (REQUIRED for web platform)
 DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
@@ -96,6 +107,13 @@ DATABASE_URL=postgresql://kova:kova_dev_password@localhost:5433/kova
 # Generate with: openssl rand -hex 32
 JWT_SECRET=your-jwt-secret-at-least-32-characters-long
 ENCRYPTION_KEY=your-64-character-hex-encryption-key-here
+
+# Kubernetes Environment (optional, defaults to "local")
+# Choose your K8s environment (like LLM_PROVIDER):
+#   - "local": k3d development cluster (default)
+#   - "eks-dev": EKS development cluster
+#   - "eks-prod": EKS production cluster
+# K8S_ENVIRONMENT=local
 
 # Spreetail Internal (REQUIRED for web platform)
 PROGET_API_KEY=your-proget-api-key

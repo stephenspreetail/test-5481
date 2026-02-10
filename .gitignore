@@ -106,3 +106,13 @@ docs/spreeform/
 
 tmpclaude*
 .playwright-mcp/backend/.env
+scripts/istio-*/
+
+# Build artifacts
+app-container/bin/
+
+# Temporary files
+.tmp/
+
+# Downloaded Istio releases
+istio-*/

@@ -17,12 +17,12 @@ export interface KovaQueryOptions {
   allowedTools?: string[];
   /** System prompt configuration or legacy string */
   systemPrompt?: SystemPromptConfig | string;
+  /** Model to use for this query (defaults to AGENT_MODEL env var) */
+  model?: string;
   /** Maximum turns for the agent */
   maxTurns?: number;
   /** MCP server configurations */
   mcpServers?: Record<string, McpServerConfig>;
   /** AI Provider API key */
   apiKey?: string;
-  /** Model to use */
-  model?: string;
 }

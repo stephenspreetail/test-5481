@@ -1,9 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config/index.js";
+import { buildLlmProviderConfig } from "./llm-provider.service.js";
 
-const anthropic = config.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
-  : null;
+// Initialize Anthropic SDK with provider-specific configuration
+function getAnthropicClient(): Anthropic | null {
+  if (!config.ANTHROPIC_API_KEY) {
+    return null;
+  }
+
+  const llmConfig = buildLlmProviderConfig();
+
+  return new Anthropic({
+    apiKey: llmConfig.apiKey,
+    ...(llmConfig.baseUrl && { baseURL: llmConfig.baseUrl }),
+  });
+}
+
+const anthropic = getAnthropicClient();
 
 /**
  * Check if an app name looks like a random cute name (adjective-animal-verb pattern)
@@ -33,8 +46,9 @@ export async function generateAppName(
 
   try {
     console.log("[TitleGenerator] Calling Anthropic API for app name...");
+    const llmConfig = buildLlmProviderConfig();
     const response = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
+      model: llmConfig.model,
       max_tokens: 50,
       messages: [
         {
@@ -84,8 +98,9 @@ export async function generateChatTitle(userPrompt: string): Promise<string> {
 
   try {
     console.log("[TitleGenerator] Calling Anthropic API...");
+    const llmConfig = buildLlmProviderConfig();
     const response = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
+      model: llmConfig.model,
       max_tokens: 50,
       messages: [
         {

@@ -1,0 +1,10 @@
+---
+# Namespace for Kova user app containers
+# The kova.dev/cluster-name label is used by the sandbox integration tests
+# to verify they're connected to the expected cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kova-apps
+  labels:
+    kova.dev/cluster-name: k3d-kova-dev

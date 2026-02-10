@@ -41,12 +41,9 @@ export async function appExecutionRoutes(app: FastifyInstance) {
 
       return {
         success: true,
-        containerId: appContainerService.getContainerStatus(appData.id).ports
-          ?.agentPort
-          ? `app-${appData.id}`
-          : "",
-        port: result.agentPort,
-        url: result.previewUrl,
+        containerId: `app-${appData.id}`,
+        agentUrl: result.agentUrl,
+        previewUrl: result.previewUrl,
       };
     } catch (error: any) {
       reply.status(500).send({ error: error.message });
@@ -122,8 +119,8 @@ export async function appExecutionRoutes(app: FastifyInstance) {
         return {
           success: true,
           containerId: `app-${appData.id}`,
-          port: result.agentPort,
-          url: result.previewUrl,
+          agentUrl: result.agentUrl,
+          previewUrl: result.previewUrl,
         };
       } catch (error: any) {
         reply.status(500).send({ error: error.message });
@@ -158,8 +155,8 @@ export async function appExecutionRoutes(app: FastifyInstance) {
       );
       return {
         status: containerStatus.state === "running" ? "running" : "stopped",
-        port: containerStatus.ports?.agentPort,
-        url: containerStatus.ports?.previewUrl,
+        agentUrl: containerStatus.ports?.agentUrl,
+        previewUrl: containerStatus.ports?.previewUrl,
       };
     },
   );

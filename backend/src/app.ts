@@ -4,7 +4,7 @@ import jwt from "@fastify/jwt";
 import websocket from "@fastify/websocket";
 import Fastify, { FastifyInstance, FastifyError } from "fastify";
 import { config } from "./config/index.js";
-import packageJson from "../../package.json";
+import packageJson from "../../package.json" with { type: "json" };
 
 import { agentRoutes } from "./api/routes/agent.routes.js";
 import { appExecutionRoutes } from "./api/routes/app-execution.routes.js";
@@ -23,7 +23,7 @@ import { setupWebSocket } from "./websocket/index.js";
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
-      level: config.NODE_ENV === "production" ? "info" : "debug",
+      level: config.NODE_ENV === "production" ? "info" : "info",
       transport:
         config.NODE_ENV !== "production"
           ? {
@@ -34,11 +34,12 @@ export async function buildApp(): Promise<FastifyInstance> {
             }
           : undefined,
     },
+    disableRequestLogging: true,
   });
 
   // Register plugins
   await app.register(cors, {
-    origin: config.CORS_ORIGIN,
+    origin: config.CORS_ORIGIN || true,
     credentials: true,
     maxAge: 86400, // Cache preflight responses for 24 hours
   });

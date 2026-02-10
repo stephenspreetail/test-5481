@@ -29,7 +29,7 @@ async function main() {
         clearTimeout(forceExitTimeout);
         process.exit(0);
       } catch (err) {
-        app.log.error("Error during shutdown:", err);
+        app.log.error({ err }, "Error during shutdown");
         clearTimeout(forceExitTimeout);
         process.exit(1);
       }
@@ -49,7 +49,7 @@ async function main() {
           app.log.info(`[Auth] Cleaned up ${count} expired refresh tokens`);
         }
       } catch (err) {
-        app.log.error("[Auth] Failed to clean up expired tokens:", err);
+        app.log.error(`[Auth] Failed to clean up expired tokens: ${err}`);
       }
     };
     runTokenCleanup(); // Run once at startup

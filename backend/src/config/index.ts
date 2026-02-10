@@ -1,118 +1,104 @@
-import { and } from "drizzle-orm/sql/expressions/conditions";
 import { z } from "zod";
 
 const configSchema = z.object({
-  // AI / LLM - Claude Agent SDK
-  //
-  // Configure EITHER (A) Anthropic API OR (B) AWS Bedrock - not both.
-  // See docs/getting-started.md for setup instructions.
-  AGENT_MODEL: z.string().min(1, "AGENT_MODEL is required"),
-  CLAUDE_CODE_USE_BEDROCK: z.enum(["0", "1"]),
-  //
-  // (A) Claude Agent SDK: Anthropic direct API
+  // Server
+  BACKEND_PORT: z.coerce.number().default(3002),
+  BACKEND_HOST: z.string().default("0.0.0.0"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
+  CORS_ORIGIN: z.string().optional(),
+
+  // Database
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+
+  // Security
+  // JWT expiration uses duration format: e.g., 60s, 15m, 2h, 7d
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+  JWT_ACCESS_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+[smhd]$/, "JWT_ACCESS_EXPIRES_IN must be in time format (e.g., 60s, 15m, 2h, 7d)")
+    .default("15m"),
+  JWT_REFRESH_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+[smhd]$/, "JWT_REFRESH_EXPIRES_IN must be in time format (e.g., 60s, 15m, 2h, 7d)")
+    .default("7d"),
+  ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "ENCRYPTION_KEY must be 64 hex characters (32 bytes)"),
+
+  // LLM Provider Configuration
+  // Explicit provider selection: "anthropic" | "azure" | "bedrock"
+  // If not set, provider is auto-detected from other env vars (backward compatibility)
+  LLM_PROVIDER: z.enum(["anthropic", "azure", "bedrock"]).optional(),
+
+  // Claude Agent SDK / Anthropic API
   ANTHROPIC_API_KEY: z.string().optional(),
-  //
-  // (B) Claude Agent SDK: AWS Bedrock
+  // Azure Foundry Anthropic endpoint (optional)
+  ANTHROPIC_BASE_URL: z.string().optional(),
+  // Model deployment name (for Azure) or model ID (for Anthropic API)
+  AGENT_MODEL: z.string().default("claude-opus-4-6"),
+
+  // Model alias overrides (optional - defaults are provider-specific)
+  ANTHROPIC_DEFAULT_OPUS_MODEL: z.string().optional(),
+  ANTHROPIC_DEFAULT_SONNET_MODEL: z.string().optional(),
+  ANTHROPIC_DEFAULT_HAIKU_MODEL: z.string().optional(),
+  CLAUDE_CODE_SUBAGENT_MODEL: z.string().optional(),
+
+  // AWS Bedrock (alternative to Anthropic API)
+  CLAUDE_CODE_USE_BEDROCK: z.string().optional(),
   AWS_AUTH_MODE: z.enum(["explicit", "pod-identity"]).optional(),
   AWS_REGION: z.string().optional(),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_SESSION_TOKEN: z.string().optional(),
 
-  // Database
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-
-  // Security
-  // JWT expiration uses ms format: e.g., 60s, 15m, 2h, 7d, 1w, 1y
-  JWT_ACCESS_EXPIRES_IN: z
-    .string()
-    .regex(/^\d+[smhd]$/, "JWT_ACCESS_EXPIRES_IN must be in time format (e.g., 60s, 15m, 2h, 7d)"),
-  JWT_REFRESH_EXPIRES_IN: z
-    .string()
-    .regex(/^\d+[smhd]$/, "JWT_REFRESH_EXPIRES_IN must be in time format (e.g., 60s, 15m, 2h, 7d)"),
-  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
-  ENCRYPTION_KEY: z
-    .string()
-    .regex(/^[0-9a-fA-F]{64}$/, "ENCRYPTION_KEY must be 64 hex characters (32 bytes)"),
-
   // ProGet API key for @spreetail npm packages
   PROGET_API_KEY: z.string().min(1, "PROGET_API_KEY is required"),
 
+  // Container Settings
+  CONTAINER_IMAGE: z.string().default("kova-app-container:latest"),
+  CONTAINER_IDLE_TIMEOUT_MS: z.coerce.number().default(15 * 60 * 1000),
+  CONTAINER_NETWORK: z.string().default("kova-network"),
+  CONTAINER_AGENT_PORT: z.coerce.number().default(3100),
+  CONTAINER_DEV_PORT: z.coerce.number().default(3000),
+  CONTAINER_SCAN_INTERVAL_MS: z.coerce.number().default(60 * 1000),
+  APPS_BASE_PATH: z.string().default("/data/kova-apps"),
+
   // Data Platform (Starburst Galaxy / Trino)
-  // These are passed to app containers for data access
-  // Required - backend will crash on startup if not configured
   DATA_PLATFORM_HOST: z.string().min(1, "DATA_PLATFORM_HOST is required"),
   DATA_PLATFORM_USER: z.string().min(1, "DATA_PLATFORM_USER is required"),
   DATA_PLATFORM_PASSWORD: z.string().min(1, "DATA_PLATFORM_PASSWORD is required"),
   DATA_PLATFORM_PORT: z.coerce.number().default(443),
   DATA_PLATFORM_SSL: z.string().default("true"),
 
-  // Server
-  NODE_ENV: z.enum(["development", "production", "test"]),
-  BACKEND_PORT: z.coerce.number().min(1, "BACKEND_PORT is required"),
-  BACKEND_HOST: z.string().min(1, "BACKEND_HOST is required"),
-  CORS_ORIGIN: z.string().optional(),
-  
-  // Docker-Compliant Host Configuration
-  // Set DOCKER_USE_SOCKET=1 with DOCKER_SOCKET,
-  // or DOCKER_USE_SOCKET=0 with DOCKER_URL_HOST and DOCKER_URL_PORT for TCP
-  DOCKER_USE_SOCKET: z.enum(["0", "1"]),
-  DOCKER_SOCKET: z.string().optional(),
-  DOCKER_URL_HOST: z.string().optional(),
-  DOCKER_URL_PORT: z.string().optional(),
+  // Kubernetes Environment
+  K8S_ENVIRONMENT: z.enum(["local", "eks-app-admin", "eks-dev", "eks-prod"]).optional(),
+  K8S_CONTEXT: z.string().optional(),
+  K8S_NAMESPACE: z.string().optional(),
+  PREVIEW_DOMAIN: z.string().optional(),
+  PREVIEW_PORT: z.coerce.number().optional(),
 
-  // Container Settings
-  CONTAINER_IMAGE: z.string().min(1, "CONTAINER_IMAGE is required"),
-  CONTAINER_NETWORK: z.string().min(1, "CONTAINER_NETWORK is required"),
-  CONTAINER_IDLE_TIMEOUT_MS: z.coerce.number().min(1, "CONTAINER_IDLE_TIMEOUT_MS is required"),
-  CONTAINER_SCAN_INTERVAL_MS: z.coerce.number().min(1, "CONTAINER_SCAN_INTERVAL_MS is required"),
-  CONTAINER_AGENT_PORT: z.coerce.number().min(1, "CONTAINER_AGENT_PORT is required"),
-  CONTAINER_DEV_PORT: z.coerce.number().min(1, "CONTAINER_DEV_PORT is required"),
-  APPS_BASE_PATH: z.string().min(1, "APPS_BASE_PATH is required"),
-
-  // Preview App build
-  PREVIEW_DOMAIN: z.string().min(1, "PREVIEW_DOMAIN is required"),
-  PREVIEW_PORT: z.coerce.number().min(1, "PREVIEW_PORT is required"),
-
-  // Logging levels for Agent
-  VERBOSE_AGENT_LOGGING: z.enum(["0", "1"])
-
+  // Logging
+  VERBOSE_AGENT_LOGGING: z.enum(["0", "1"]).default("0"),
 }).refine(
   (data) => {
-    // Option A: Anthropic API
-    const hasAnthropicConfig = data.CLAUDE_CODE_USE_BEDROCK === "0" && !!data.ANTHROPIC_API_KEY;
+    // LLM provider validation: must have valid credentials for at least one provider
+    // Skip validation if LLM_PROVIDER is explicitly set (provider service handles it)
+    if (data.LLM_PROVIDER) return true;
 
-    // Option B: AWS Bedrock (requires STS credentials from SSO)
+    // Auto-detect: Anthropic API key OR Bedrock credentials
+    const hasAnthropicKey = !!data.ANTHROPIC_API_KEY;
     const hasBedrockConfig =
       data.CLAUDE_CODE_USE_BEDROCK === "1" &&
-      !!data.AWS_AUTH_MODE &&
-      !!data.AWS_REGION &&
-      !!data.AWS_ACCESS_KEY_ID &&
-      !!data.AWS_SECRET_ACCESS_KEY &&
-      !!data.AWS_SESSION_TOKEN;
+      !!data.AWS_REGION;
 
-    return hasAnthropicConfig || hasBedrockConfig;
+    return hasAnthropicKey || hasBedrockConfig;
   },
   {
     message:
-      "Either CLAUDE_CODE_USE_BEDROCK = 0 with ANTHROPIC_API_KEY -OR- CLAUDE_CODE_USE_BEDROCK = 1 with complete AWS Bedrock config (AWS_AUTH_MODE, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN) is required",
-  }
-).refine(
-  (data) => {
-    // Socket mode: requires DOCKER_SOCKET
-    const hasSocketConfig = data.DOCKER_USE_SOCKET === "1" && !!data.DOCKER_SOCKET;
-
-    // TCP mode: requires DOCKER_URL_HOST and DOCKER_URL_PORT
-    const hasTcpConfig = data.DOCKER_USE_SOCKET === "0" &&
-    !!data.DOCKER_URL_HOST &&
-    !!data.DOCKER_URL_PORT;
-
-    return hasSocketConfig || hasTcpConfig;
+      "LLM credentials required: set LLM_PROVIDER, or provide ANTHROPIC_API_KEY, or set CLAUDE_CODE_USE_BEDROCK=1 with AWS_REGION",
   },
-  {
-    message:
-      "Either DOCKER_USE_SOCKET = 1 with DOCKER_SOCKET -OR- DOCKER_USE_SOCKET = 0 with DOCKER_URL_HOST and DOCKER_URL_PORT is required",
-  }
 );
 
 export type Config = z.infer<typeof configSchema>;

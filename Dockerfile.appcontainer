@@ -99,6 +99,16 @@ EXPOSE 3000 3100
 ENV WORKSPACE_DIR=/workspace
 ENV HOME=/home/kova
 
+# Install bun wrapper for dev server control handoff
+# This allows Claude to run `bun dev` naturally while coordinating with managed dev server
+COPY app-container/scripts/bun-wrapper.sh /usr/local/bin/bun-wrapper
+RUN chmod +x /usr/local/bin/bun-wrapper && \
+    # Make wrapper available as 'bun' by prepending to PATH
+    echo 'export PATH="/usr/local/bin:$PATH"' >> /etc/profile && \
+    # Create symlink so wrapper is found first
+    mv /usr/local/bin/bun /usr/local/bin/bun-real 2>/dev/null || true && \
+    ln -sf /usr/local/bin/bun-wrapper /usr/local/bin/bun
+
 # =============================================================================
 # ENTRYPOINT PATTERN FOR VOLUME PERMISSIONS
 # =============================================================================

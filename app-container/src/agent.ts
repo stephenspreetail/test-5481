@@ -198,7 +198,7 @@ export interface AgentQueryOptions {
   allowedTools?: string[];
   /** System prompt configuration */
   systemPrompt?: SystemPromptConfig | string;
-  /** Model to use for the query */
+  /** Model to use for this query */
   model?: string;
 }
 

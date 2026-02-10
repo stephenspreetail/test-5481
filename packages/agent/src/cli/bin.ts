@@ -256,12 +256,8 @@ async function startInteractiveMode(args: CLIArgs): Promise<void> {
     console.log("Using AWS Bedrock for authentication");
   }
 
-  if (hasBedrockCreds) {
-    console.log("Using AWS Bedrock for authentication");
-  }
-
-   // Start the Ink app - CLI mode includes instruction to run dev server manually
- render(
+  // Start the Ink app - CLI mode includes instruction to run dev server manually
+  render(
     React.createElement(App, {
       config: { cwd, systemPrompt: CLI_SYSTEM_PROMPT },
       projectName,
