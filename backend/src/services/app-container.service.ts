@@ -93,11 +93,8 @@ const appsBasePath = resolveAppsBasePath();
 // Port allocation ranges
 const AGENT_PORT_MIN = 31100;
 const AGENT_PORT_MAX = 31999;
-const DEV_PORT_MIN = 33000;
-const DEV_PORT_MAX = 33999;
 
 const allocatedAgentPorts = new Set<number>();
-const allocatedDevPorts = new Set<number>();
 
 // Container state
 type ContainerState = "none" | "starting" | "running" | "stopping";
@@ -106,7 +103,6 @@ export interface AppContainerInfo {
   containerId: string | null;
   containerName: string;
   agentPort: number;
-  devPort: number;
   userId: number;
   state: ContainerState;
   lastActivityAt: number;
@@ -132,9 +128,7 @@ export interface StartContainerConfig {
 
 export interface ContainerPorts {
   agentPort: number;
-  devPort: number;
   agentUrl: string;
-  devUrl: string;
   previewUrl: string; // Traefik URL: http://app-{id}.localhost:8081
 }
 
@@ -252,7 +246,6 @@ class AppContainerService {
           containerId: containerInfo.Id,
           containerName,
           agentPort,
-          devPort: 0, // Dev port not exposed to host anymore
           userId,
           state: "running",
           lastActivityAt: Date.now(),
@@ -322,24 +315,10 @@ class AppContainerService {
   }
 
   /**
-   * Allocate an available dev server port
+   * Release an allocated agent port
    */
-  private allocateDevPort(): number {
-    for (let port = DEV_PORT_MIN; port <= DEV_PORT_MAX; port++) {
-      if (!allocatedDevPorts.has(port)) {
-        allocatedDevPorts.add(port);
-        return port;
-      }
-    }
-    throw new Error("No available dev server ports");
-  }
-
-  /**
-   * Release allocated ports
-   */
-  private releasePorts(agentPort: number, devPort: number): void {
+  private releasePort(agentPort: number): void {
     allocatedAgentPorts.delete(agentPort);
-    allocatedDevPorts.delete(devPort);
   }
 
   /**
@@ -386,9 +365,7 @@ class AppContainerService {
           this.recordActivity(appId, "agent");
           return {
             agentPort: existing.agentPort,
-            devPort: existing.devPort,
             agentUrl: `http://localhost:${existing.agentPort}`,
-            devUrl: `http://localhost:${existing.devPort}`,
             previewUrl,
           };
         }
@@ -452,9 +429,7 @@ class AppContainerService {
           );
           return {
             agentPort: existing.agentPort,
-            devPort: existing.devPort,
             agentUrl: `http://localhost:${existing.agentPort}`,
-            devUrl: `http://localhost:${existing.devPort}`,
             previewUrl,
           };
         } else {
@@ -462,7 +437,7 @@ class AppContainerService {
           console.log(
             `[AppContainerService] Container ${containerName} not running (Status=${info.State.Status}), will recreate`,
           );
-          this.releasePorts(existing.agentPort, existing.devPort);
+          this.releasePort(existing.agentPort);
           appContainers.delete(appId);
           // Also try to remove the stopped container
           try {
@@ -481,14 +456,13 @@ class AppContainerService {
         console.log(
           `[AppContainerService] Container ${containerName} inspect failed: ${inspectError.message}`,
         );
-        this.releasePorts(existing.agentPort, existing.devPort);
+        this.releasePort(existing.agentPort);
         appContainers.delete(appId);
       }
     }
 
-    // Allocate ports (still needed for agent access from host)
+    // Allocate port for agent access from host
     const agentPort = this.allocateAgentPort();
-    const devPort = this.allocateDevPort();
 
     // Full path on server (resolve to absolute path)
     const fullAppPath = resolve(appsBasePath, appPath);
@@ -548,7 +522,6 @@ class AppContainerService {
       containerId: null,
       containerName,
       agentPort,
-      devPort,
       userId,
       state: "starting",
       lastActivityAt: Date.now(),
@@ -661,14 +634,12 @@ class AppContainerService {
 
       return {
         agentPort,
-        devPort,
         agentUrl: `http://localhost:${agentPort}`,
-        devUrl: `http://localhost:${devPort}`,
         previewUrl,
       };
     } catch (error: any) {
       // Cleanup on error
-      this.releasePorts(agentPort, devPort);
+      this.releasePort(agentPort);
       appContainers.delete(appId);
       console.error(
         `[AppContainerService] Failed to start container for app ${appId}:`,
@@ -773,7 +744,7 @@ class AppContainerService {
   private handleContainerExit(appId: number): void {
     const containerInfo = appContainers.get(appId);
     if (containerInfo) {
-      this.releasePorts(containerInfo.agentPort, containerInfo.devPort);
+      this.releasePort(containerInfo.agentPort);
       appContainers.delete(appId);
     }
   }
@@ -855,7 +826,7 @@ class AppContainerService {
     }
 
     // Cleanup
-    this.releasePorts(containerInfo.agentPort, containerInfo.devPort);
+    this.releasePort(containerInfo.agentPort);
     appContainers.delete(appId);
   }
 
@@ -873,9 +844,7 @@ class AppContainerService {
 
     return {
       agentPort: containerInfo.agentPort,
-      devPort: containerInfo.devPort,
       agentUrl: `http://localhost:${containerInfo.agentPort}`,
-      devUrl: `http://localhost:${containerInfo.devPort}`,
       previewUrl,
     };
   }
@@ -901,9 +870,7 @@ class AppContainerService {
         containerInfo.state === "running"
           ? {
               agentPort: containerInfo.agentPort,
-              devPort: containerInfo.devPort,
               agentUrl: `http://localhost:${containerInfo.agentPort}`,
-              devUrl: `http://localhost:${containerInfo.devPort}`,
               previewUrl,
             }
           : undefined,

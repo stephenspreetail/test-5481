@@ -174,13 +174,11 @@ type ContainerState = "pending" | "starting" | "running" | "stopping" | "stopped
 
 ### Port Allocation
 - **Agent Server:** 31100-31999 (dynamic)
-- **Dev Server:** 33000-33999 (dynamic)
 
 ### URL Patterns
 | Purpose | Format | Example |
 |---------|--------|---------|
 | Agent URL | `http://localhost:{agentPort}` | `http://localhost:31100` |
-| Dev URL | `http://{containerName}:{port}` | `http://app-123:3000` |
 | Preview URL | `http://{containerName}.{domain}:{port}` | `http://app-123.localhost:8081` |
 
 ### Network Topology (Simplified)

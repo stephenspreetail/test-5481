@@ -4,7 +4,7 @@
  */
 
 export * from "./types.js";
-export { LocalOrchestrator as LocalOrchestrator } from "./local.orchestrator.js";
+export { LocalOrchestrator } from "./local.orchestrator.js";
 
 // Future exports:
 // export { KubernetesOrchestrator } from "./kubernetes.orchestrator.js";
