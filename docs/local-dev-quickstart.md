@@ -12,6 +12,7 @@ From zero to a working local k3d cluster with end-to-end sandbox validation.
 | Docker | `docker info` | Docker Desktop / Rancher Desktop |
 | k3d | `k3d version` | `brew install k3d` or [k3d.io](https://k3d.io) |
 | kubectl | `kubectl version --client` | `brew install kubectl` |
+| istioctl | `istioctl version` | `brew install istioctl` or [istio.io/downloadIstio](https://istio.io/latest/docs/setup/getting-started/#download) |
 
 ### Required access
 
@@ -117,26 +118,33 @@ bun run container:rebuild
 
 Builds the Docker image and imports it into k3d so pods can pull it locally.
 
-### 7. Push database schema and seed dev user
+### 7. Push database schema
 
 ```bash
-# Apply schema
 bun run db:push
-
-# Start backend (seed script calls the REST API)
-bun run dev:backend &
-sleep 3
-
-# Create the dev user
-bun run --cwd backend seed:dev-user
-
-# Stop background backend
-kill %1 2>/dev/null
 ```
+
+### 8. Seed the dev user
+
+The seed script calls the REST API, so the backend must be running.
+
+In one terminal, start the backend:
+
+```bash
+bun run dev:backend
+```
+
+In a second terminal, create the dev user:
+
+```bash
+bun run --cwd backend seed:dev-user
+```
+
+You can stop the backend in the first terminal after seeding (Ctrl+C). It will start again in the next step.
 
 Dev credentials: `dev@kova.local` / `devpassword123`
 
-### 8. Start developing
+### 9. Start developing
 
 ```bash
 bun run dev:full
@@ -144,7 +152,7 @@ bun run dev:full
 
 Open http://localhost:5174/login and sign in with the dev credentials.
 
-### 9. Validate with sandbox tests
+### 10. Validate with sandbox tests
 
 ```bash
 # Quick smoke test — verifies auth, CRUD, K8s connectivity
