@@ -2,12 +2,7 @@
   "mcpServers": {
     "data-catalog": {
       "command": "bun",
-      "args": ["run", "${CLAUDE_PLUGIN_ROOT}/mcp-servers/data-catalog.ts"],
-      "env": {
-        "DATA_PLATFORM_HOST": "${DATA_PLATFORM_HOST}",
-        "DATA_PLATFORM_USER": "${DATA_PLATFORM_USER}",
-        "DATA_PLATFORM_PASSWORD": "${DATA_PLATFORM_PASSWORD}"
-      }
+      "args": ["run", "${CLAUDE_PLUGIN_ROOT}/mcp-servers/data-catalog.ts"]
     }
   }
 }
