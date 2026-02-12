@@ -1,0 +1,4 @@
+@import '@spreetail/spreeform';
+
+@source '../node_modules/@spreetail/spreeform/';
+@source './**/*.{ts,tsx}';

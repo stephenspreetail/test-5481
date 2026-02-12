@@ -1,0 +1,12 @@
+{
+  "name": "kova",
+  "version": "0.1.2",
+  "description": "Kova AI App Builder — creates TanStack Start full-stack applications with Spreetail's data platform integration",
+  "author": {
+    "name": "Jose Martinez",
+    "email": "jose.martinez@spreetail.com"
+  },
+  "repository": "https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins",
+  "license": "UNLICENSED",
+  "keywords": ["spreetail", "kova", "tanstack", "react", "spreeform", "data-platform"]
+}

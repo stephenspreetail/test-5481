@@ -1,0 +1,16 @@
+{
+  "name": "spreetail-marketplace",
+  "owner": {
+    "name": "Jose Martinez",
+    "email": "jose.martinez@spreetail.com"
+  },
+  "metadata": {
+    "description": "Spreetail's internal Claude Code plugin marketplace"
+  },
+  "plugins": [
+    {
+      "name": "kova",
+      "source": "./kova-plugin"
+    }
+  ]
+}
