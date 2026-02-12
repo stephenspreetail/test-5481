@@ -4,7 +4,7 @@
  * Allows local development with proper HTTPS certificates.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { run, capture, check, log } from "./lib/run";
+import { run, capture, check, kubectlApplyStdin, log, writeln } from "./lib/run";
 
 const REMOTE_CONTEXT = "dev01-eks-app-ro";
 const LOCAL_CONTEXT = "k3d-kova-dev";
@@ -16,7 +16,7 @@ export function copyDevCertToLocal(): void {
   log.banner("==========================================");
   log.banner("Copying Kova Certificate to Local K3d");
   log.banner("==========================================");
-  console.log();
+  writeln();
 
   // Verify remote cluster is accessible
   log.info("Verifying remote cluster...");
@@ -34,7 +34,7 @@ export function copyDevCertToLocal(): void {
     process.exit(1);
   }
   log.success(`Local cluster accessible: ${LOCAL_CONTEXT}`);
-  console.log();
+  writeln();
 
   // Check if secret exists in remote cluster
   log.info("Checking for certificate in remote cluster...");
@@ -50,7 +50,7 @@ export function copyDevCertToLocal(): void {
     process.exit(1);
   }
   log.success("Certificate found in remote cluster");
-  console.log();
+  writeln();
 
   // Export secret from remote cluster
   log.info(`Exporting certificate from ${REMOTE_CONTEXT}...`);
@@ -81,13 +81,7 @@ export function copyDevCertToLocal(): void {
     "create", "namespace", NAMESPACE,
     "--dry-run=client", "-o", "yaml",
   ]);
-  const nsResult = Bun.spawnSync(
-    ["kubectl", "--context", LOCAL_CONTEXT, "apply", "-f", "-"],
-    { stdin: Buffer.from(nsYaml), stdout: "inherit", stderr: "inherit", env: process.env },
-  );
-  if (nsResult.exitCode !== 0) {
-    throw new Error("Failed to ensure namespace exists");
-  }
+  kubectlApplyStdin(nsYaml, LOCAL_CONTEXT);
 
   // Delete existing secret if present (force update)
   log.info("Removing old certificate from local cluster (if exists)...");
@@ -103,7 +97,7 @@ export function copyDevCertToLocal(): void {
   run("kubectl", ["--context", LOCAL_CONTEXT, "apply", "-f", TMP_FILE]);
 
   // Verify import
-  console.log();
+  writeln();
   log.info("Verifying certificate in local cluster...");
   run("kubectl", [
     "--context", LOCAL_CONTEXT,
@@ -111,19 +105,19 @@ export function copyDevCertToLocal(): void {
     "-n", NAMESPACE,
   ]);
 
-  console.log();
+  writeln();
   log.success("Certificate copy complete!");
-  console.log();
+  writeln();
   log.info("Certificate is now available in local k3d cluster");
-  console.log();
-  console.log("Next steps:");
-  console.log("  1. Restart Istio Gateway (if needed):");
-  console.log(
+  writeln();
+  writeln("Next steps:");
+  writeln("  1. Restart Istio Gateway (if needed):");
+  writeln(
     `     kubectl --context=${LOCAL_CONTEXT} rollout restart deployment istio-ingressgateway -n istio-system`
   );
-  console.log("  2. Test access:");
-  console.log("     curl -k https://kova.dev.toolkit.co:30443");
-  console.log();
+  writeln("  2. Test access:");
+  writeln("     curl -k https://kova.dev.toolkit.co:30443");
+  writeln();
 }
 
 // Run directly when executed as a script

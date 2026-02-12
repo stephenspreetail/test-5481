@@ -3,7 +3,7 @@
  * Cluster Up - Local K8s infrastructure with Istio.
  * Creates k3d cluster, installs Istio, sets up PostgreSQL.
  */
-import { run, capture, check, hasCommand, kubectlApplyStdin, log } from "./lib/run";
+import { run, capture, check, hasCommand, kubectlApplyStdin, log, writeln } from "./lib/run";
 import { copyDevCertToLocal } from "./copy-dev-cert-to-local";
 
 const CLUSTER_NAME = "kova-dev";
@@ -13,7 +13,7 @@ const DOMAIN = "dev.toolkit.co";
 const APP_DOMAIN = `app.${DOMAIN}`;
 
 log.step("Starting local Kubernetes cluster...");
-console.log();
+writeln();
 
 // Check if cluster already exists
 const clusterList = capture("k3d", ["cluster", "list"]);
@@ -133,37 +133,37 @@ spec:
   ]);
 }
 
-console.log();
+writeln();
 log.success("Cluster is ready!");
-console.log();
-console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log();
+writeln();
+writeln("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+writeln();
 log.banner("Cluster info:");
-console.log();
-console.log(`   Name:            ${CLUSTER_NAME}`);
-console.log(`   Registry:        localhost:${REGISTRY_PORT}`);
-console.log(`   Domain:          ${DOMAIN}`);
-console.log(`   App Domain:      ${APP_DOMAIN}`);
-console.log();
-console.log("   Namespaces:      kova, kova-apps, istio-system");
-console.log("   Istio Gateway:   configured with Let's Encrypt TLS");
-console.log("   PostgreSQL:      localhost:5433 (user: kova, password: kova_dev_password)");
-console.log();
-console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log();
-console.log("Add to /etc/hosts:");
-console.log(`   sudo sh -c 'echo "127.0.0.1 ${DOMAIN} ${APP_DOMAIN}" >> /etc/hosts'`);
-console.log();
-console.log("Useful commands:");
-console.log();
-console.log("   View pods:       kubectl get pods -A");
-console.log("   View services:   kubectl get svc -A");
-console.log("   Stop cluster:    bun run scripts/cluster-down.ts");
-console.log();
-console.log("Next steps:");
-console.log();
-console.log("   1. Run migrations:   bun run db:push");
-console.log("   2. Start Kova:       bun run dev:full");
-console.log();
-console.log("   Database URL: postgresql://kova:kova_dev_password@localhost:5433/kova");
-console.log();
+writeln();
+writeln(`   Name:            ${CLUSTER_NAME}`);
+writeln(`   Registry:        localhost:${REGISTRY_PORT}`);
+writeln(`   Domain:          ${DOMAIN}`);
+writeln(`   App Domain:      ${APP_DOMAIN}`);
+writeln();
+writeln("   Namespaces:      kova, kova-apps, istio-system");
+writeln("   Istio Gateway:   configured with Let's Encrypt TLS");
+writeln("   PostgreSQL:      localhost:5433 (user: kova, password: kova_dev_password)");
+writeln();
+writeln("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+writeln();
+writeln("Add to /etc/hosts:");
+writeln(`   sudo sh -c 'echo "127.0.0.1 ${DOMAIN} ${APP_DOMAIN}" >> /etc/hosts'`);
+writeln();
+writeln("Useful commands:");
+writeln();
+writeln("   View pods:       kubectl get pods -A");
+writeln("   View services:   kubectl get svc -A");
+writeln("   Stop cluster:    bun run scripts/cluster-down.ts");
+writeln();
+writeln("Next steps:");
+writeln();
+writeln("   1. Run migrations:   bun run db:push");
+writeln("   2. Start Kova:       bun run dev:full");
+writeln();
+writeln("   Database URL: postgresql://kova:kova_dev_password@localhost:5433/kova");
+writeln();

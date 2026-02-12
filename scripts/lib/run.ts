@@ -12,13 +12,36 @@ const YELLOW = "\x1b[33m";
 const BLUE = "\x1b[34m";
 const CYAN = "\x1b[36m";
 
-/** Execute a command, stream output to console, throw on non-zero exit. */
+/** Normalize line endings to \r\n for Windows console output. */
+function normalizeEol(text: string): string {
+  return text.replace(/\r?\n/g, "\r\n");
+}
+
+/**
+ * Execute a command, emit output to console, throw on non-zero exit.
+ *
+ * On Windows we pipe stdout/stderr and re-emit with \r\n line endings.
+ * Go-based CLIs (k3d, istioctl) enable Virtual Terminal Processing on
+ * inherited console handles and never restore the original mode, which
+ * turns every subsequent bare \n into a line-feed-only (no carriage
+ * return). Piping isolates our console handle from those changes.
+ */
 export function run(cmd: string, args: string[]): void {
+  const isWin = process.platform === "win32";
+  const stdio = isWin ? "pipe" : "inherit";
   const result = Bun.spawnSync([cmd, ...args], {
-    stdout: "inherit",
-    stderr: "inherit",
+    stdout: stdio,
+    stderr: stdio,
     env: process.env,
   });
+  if (isWin) {
+    if (result.stdout.length > 0) {
+      process.stdout.write(normalizeEol(result.stdout.toString()));
+    }
+    if (result.stderr.length > 0) {
+      process.stderr.write(normalizeEol(result.stderr.toString()));
+    }
+  }
   if (result.exitCode !== 0) {
     throw new Error(`Command failed (exit ${result.exitCode}): ${cmd} ${args.join(" ")}`);
   }
@@ -26,11 +49,15 @@ export function run(cmd: string, args: string[]): void {
 
 /** Execute a command, capture and return stdout (trimmed), throw on non-zero exit. */
 export function capture(cmd: string, args: string[]): string {
+  const isWin = process.platform === "win32";
   const result = Bun.spawnSync([cmd, ...args], {
     stdout: "pipe",
-    stderr: "inherit",
+    stderr: isWin ? "pipe" : "inherit",
     env: process.env,
   });
+  if (isWin && result.stderr.length > 0) {
+    process.stderr.write(normalizeEol(result.stderr.toString()));
+  }
   if (result.exitCode !== 0) {
     throw new Error(`Command failed (exit ${result.exitCode}): ${cmd} ${args.join(" ")}`);
   }
@@ -55,36 +82,58 @@ export function hasCommand(name: string): boolean {
 
 /** Apply YAML string via stdin to kubectl. */
 export function kubectlApplyStdin(yaml: string, context?: string): void {
+  const isWin = process.platform === "win32";
+  const stdio = isWin ? "pipe" : "inherit";
   const args = context ? ["--context", context, "apply", "-f", "-"] : ["apply", "-f", "-"];
   const result = Bun.spawnSync(["kubectl", ...args], {
     stdin: Buffer.from(yaml),
-    stdout: "inherit",
-    stderr: "inherit",
+    stdout: stdio,
+    stderr: stdio,
     env: process.env,
   });
+  if (isWin) {
+    if (result.stdout.length > 0) {
+      process.stdout.write(normalizeEol(result.stdout.toString()));
+    }
+    if (result.stderr.length > 0) {
+      process.stderr.write(normalizeEol(result.stderr.toString()));
+    }
+  }
   if (result.exitCode !== 0) {
     throw new Error(`kubectl apply failed (exit ${result.exitCode})`);
   }
 }
 
+/**
+ * Write a line to stdout with \r\n.
+ *
+ * On Windows, Go-based CLIs (k3d, istioctl) enable Virtual Terminal
+ * Processing on the console handle. After they exit the flag stays set,
+ * which makes bare \n a line-feed-only (no carriage return). Using \r\n
+ * ensures the cursor always returns to column 0.
+ */
+export function writeln(msg = ""): void {
+  process.stdout.write(`${msg}\r\n`);
+}
+
 /** Colored console output helpers. */
 export const log = {
   info(msg: string): void {
-    console.log(`${BLUE}${msg}${RESET}`);
+    writeln(`${BLUE}${msg}${RESET}`);
   },
   success(msg: string): void {
-    console.log(`${GREEN}${msg}${RESET}`);
+    writeln(`${GREEN}${msg}${RESET}`);
   },
   warn(msg: string): void {
-    console.log(`${YELLOW}${msg}${RESET}`);
+    writeln(`${YELLOW}${msg}${RESET}`);
   },
   error(msg: string): void {
-    console.error(`${RED}${msg}${RESET}`);
+    process.stderr.write(`${RED}${msg}${RESET}\r\n`);
   },
   step(msg: string): void {
-    console.log(`${CYAN}${BOLD}${msg}${RESET}`);
+    writeln(`${CYAN}${BOLD}${msg}${RESET}`);
   },
   banner(msg: string): void {
-    console.log(`${BOLD}${msg}${RESET}`);
+    writeln(`${BOLD}${msg}${RESET}`);
   },
 };

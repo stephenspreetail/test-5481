@@ -4,13 +4,13 @@
  * Tears down k3d cluster, optionally removes registry and certificates.
  */
 import { existsSync, rmSync } from "node:fs";
-import { run, capture, log } from "./lib/run";
+import { run, capture, log, writeln } from "./lib/run";
 
 const CLUSTER_NAME = "kova-dev";
 const REGISTRY_NAME = "kova-registry";
 
 log.step("Stopping local Kubernetes cluster...");
-console.log();
+writeln();
 
 const removeVolumes =
   process.argv.includes("--volumes") || process.argv.includes("-v");
@@ -25,7 +25,7 @@ if (clusterList.includes(CLUSTER_NAME)) {
   log.warn(`Cluster ${CLUSTER_NAME} not found (already stopped?)`);
 }
 
-console.log();
+writeln();
 
 // Optionally remove registry and certificates
 if (removeVolumes) {
@@ -50,15 +50,15 @@ if (removeVolumes) {
     log.success("   Istio directory removed");
   }
 
-  console.log();
+  writeln();
   log.success("Cluster and all resources removed!");
 } else {
   log.info(`Registry ${REGISTRY_NAME} kept (faster restarts)`);
   log.info("   Run 'bun run scripts/cluster-down.ts --volumes' to remove everything");
 }
 
-console.log();
+writeln();
 log.success("Cluster stopped successfully!");
-console.log();
-console.log("To start again: bun run scripts/cluster-up.ts");
-console.log();
+writeln();
+writeln("To start again: bun run scripts/cluster-up.ts");
+writeln();
