@@ -2,7 +2,70 @@
 
 Spreetail's internal marketplace for [Claude Code](https://code.claude.com/docs/en/quickstart) plugins.
 
-**Team:** Scaled Innovation
+**Team:** Gemini
+
+## Getting Started
+
+### Prerequisites
+
+- [Claude Code](https://code.claude.com/docs/en/quickstart) installed and authenticated
+- Claude Code version 1.0.33 or later (`claude --version`)
+- Authenticated to GitLab via HTTPS or SSH. You can use the [glab CLI](https://gitlab.com/gitlab-org/cli):
+  ```bash
+  glab auth login
+  ```
+
+### 1. Open the Plugin Manager
+
+In Claude Code, type `/plugin` and press Enter to open the plugin manager.
+
+![Open plugin manager](./docs/images/plugin-manager.png)
+
+### 2. Add the Marketplace
+
+Use the arrow keys (or Tab) to navigate to the **Marketplaces** tab. Select **Add marketplace** and enter the repository URL:
+
+```
+https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins.git
+```
+
+After the marketplace finishes downloading, the plugin manager automatically switches to the **Discover** tab and shows the available plugins from the marketplace.
+
+![Add marketplace](./docs/images/add-marketplace.png)
+
+### 3. Install the Kova Plugin
+
+From the discover view, select `kova` and press Enter to see the plugin details. Choose your install scope:
+
+- **Install for you (user scope)** — available in all your projects
+- **Install for all collaborators on this repository (project scope)** — shared with the team via repo settings
+- **Install for you, in this repo only (local scope)** — available only in the current project
+
+![Install plugin — discover](./docs/images/install-plugin-discover.png)
+![Install plugin — scope](./docs/images/install-plugin-scope.png)
+
+> **Tip:** If you skipped the install after adding the marketplace, you can always find the plugin later from the **Discover** tab by searching for `kova`.
+
+### 4. Verify Installation
+
+Open `/plugin` and navigate to the **Installed** tab — you should see `kova Plugin · spreetail-marketplace` listed.
+
+![Verify installation](./docs/images/verify-install.png)
+
+### Updating
+
+To update to the latest version of a plugin, open `/plugin`, go to the **Installed** tab, select the plugin, and choose **Update now**.
+
+<details>
+<summary>CLI commands (alternative)</summary>
+
+```
+/plugin marketplace add https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins.git
+/plugin install kova@spreetail-marketplace
+/plugin marketplace update spreetail-marketplace
+```
+
+</details>
 
 ## Plugins
 
@@ -19,12 +82,6 @@ Each plugin lives in its own directory and is registered in [`.claude-plugin/mar
 3. Document it with a `README.md` and `QUICKSTART.md`
 
 See the [Claude Code plugin docs](https://code.claude.com/docs/en/plugins) for the full authoring guide.
-
-## Installing a Plugin
-
-```bash
-claude plugin add ./path/to/plugin-directory
-```
 
 ## Claude Code Plugin Resources
 
