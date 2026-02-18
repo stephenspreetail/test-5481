@@ -1,0 +1,31 @@
+{
+  "todo-app": {
+    "prompt": "Build a todo app w/ home page and details",
+    "runs": 3,
+    "checks": {
+      "bun":          { "expect": "present", "description": "All package manager commands use bun (not npm, yarn, or pnpm)" },
+      "tanstack":     { "expect": "present", "description": "App uses TanStack Start/Router for routing and TanStack Query for data fetching" },
+      "typescript":   { "expect": "present", "description": "TypeScript compiles without errors (tsc --noEmit passes)" },
+      "init-project": { "expect": "present", "description": "The init-project skill was used to scaffold from the template" },
+      "spreeform":    { "expect": "present", "description": "UI components come from Spreeform (@spreeform/ui) — buttons, cards, dialogs, etc." }
+    }
+  },
+  "image-forge": {
+    "prompt": "Analyze the UI mockup figma-brand-scorecard-mock.png in my workspace, create a planning document, then build the full app from it.",
+    "runs": 2,
+    "fixtures": ["figma-brand-scorecard-mock.png"],
+    "checks": {
+      "image-read":          { "expect": "present", "description": "The agent read/analyzed the figma-brand-scorecard-mock.png fixture image using the Read tool" },
+      "plan-doc":            { "expect": "present", "description": "An app planning document markdown file was generated (named *_app_plan.md)" },
+      "component-inventory": { "expect": "present", "description": "The plan doc includes a Component Inventory section with tables categorizing UI elements (navigation, content, form, or action components)" },
+      "spreeform-mapping":   { "expect": "present", "description": "The plan doc maps identified UI elements to Spreeform components or tokens (references @spreetail/spreeform, semantic tokens like primary/muted/destructive, or specific Spreeform component names)" },
+      "data-model":          { "expect": "present", "description": "The plan doc includes a Data Model section with TypeScript interfaces defining the entities/state inferred from the image" },
+      "init-project":        { "expect": "present", "description": "The init-project skill was used to scaffold the app from the TanStack Start template" },
+      "bun":                 { "expect": "present", "description": "All package manager commands use bun (not npm, yarn, or pnpm)" },
+      "tanstack":            { "expect": "present", "description": "App uses TanStack Start/Router for routing (createFileRoute, createRootRoute)" },
+      "spreeform-ui":        { "expect": "present", "description": "The built app uses Spreeform UI components (@spreetail/spreeform) for buttons, cards, etc." },
+      "typescript":          { "expect": "present", "description": "TypeScript compiles without errors (tsc --noEmit passes)" },
+      "visual-fidelity":     { "expect": "present", "description": "The built app's layout and components visually match the mockup — same sections, similar structure, key UI elements from the image are represented in the code" }
+    }
+  }
+}

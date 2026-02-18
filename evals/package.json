@@ -1,0 +1,21 @@
+{
+  "name": "evals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cli": "DIR=workspaces/cli/app-$(( $(ls -d workspaces/cli/app-* 2>/dev/null | sed 's/.*app-//' | sort -n | tail -1) + 1 )) && mkdir -p \"$DIR\" && cd \"$DIR\" && claude --plugin-dir ../../../kova-plugin",
+    "sdk": "bun run src/test-plugin.ts",
+    "batch": "bun run src/batch-test.ts",
+    "clean": "mv workspaces workspaces_trash_$$ 2>/dev/null; mkdir -p workspaces/cli workspaces/sdk && rm -rf workspaces_trash_* &"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "typescript": "^5.8.0"
+  }
+}
