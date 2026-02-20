@@ -145,9 +145,51 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 </Table>
 ```
 
+## SSR Compatibility (TanStack Start / Vite SSR)
+
+`ThemeProvider` and `SidebarProvider` use `localStorage` internally. During SSR (server-side rendering), `localStorage` does not exist, so rendering these components on the server will crash with a `ReferenceError`.
+
+### The Fix: `ClientOnly` Wrapper
+
+Create a `ClientOnly` helper that defers rendering until the component is mounted in the browser:
+
+```tsx
+// src/components/client-only.tsx
+import { useState, useEffect, type ReactNode } from "react";
+
+export function ClientOnly({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? <>{children}</> : <>{fallback}</>;
+}
+```
+
+### What to Wrap
+
+| Component | Why |
+|-----------|-----|
+| `ThemeProvider` | Reads `localStorage` for saved theme preference |
+| `SidebarProvider` | Reads `localStorage` for sidebar open/collapsed state |
+
+**Do NOT wrap** individual UI components (`Button`, `Card`, `Dialog`, etc.) — they are SSR-safe.
+
+### Usage
+
+```tsx
+import { ClientOnly } from "../components/client-only";
+
+<ClientOnly>
+  <ThemeProvider defaultTheme="system">
+    <SidebarProvider>
+      {/* app content */}
+    </SidebarProvider>
+  </ThemeProvider>
+</ClientOnly>
+```
+
 ## Page Layout
 
-For full-page layouts with sidebar:
+For full-page layouts with sidebar (with SSR-safe wrapping):
 
 ```tsx
 import {
@@ -157,7 +199,9 @@ import {
   SidebarMenuItem, SidebarMenuButton, SidebarProvider,
   ThemeProvider, Toaster
 } from "@spreetail/spreeform";
+import { ClientOnly } from "../components/client-only";
 
+<ClientOnly>
 <ThemeProvider defaultTheme="system">
   <SidebarProvider>
     <Sidebar>
@@ -188,6 +232,7 @@ import {
   </SidebarProvider>
   <Toaster />
 </ThemeProvider>
+</ClientOnly>
 ```
 
 ## Hooks
