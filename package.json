@@ -18,6 +18,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "dev:web": "bun run vite --config vite.web.config.mts",
+    "build": "bun run build:agent && bun run build:backend && bun run build:web",
     "build:web": "bun run vite build --config vite.web.config.mts",
     "preview:web": "bun run vite preview --config vite.web.config.mts",
     "dev:backend": "bun --env-file=.env --watch backend/src/index.ts",

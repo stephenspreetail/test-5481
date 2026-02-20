@@ -14,8 +14,10 @@ import { defineConfig, loadEnv } from "vite";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
-  if (!env.VITE_API_URL) {
-    throw new Error("VITE_API_URL environment variable is required");
+  // VITE_API_URL is required in dev for the proxy; in production builds the
+  // frontend falls back to window.location.origin at runtime.
+  if (mode === "development" && !env.VITE_API_URL) {
+    throw new Error("VITE_API_URL environment variable is required for development");
   }
 
   return {

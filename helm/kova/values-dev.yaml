@@ -1,0 +1,11 @@
+app:
+  cluster: dev01
+
+  deployment:
+    replicaCount: 1
+    env:
+      K8S_ENVIRONMENT: "eks-dev"
+      K8S_CONTEXT: "dev01-eks-kova"
+      K8S_NAMESPACE: "kova-apps"
+      PREVIEW_DOMAIN: "kova.eks.dev01.tk.dev"
+      CORS_ORIGIN: "https://kova.dev01.tk.dev"

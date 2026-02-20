@@ -1,0 +1,6 @@
+dependencies:
+- name: deployment
+  repository: oci://851725519214.dkr.ecr.us-east-1.amazonaws.com/devops/helm-charts
+  version: 2.13.0
+digest: sha256:3daa0f0ca5be0fcafa52923d38aec691101e6be93d3c36a466fe9ca128ff8bf1
+generated: "2026-02-11T14:55:41.462009372-06:00"

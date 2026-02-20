@@ -73,9 +73,10 @@ const ENVIRONMENT_DEFAULTS: Record<K8sEnvironment, EnvironmentDefaults> = {
     storageClass: "ebs-sc",
   },
 
-  // EKS development cluster (kova cluster)
+  // EKS development cluster (kova cluster — cross-cluster from dev01-eks-app)
+  // Entrypoint bootstraps kubeconfig via `aws eks update-kubeconfig --alias`
   "eks-dev": {
-    context: "dev01-eks-kova-admin",
+    context: "dev01-eks-kova",
     namespace: "kova-apps",
     previewDomain: "kova.eks.dev01.tk.dev",
     previewPort: 443,

@@ -1,0 +1,29 @@
+# =============================================================================
+# Base image for Kova production builds
+# =============================================================================
+# Extends oven/bun:1-slim with system dependencies needed at runtime.
+# Built out-of-band (weekly or on-demand) and pushed to ECR.
+#
+# Build:  docker build -f Dockerfile.base -t kova/kova-base:latest .
+# =============================================================================
+
+FROM oven/bun:1-slim
+
+# CA certificates + RDS global trust bundle (RDS IAM auth SSL)
+# kubectl (KubectlOrchestrator manages app containers on remote EKS cluster)
+# AWS CLI (entrypoint bootstraps kubeconfig via `aws eks update-kubeconfig`)
+# CI registry mirror may inject stale third-party apt repos — nuke all sources
+# and write a clean Debian bookworm source list before installing packages.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN rm -f /etc/apt/sources.list.d/* 2>/dev/null; \
+    echo 'deb http://deb.debian.org/debian bookworm main' > /etc/apt/sources.list; \
+    echo 'deb http://deb.debian.org/debian bookworm-updates main' >> /etc/apt/sources.list; \
+    echo 'deb http://deb.debian.org/debian-security bookworm-security main' >> /etc/apt/sources.list; \
+    apt-get update -qq && apt-get install -y -qq -o Dpkg::Options::="--force-confnew" ca-certificates curl unzip \
+    && curl -sS -o /etc/ssl/rds-global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && curl -sS -L -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -sS -L https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && chmod +x /usr/local/bin/kubectl \
+    && curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip \
+    && unzip -q /tmp/awscli.zip -d /tmp && /tmp/aws/install --update && rm -rf /tmp/aws /tmp/awscli.zip \
+    && apt-get purge -y -qq curl unzip > /dev/null 2>&1 \
+    && rm -rf /var/lib/apt/lists/*

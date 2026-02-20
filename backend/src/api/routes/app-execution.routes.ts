@@ -72,12 +72,11 @@ export async function appExecutionRoutes(app: FastifyInstance) {
         return;
       }
 
-      try {
-        await appContainerService.stopContainer(parseInt(id));
-        return { success: true };
-      } catch (error: any) {
-        reply.status(500).send({ error: error.message });
-      }
+      // No-op: containers are kept long-lived so preview URLs remain
+      // shareable. The frontend still calls this on app switch, but we
+      // don't actually scale down the deployment.
+      console.log(`[app-execution] Ignoring stop request for app ${id} (long-lived containers)`);
+      return { success: true };
     },
   );
 

@@ -44,9 +44,11 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
     // SAFETY: When running outside a Kubernetes pod, a context MUST be
     // provided. Without it, kubectl falls back to the developer's ambient
     // kubeconfig current-context, which could be a production cluster.
-    // In-cluster (detected by the service account token mount), kubectl
-    // uses the pod's identity automatically and no context is needed.
-    if (!options.context && !existsSync(IN_CLUSTER_TOKEN_PATH)) {
+    // Accepted auth modes:
+    //   1. Explicit context name (local dev)
+    //   2. In-cluster SA token (pod running in target cluster)
+    //   3. KUBECONFIG env set (cross-cluster via entrypoint bootstrap)
+    if (!options.context && !existsSync(IN_CLUSTER_TOKEN_PATH) && !process.env.KUBECONFIG) {
       throw new Error(
         "[KubectlOrchestrator] SAFETY: No kubectl context provided and not running in-cluster. " +
           "Set K8S_CONTEXT in .env to prevent accidentally using the ambient kubeconfig context. " +
@@ -146,18 +148,8 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
       `--timeout=${readyTimeoutSec}s`
     );
 
-    // Build URLs — route through Istio Gateway for both local and EKS
-    const hostname = `${containerName}.${this.options.previewDomain}`;
-    const isHttps = this.options.previewPort === 443 || this.options.previewPort === 8443;
-    const protocol = isHttps ? "https" : "http";
-    const portSuffix = (this.options.previewPort === 443 || this.options.previewPort === 80)
-      ? ""
-      : `:${this.options.previewPort}`;
-    const baseUrl = `${protocol}://${hostname}${portSuffix}`;
-
-    const agentUrl = `${baseUrl}/agent`;
-    const previewUrl = baseUrl;
-
+    // Build URLs — route through Istio Gateway
+    const { agentUrl, previewUrl } = this.buildContainerUrls(containerName);
     console.log(`[KubectlOrchestrator] Agent URL: ${agentUrl}`);
     console.log(`[KubectlOrchestrator] Preview URL: ${previewUrl}`);
 
@@ -204,19 +196,9 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
       },
       spec: {
         replicas: replicas,
-        strategy: this.options.isEKS
-          ? {
-              // EKS: RollingUpdate for zero-downtime deployments
-              type: "RollingUpdate",
-              rollingUpdate: {
-                maxSurge: 1,
-                maxUnavailable: 0,
-              },
-            }
-          : {
-              // Local: Recreate to avoid hostNetwork port conflicts
-              type: "Recreate",
-            },
+        // Recreate strategy: EBS PVCs are ReadWriteOnce (can't multi-attach),
+        // and local hostNetwork requires unique ports per pod.
+        strategy: { type: "Recreate" as const },
         selector: {
           matchLabels: labels,
         },
@@ -532,26 +514,21 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
   }
 
   /**
-   * Get pod IP for an app
+   * Build Istio-routed URLs for a container (consistent across spawn/get/list)
    */
-  private async getPodIp(appId: number): Promise<string | null> {
-    try {
-      const podIp = (
-        await this.kubectl(
-          "get",
-          "pod",
-          "-l",
-          `kova.app-id=${appId}`,
-          "-n",
-          this.options.namespace,
-          "-o",
-          "jsonpath={.items[0].status.podIP}"
-        )
-      ).trim();
-      return podIp || null;
-    } catch (error) {
-      return null;
-    }
+  private buildContainerUrls(containerName: string): { agentUrl: string; previewUrl: string } {
+    const hostname = `${containerName}.${this.options.previewDomain}`;
+    const isHttps = this.options.previewPort === 443 || this.options.previewPort === 8443;
+    const protocol = isHttps ? "https" : "http";
+    const portSuffix = (this.options.previewPort === 443 || this.options.previewPort === 80)
+      ? ""
+      : `:${this.options.previewPort}`;
+    const baseUrl = `${protocol}://${hostname}${portSuffix}`;
+
+    return {
+      agentUrl: `${baseUrl}/agent`,
+      previewUrl: baseUrl,
+    };
   }
 
   async stopContainer(containerId: string): Promise<void> {
@@ -588,42 +565,35 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
       return this.containerCache.get(appId)!;
     }
 
-    const podName = `app-${appId}`;
+    const deploymentName = `app-${appId}`;
 
     try {
-      // Get pod status
+      // Query pods by label (pod names include replicaset hash suffixes)
       const output = await this.kubectl(
         "get",
-        "pod",
-        podName,
+        "pods",
+        "-l",
+        `kova.app-id=${appId}`,
         "-n",
         this.options.namespace,
         "-o",
         "json"
       );
 
-      const pod = JSON.parse(output);
-      const state = this.mapPodState(pod);
-
-      // Get pod IP for direct access (needed because hostNetwork breaks Service routing)
-      const podIp = pod.status?.podIP;
-      if (!podIp) {
-        console.warn(`[KubectlOrchestrator] No pod IP found for ${podName}`);
+      const podList = JSON.parse(output);
+      if (!podList.items || podList.items.length === 0) {
         return null;
       }
 
-      // Get unique ports from pod env vars
-      const container = pod.spec?.containers?.[0];
-      const envVars = container?.env || [];
-      const agentPortEnv = envVars.find((e: any) => e.name === "AGENT_PORT");
-      const agentPort = agentPortEnv?.value ? parseInt(agentPortEnv.value) : this.options.agentPort;
+      const pod = podList.items[0];
+      const state = this.mapPodState(pod);
+      const { agentUrl, previewUrl } = this.buildContainerUrls(deploymentName);
 
-      const previewHostname = `kova-${podName}.${this.options.previewDomain}`;
       const containerInfo: ContainerInfo = {
-        containerId: `${this.options.namespace}/${podName}`,
-        containerName: podName,
-        agentUrl: `http://${podIp}:${agentPort}`,
-        previewUrl: `https://${previewHostname}:${this.options.previewPort}`,
+        containerId: `${this.options.namespace}/${deploymentName}`,
+        containerName: deploymentName,
+        agentUrl,
+        previewUrl,
         state,
         lastActivityAt: Date.now(),
       };
@@ -640,17 +610,20 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
   }
 
   async healthCheck(containerId: string): Promise<HealthCheckResult> {
-    const [namespace, podName] = containerId.split("/");
+    const [namespace, deploymentName] = containerId.split("/");
+    const appId = deploymentName.replace("app-", "");
 
     try {
+      // Query by label since pod names include replicaset hash suffixes
       const output = await this.kubectl(
         "get",
-        "pod",
-        podName,
+        "pods",
+        "-l",
+        `kova.app-id=${appId}`,
         "-n",
         namespace || this.options.namespace,
         "-o",
-        "jsonpath={.status.phase},{.status.containerStatuses[0].ready}"
+        "jsonpath={.items[0].status.phase},{.items[0].status.containerStatuses[0].ready}"
       );
 
       const [phase, ready] = output.split(",");
@@ -685,27 +658,15 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
       const containers: ContainerInfo[] = podList.items
         .map((pod: any): ContainerInfo | null => {
           const podName = pod.metadata.name;
-          const appId = Number.parseInt(podName.replace("app-", ""));
+          // Pod names are like "app-1-84d788d899-97hsj", extract deployment name "app-1"
+          const deploymentName = podName.replace(/-[a-z0-9]+-[a-z0-9]+$/, "");
+          const { agentUrl, previewUrl } = this.buildContainerUrls(deploymentName);
 
-          // Get pod IP for direct access (needed because hostNetwork breaks Service routing)
-          const podIp = pod.status?.podIP;
-          if (!podIp) {
-            console.warn(`[KubectlOrchestrator] No pod IP found for ${podName}, skipping`);
-            return null;
-          }
-
-          // Get unique ports from pod env vars
-          const container = pod.spec?.containers?.[0];
-          const envVars = container?.env || [];
-          const agentPortEnv = envVars.find((e: any) => e.name === "AGENT_PORT");
-          const agentPort = agentPortEnv?.value ? parseInt(agentPortEnv.value) : this.options.agentPort;
-
-          const previewHostname = `kova-${podName}.${this.options.previewDomain}`;
           return {
-            containerId: `${this.options.namespace}/${podName}`,
-            containerName: podName,
-            agentUrl: `http://${podIp}:${agentPort}`,
-            previewUrl: `https://${previewHostname}:${this.options.previewPort}`,
+            containerId: `${this.options.namespace}/${deploymentName}`,
+            containerName: deploymentName,
+            agentUrl,
+            previewUrl,
             state: this.mapPodState(pod),
             lastActivityAt: Date.now(),
           };

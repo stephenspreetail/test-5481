@@ -1,0 +1,239 @@
+# =============================================================================
+# Kova Development Environment
+# =============================================================================
+# mise manages tool versions for local development.
+# Install mise: https://mise.jdx.dev
+#
+#   mise install          — install all tools below
+#   mise run check        — validate your environment (AWS, k8s, .env, etc.)
+#
+# Rancher Desktop (or Docker Desktop) is a system dependency — install separately.
+# =============================================================================
+
+min_version = "2024.12.0"
+
+# -----------------------------------------------------------------------------
+# Tools
+# -----------------------------------------------------------------------------
+[tools]
+bun      = "latest"       # JS/TS runtime and package manager (primary runtime)
+kubectl  = "latest"       # Kubernetes CLI
+k3d      = "latest"       # Local Kubernetes via k3d (lightweight k3s-in-docker)
+"aws-cli" = "latest"      # AWS CLI for SSO authentication and Bedrock
+istioctl = "1.28"         # Istio service mesh — pinned to match EKS dev cluster
+jq       = "latest"       # JSON processor
+kubectx  = "latest"       # Fast kubectl context switching
+kubens   = "latest"       # Fast kubectl namespace switching
+azure    = "latest"       # Azure CLI (pipx backend — requires Python)
+
+# -----------------------------------------------------------------------------
+# Tasks
+# -----------------------------------------------------------------------------
+
+[tasks.check]
+description = "Validate development environment, AWS SSO, and Kubernetes contexts"
+run = """
+#!/usr/bin/env bash
+set -uo pipefail
+
+PASS=0; WARN=0; FAIL=0
+ok()   { printf '  \\033[32m✓\\033[0m %s\\n' "$1"; ((PASS++)); }
+warn() { printf '  \\033[33m⚠\\033[0m %s\\n' "$1"; ((WARN++)); }
+fail() { printf '  \\033[31m✗\\033[0m %s\\n' "$1"; ((FAIL++)); }
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Kova Environment Check"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ── Required CLI tools ──────────────────────────────────────────────────────
+echo "CLI Tools:"
+for cmd in bun kubectl k3d docker istioctl jq kubectx kubens aws az; do
+  if command -v "$cmd" &>/dev/null; then
+    ver=$("$cmd" --version 2>/dev/null | head -1 || echo "")
+    ok "$cmd  ($ver)"
+  else
+    fail "$cmd not found"
+  fi
+done
+echo ""
+
+# ── Docker daemon ───────────────────────────────────────────────────────────
+echo "Docker:"
+if docker info &>/dev/null 2>&1; then
+  ok "Docker daemon is running"
+else
+  fail "Docker daemon is not running — start Docker Desktop or the docker service"
+fi
+echo ""
+
+# ── AWS SSO profile ────────────────────────────────────────────────────────
+echo "AWS SSO:"
+if command -v aws &>/dev/null; then
+  profiles=$(aws configure list-profiles 2>/dev/null || echo "")
+  if echo "$profiles" | grep -qx "spreetail-dev"; then
+    ok "AWS profile 'spreetail-dev' exists"
+
+    # Check if session is active
+    if aws sts get-caller-identity --profile spreetail-dev &>/dev/null 2>&1; then
+      ok "AWS SSO session is active"
+    else
+      warn "AWS SSO session expired — run: source scripts/refresh-aws-sso.sh"
+    fi
+  else
+    fail "AWS profile 'spreetail-dev' not found"
+    echo "    Configure with: aws configure sso --profile spreetail-dev"
+    echo "    SSO start URL:  https://spreetail.awsapps.com/start"
+    echo "    Region:         us-east-1"
+  fi
+else
+  fail "AWS CLI not installed"
+fi
+echo ""
+
+# ── Kubernetes contexts ─────────────────────────────────────────────────────
+echo "Kubernetes Contexts:"
+if command -v kubectl &>/dev/null; then
+  contexts=$(kubectl config get-contexts -o name 2>/dev/null || echo "")
+
+  # dev01-eks-app-ro — required for copying TLS certificates
+  if echo "$contexts" | grep -qx "dev01-eks-app-ro"; then
+    ok "dev01-eks-app-ro  (EKS read-only — TLS cert source)"
+  else
+    fail "dev01-eks-app-ro not found — needed to copy TLS certs to local cluster"
+    echo "    Ask a teammate for the kubeconfig or run: aws eks update-kubeconfig ..."
+  fi
+
+  # k3d-kova-dev — local development cluster
+  if echo "$contexts" | grep -qx "k3d-kova-dev"; then
+    ok "k3d-kova-dev      (local k3d cluster)"
+  else
+    warn "k3d-kova-dev not found — run: bun run scripts/cluster-up.ts"
+  fi
+
+  # dev01-eks-app-admin — optional, for remote EKS development
+  if echo "$contexts" | grep -qx "dev01-eks-app-admin"; then
+    ok "dev01-eks-app-admin  (EKS admin — remote dev)"
+  else
+    warn "dev01-eks-app-admin not found (optional — only for EKS-based development)"
+  fi
+else
+  fail "kubectl not installed"
+fi
+echo ""
+
+# ── .env configuration ──────────────────────────────────────────────────────
+echo "Configuration:"
+if [ -f .env ]; then
+  ok ".env file exists"
+  check_var() {
+    local val
+    val=$(grep "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | xargs)
+    if [ -n "$val" ] && [[ "$val" != *"your-"* ]] && [[ "$val" != *"<"* ]]; then
+      ok "$1 is set"
+    else
+      fail "$1 is missing or still has a placeholder value"
+    fi
+  }
+  check_var "ANTHROPIC_API_KEY"
+  check_var "DATABASE_URL"
+  check_var "JWT_SECRET"
+  check_var "ENCRYPTION_KEY"
+else
+  fail ".env file not found — run: cp .env.example .env"
+fi
+echo ""
+
+# ── Summary ─────────────────────────────────────────────────────────────────
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+printf '  %s passed, %s warnings, %s failed\\n' "$PASS" "$WARN" "$FAIL"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+[ "$FAIL" -eq 0 ]
+"""
+
+[tasks."check:aws"]
+description = "Verify AWS SSO login and Bedrock model access"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROFILE="${AWS_SSO_PROFILE:-spreetail-dev}"
+echo "Checking AWS SSO profile: $PROFILE"
+echo ""
+
+if ! aws sts get-caller-identity --profile "$PROFILE" &>/dev/null 2>&1; then
+  echo "Session expired or not logged in. Logging in..."
+  aws sso login --profile "$PROFILE"
+fi
+
+echo "Identity:"
+aws sts get-caller-identity --profile "$PROFILE"
+echo ""
+
+echo "Bedrock model access (us-east-1):"
+aws bedrock list-foundation-models \
+  --profile "$PROFILE" \
+  --region us-east-1 \
+  --query 'modelSummaries[?starts_with(modelId, `anthropic.claude`)].modelId' \
+  --output table 2>/dev/null || echo "  (could not list models — check permissions)"
+echo ""
+"""
+
+[tasks."check:k8s"]
+description = "Show all configured Kubernetes contexts and current context"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Current context: $(kubectl config current-context 2>/dev/null || echo '(none)')"
+echo ""
+echo "All contexts:"
+kubectl config get-contexts
+echo ""
+
+echo "Cluster connectivity:"
+for ctx in dev01-eks-app-ro k3d-kova-dev; do
+  printf '  %-25s ' "$ctx"
+  if kubectl --context="$ctx" cluster-info &>/dev/null 2>&1; then
+    echo "✓ reachable"
+  else
+    echo "✗ unreachable"
+  fi
+done
+echo ""
+"""
+
+[tasks."base-image"]
+description = "Build and push the kova-base Docker image to ECR"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+AWS_ACCOUNT="${AWS_ACCOUNT:-851725519214}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+REPO="kova/kova-base"
+TAG="${1:-latest}"
+FULL_IMAGE="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPO}:${TAG}"
+
+echo "Building kova-base image..."
+docker build -f Dockerfile.base -t "${FULL_IMAGE}" .
+
+echo ""
+echo "Authenticating with ECR..."
+aws ecr get-login-password --region "${AWS_REGION}" \
+  | docker login --username AWS --password-stdin "${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+echo ""
+echo "Ensuring ECR repository exists..."
+aws ecr describe-repositories --repository-names "${REPO}" --region "${AWS_REGION}" 2>/dev/null \
+  || aws ecr create-repository --repository-name "${REPO}" --region "${AWS_REGION}"
+
+echo ""
+echo "Pushing ${FULL_IMAGE}..."
+docker push "${FULL_IMAGE}"
+
+echo ""
+echo "Done. Base image available at: ${FULL_IMAGE}"
+"""

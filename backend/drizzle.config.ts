@@ -6,6 +6,8 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: "postgresql://kova:kova_dev_password@localhost:5433/kova",
+    url:
+      process.env.DATABASE_URL ??
+      "postgresql://kova:kova_dev_password@localhost:5433/kova",
   },
 });

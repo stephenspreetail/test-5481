@@ -26,9 +26,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // Listen on all interfaces
     allowedHosts: [
-      '.dev.toolkit.co', // Local k3d development (kova-app-*.dev.toolkit.co)
-      '.local.tk.dev', // EKS development
-      '.kova.eks.prod.tk.dev', // EKS production
+      '.dev.toolkit.co',           // Local k3d development
+      '.local.tk.dev',             // Local EKS dev
+      '.kova.eks.dev01.tk.dev',    // EKS dev01 cluster
     ],
   },
 })

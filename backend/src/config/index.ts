@@ -10,7 +10,14 @@ const configSchema = z.object({
   CORS_ORIGIN: z.string().optional(),
 
   // Database
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  DB_AUTH_MODE: z.enum(["password", "iam"]).default("password"),
+  DATABASE_URL: z.string().optional(),
+  DB_HOST: z.string().optional(),
+  DB_PORT: z.coerce.number().default(5432),
+  DB_NAME: z.string().optional(),
+  DB_USER: z.string().optional(),
+  DB_REGION: z.string().default("us-east-1"),
+  DB_SSL_CA_PATH: z.string().optional(),
 
   // Security
   // JWT expiration uses duration format: e.g., 60s, 15m, 2h, 7d
@@ -82,6 +89,19 @@ const configSchema = z.object({
   // Logging
   VERBOSE_AGENT_LOGGING: z.enum(["0", "1"]).default("0"),
 }).refine(
+  (data) => {
+    // Database config validation
+    if (data.DB_AUTH_MODE === "password") {
+      return !!data.DATABASE_URL;
+    }
+    // IAM mode requires individual connection fields
+    return !!data.DB_HOST && !!data.DB_NAME && !!data.DB_USER;
+  },
+  {
+    message:
+      "Database config required: set DATABASE_URL for password mode, or DB_HOST + DB_NAME + DB_USER for IAM mode",
+  },
+).refine(
   (data) => {
     // LLM provider validation: must have valid credentials for at least one provider
     // Skip validation if LLM_PROVIDER is explicitly set (provider service handles it)

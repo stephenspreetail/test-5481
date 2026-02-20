@@ -1,0 +1,62 @@
+{{- if .Values.migration.enabled }}
+---
+# ServiceAccount for Pod Identity (maps to IAM role with rds-db:connect)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kova-migrate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.app.applicationName }}
+    app.kubernetes.io/component: migration
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kova-migrate-{{ .Release.Revision }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.app.applicationName }}
+    app.kubernetes.io/component: migration
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  ttlSecondsAfterFinished: {{ .Values.migration.ttlSecondsAfterFinished }}
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.app.applicationName }}
+        app.kubernetes.io/component: migration
+    spec:
+      {{- if .Values.migration.podIdentity.enabled }}
+      serviceAccountName: kova-migrate
+      {{- end }}
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: "{{ .Values.app.deployment.image.repository }}:{{ .Values.app.deployment.image.tag }}"
+          imagePullPolicy: {{ .Values.app.deployment.image.pullPolicy }}
+          command: ["bun", "run", "backend/scripts/migrate-iam.ts"]
+          env:
+            - name: DB_HOST
+              value: {{ .Values.migration.dbHost | quote }}
+            - name: DB_PORT
+              value: {{ .Values.migration.dbPort | quote }}
+            - name: DB_NAME
+              value: {{ .Values.migration.dbName | quote }}
+            - name: DB_USER
+              value: {{ .Values.migration.dbUser | quote }}
+            - name: DB_REGION
+              value: {{ .Values.migration.dbRegion | quote }}
+            - name: DB_SSL_CA_PATH
+              value: "/etc/ssl/rds-global-bundle.pem"
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+{{- end }}
