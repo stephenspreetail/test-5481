@@ -73,6 +73,18 @@ To update to the latest version of a plugin, open `/plugin`, go to the **Install
 |--------|-------------|------|
 | **[kova](./kova-plugin)** | AI App Builder — TanStack Start apps with Spreetail's data platform | [README](./kova-plugin/README.md) · [Quick Start](./kova-plugin/QUICKSTART.md) |
 
+## Making Changes
+
+To update an existing plugin:
+
+1. Make your changes in the plugin directory (e.g., `kova-plugin/`)
+2. Bump the `version` in the plugin's `.claude-plugin/plugin.json`
+3. Commit and merge to `main`
+
+Users will see the update available in the plugin manager under **Installed > Update now**, or via `/plugin marketplace update spreetail-marketplace`.
+
+The version bump is what signals to Claude Code that a new release is available — without it, users won't be prompted to update.
+
 ## Adding a Plugin
 
 Each plugin lives in its own directory and is registered in [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json). To add a new plugin:
