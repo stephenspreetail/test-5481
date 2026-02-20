@@ -1,6 +1,8 @@
+import path from "node:path";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
+import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import Fastify, { FastifyInstance, FastifyError } from "fastify";
 import { config } from "./config/index.js";
@@ -76,6 +78,25 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(agentRoutes, { prefix: "/api/agent" });
   await app.register(previewRoutes, { prefix: "/api/preview" });
 
+  // In production, serve the built frontend as static files.
+  // The Vite SPA is in dist/web/ relative to the repo root (one level up from backend/).
+  if (config.NODE_ENV === "production") {
+    const webRoot = path.resolve(import.meta.dirname, "../../dist/web");
+    await app.register(fastifyStatic, {
+      root: webRoot,
+      wildcard: false, // Let explicit routes take priority
+    });
+
+    // SPA fallback: serve index.html for any non-API, non-WS route
+    app.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith("/api/") || request.url.startsWith("/ws")) {
+        reply.status(404).send({ error: "Not Found" });
+      } else {
+        reply.sendFile("index.html");
+      }
+    });
+  }
+
   // Initialize app container service (scans existing containers)
   await appContainerService.initialize();
 
@@ -97,18 +118,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     }
   });
 
-  // Graceful shutdown hook
+  // Graceful shutdown hook — containers are kept long-lived across backend
+  // restarts in all environments. The shutdown() call is skipped so that
+  // running app pods survive a backend restart.
   app.addHook("onClose", async () => {
-    if (config.NODE_ENV === "development") {
-      app.log.info(
-        `Shutting down kova-app-container service (${config.NODE_ENV} mode)...`,
-      );
-      await appContainerService.shutdown();
-    } else {
-      app.log.info(
-        `Don't shutdown kova-app-container services (${config.NODE_ENV} mode)...`,
-      );
-    }
+    app.log.info(
+      `Shutting down backend (${config.NODE_ENV} mode) — leaving app containers running.`,
+    );
   });
 
   return app;

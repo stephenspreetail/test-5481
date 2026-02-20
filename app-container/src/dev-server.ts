@@ -143,10 +143,8 @@ export class DevServerManager {
         env: {
           ...process.env,
           PORT: String(this.port),
-          // Allow Vite to accept connections from Gateway (Vite 5.4.12+/6+/7+ security feature)
-          // This env var adds hosts to the allowedHosts list without modifying vite.config
-          // Format: comma-separated list of hosts or patterns
-          __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: ".localhost,.dev.toolkit.co,kova-app-*",
+          // __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS is set by backend per-app
+          // No need to override here - just inherit from process.env
         },
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
@@ -356,8 +354,8 @@ export class DevServerManager {
     try {
       const entries = readdirSync(this.workspaceDir);
       for (const entry of entries) {
-        // Skip hidden directories and common non-project dirs
-        if (entry.startsWith(".") || entry === "node_modules") continue;
+        // Skip hidden directories, common non-project dirs, and lost+found (ext4 on EBS)
+        if (entry.startsWith(".") || entry === "node_modules" || entry === "lost+found") continue;
 
         const entryPath = join(this.workspaceDir, entry);
         try {

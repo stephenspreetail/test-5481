@@ -1,0 +1,71 @@
+app:
+  applicationName: kova
+  applicationSubdomain: kova
+  cloudProvider: ".app.eks."
+  sourceLanguage: "javascript"
+  team: "scaled-innovation"
+
+  deployment:
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    ports:
+      name: http
+      containerPort: 3002
+      protocol: TCP
+    livenessProbe:
+      enabled: true
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      enabled: true
+      httpGet:
+        path: /health
+        port: http
+      periodSeconds: 10
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    env:
+      NODE_ENV: "production"
+      BACKEND_HOST: "0.0.0.0"
+
+  # Pod Identity: creates a ServiceAccount named "kova" that maps to an IAM role
+  # via EKS Pod Identity. The IAM role needs eks:DescribeCluster on the target
+  # cluster (dev01-eks-kova) so the entrypoint can bootstrap kubeconfig.
+  podIdentity:
+    enabled: true
+
+  gateway:
+    enabled: true
+    tkDevOnly: true
+
+  service:
+    type: ClusterIP
+    port: 80
+
+migration:
+  enabled: true
+  dbHost: ""
+  dbName: ""
+  dbPort: "5432"
+  dbUser: "kova_admin"
+  dbRegion: "us-east-1"
+  podIdentity:
+    enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300

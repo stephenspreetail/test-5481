@@ -162,8 +162,8 @@ export async function previewRoutes(app: FastifyInstance) {
         return;
       }
 
-      await appContainerService.stopContainer(parseInt(appId));
-
+      // No-op: containers are kept long-lived so preview URLs remain shareable.
+      console.log(`[preview] Ignoring stop request for app ${appId} (long-lived containers)`);
       return { state: "stopped" };
     },
   );

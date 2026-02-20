@@ -35,6 +35,13 @@ set -e
 # but we need it owned by kova (UID 1001) inside the container
 chown kova:kova /workspace 2>/dev/null || true
 
+# Hide lost+found directory (created by ext4 on EBS volumes)
+# Vite and other tools fail when scanning workspace and hitting permission errors on lost+found
+# Note: This will be unnecessary when we migrate to EFS (NFS-based, no lost+found)
+if [ -d /workspace/lost+found ]; then
+  chmod 000 /workspace/lost+found 2>/dev/null || true
+fi
+
 # Ensure the named volume mount point exists and has correct ownership
 # node_modules is mounted as a named volume: app-{id}-modules:/workspace/node_modules
 # This fixes npm bin-links/symlink issues on Windows bind mounts

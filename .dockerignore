@@ -1,9 +1,8 @@
 # =============================================================================
-# Docker Build Context Exclusions
+# Docker Build Context Exclusions (default - used by production Dockerfile)
 # =============================================================================
-# The build context is the repo root (for multi-stage builds).
-# We include: packages/agent, app-container
-# We exclude: everything else to minimize context size
+# Includes: backend, src, packages/agent (needed for full app build)
+# See Dockerfile.appcontainer.dockerignore for app-container specific exclusions
 
 # Exclude all node_modules (will be installed fresh in container)
 **/node_modules
@@ -12,13 +11,21 @@
 **/dist
 **/.vite
 
-# Exclude directories not needed for app-container build
-backend
-src
+# Exclude directories not needed in production image (keep app-container/package.json for workspace resolution)
+app-container/src
+app-container/dist
+app-container/scripts
+app-container/entrypoint.sh
+app-container/.npmrc.template
+app-container/.dockerignore
 e2e-tests
 testing
 traefik
-public
+sandbox
+scripts
+!scripts/docker-entrypoint.sh
+manifests
+docs
 
 # Exclude logs and temp files
 *.log
@@ -39,7 +46,5 @@ public
 *.swp
 *.swo
 
-# Exclude documentation (not needed in container)
+# Exclude documentation
 *.md
-!app-container/*.md
-!packages/agent/*.md

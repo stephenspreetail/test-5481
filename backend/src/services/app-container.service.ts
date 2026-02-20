@@ -16,7 +16,8 @@ import {
   buildLlmProviderConfig,
 } from "./llm-provider.service.js";
 import { buildK8sEnvironmentConfig } from "./k8s-environment.service.js";
-import { generateAgentToken } from "./agent-auth.service.js";
+// TODO: Re-enable when agent token validation is implemented in app-container
+// import { generateAgentToken } from "./agent-auth.service.js";
 
 /**
  * Resolve the apps base path to an absolute path
@@ -131,10 +132,10 @@ class AppContainerService {
       clearInterval(idleCheckInterval);
     }
 
-    // Periodically scan for containers and stop idle ones
+    // Periodically scan for containers to reconcile in-memory state.
+    // Idle timeout is disabled — containers are kept long-lived for shareable preview URLs.
     idleCheckInterval = setInterval(() => {
       this.scanExistingContainers();
-      this.stopIdleContainers();
     }, this.containerScanIntervalMs);
 
     // Scan for existing containers
@@ -376,11 +377,14 @@ class AppContainerService {
       devPort = basePort;
     }
 
-    // Generate agent API authentication token
-    // Token is passed to container and required for all agent API calls
-    // Prevents unauthorized access since agent API is externally exposed
-    const agentToken = generateAgentToken(appId, userId);
-    console.log(`[AppContainerService] Generated agent token for app ${appId}`);
+    // TODO: Implement agent token validation in app-container.
+    // For now, pass empty string to avoid unnecessary deployment churn —
+    // a new JWT on every start changes the deployment spec and forces a
+    // full pod recreation even when just scaling from 0 → 1.
+    const agentToken = "";
+
+    // Build app-specific preview URL for Vite's allowedHosts
+    const appPreviewHost = `app-${appId}.${k8sEnv.previewDomain}`;
 
     // Environment variables for the container
     const env = {
@@ -405,6 +409,9 @@ class AppContainerService {
       DATA_PLATFORM_PASSWORD: config.DATA_PLATFORM_PASSWORD,
       // Agent configuration
       VERBOSE_AGENT_LOGGING: config.VERBOSE_AGENT_LOGGING,
+      // Vite dev server security: Allow this app's specific preview host
+      // Vite 5.4+ blocks all hosts by default unless in vite.config or this env var
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: appPreviewHost,
     };
 
     // Update state to starting

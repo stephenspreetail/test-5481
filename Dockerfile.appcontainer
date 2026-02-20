@@ -5,10 +5,14 @@
 # 1. Build @kova/agent package from monorepo
 # 2. Build app-container with the bundled agent
 
+# SDK base image — CI passes the ECR-hosted kova-base-sdk image;
+# local builds fall back to plain bun:1-debian (tsc must be installed manually).
+ARG SDK_BASE=oven/bun:1-debian
+
 # =============================================================================
 # Stage 1: Build @kova/agent package
 # =============================================================================
-FROM oven/bun:1-debian AS agent-builder
+FROM ${SDK_BASE} AS agent-builder
 
 WORKDIR /build
 

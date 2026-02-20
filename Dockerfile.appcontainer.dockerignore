@@ -1,0 +1,45 @@
+# =============================================================================
+# Docker Build Context Exclusions for Dockerfile.appcontainer
+# =============================================================================
+# The build context is the repo root (for multi-stage builds).
+# We include: packages/agent, app-container
+# We exclude: everything else to minimize context size
+
+# Exclude all node_modules (will be installed fresh in container)
+**/node_modules
+
+# Exclude build outputs (will be built fresh in container)
+**/dist
+**/.vite
+
+# Exclude directories not needed for app-container build
+backend
+src
+e2e-tests
+testing
+traefik
+public
+
+# Exclude logs and temp files
+*.log
+*.tmp
+
+# Exclude environment files (secrets!)
+.env
+.env.*
+!.env.example
+
+# Exclude git directory
+.git
+.gitignore
+
+# Exclude IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Exclude documentation (not needed in container)
+*.md
+!app-container/*.md
+!packages/agent/*.md
