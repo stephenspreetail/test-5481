@@ -1,0 +1,66 @@
+# Agentic Epic Builder — Sample Epics Input
+#
+# Settings here are overridden by CLI flags if provided.
+# Run with: python main.py --epics-file epics.yaml
+
+settings:
+  max_iterations_per_epic: 3     # How many plan-build-test cycles before giving up
+  coverage_threshold: 80         # Minimum test coverage % required for completeness
+  workspace_dir: ./workspace     # Where agent workspaces are created (one dir per epic)
+  log_dir: ./logs                # Where structured JSON phase logs are written
+  model: claude-opus-4-6         # Claude model used for all agent subprocesses
+
+epics:
+  - id: epic-001
+    title: "User Authentication System"
+    description: |
+      Build a complete JWT-based user authentication system with the
+      following endpoints:
+        - POST /auth/register   — create a new user account
+        - POST /auth/login      — authenticate and return JWT access + refresh tokens
+        - POST /auth/logout     — invalidate the refresh token
+        - POST /auth/refresh    — exchange a valid refresh token for a new access token
+
+      Use FastAPI for the API layer, bcrypt for password hashing, and
+      python-jose for JWT encoding/decoding. Store users in an in-memory
+      dictionary (no database required for this epic).
+    language: python
+    framework: fastapi
+    acceptance_criteria:
+      - POST /auth/register returns 201 with user id when given a valid email and password
+      - POST /auth/register returns 409 when the email is already registered
+      - POST /auth/login returns 200 with access_token and refresh_token for valid credentials
+      - POST /auth/login returns 401 for invalid credentials
+      - Access tokens expire after 24 hours (configurable via env var)
+      - Passwords are hashed with bcrypt and never stored in plaintext
+      - POST /auth/refresh returns a new access_token given a valid refresh token
+      - POST /auth/logout returns 204 and invalidates the refresh token
+      - Test coverage >= 80%
+    tags: [auth, api, security]
+    priority: high
+
+  - id: epic-002
+    title: "CSV and JSON Data Export Service"
+    description: |
+      Implement a data export service that reads records from an in-memory
+      dataset and exports them in CSV or JSON format, with support for
+      date-range filtering and cursor-based pagination.
+
+      The service should expose a single endpoint:
+        GET /export?format=csv|json&from=YYYY-MM-DD&to=YYYY-MM-DD&cursor=<token>&limit=<n>
+
+      Records have the shape: { id, user_id, amount, category, timestamp }.
+      Use FastAPI. Do not use a real database — generate or hard-code sample records.
+    language: python
+    framework: fastapi
+    acceptance_criteria:
+      - GET /export?format=csv returns valid CSV with a header row
+      - GET /export?format=json returns a JSON array of records
+      - The from and to query params filter records by timestamp (inclusive)
+      - Pagination works correctly — the response includes a next_cursor field when more records exist
+      - Requesting with a cursor returns the next page of results
+      - limit defaults to 100 and is capped at 1000
+      - Invalid format values return 422 with a descriptive error
+      - Test coverage >= 80%
+    tags: [export, api, pagination]
+    priority: medium
