@@ -71,6 +71,45 @@ class BuildResult(BaseModel):
     success: bool
 
 
+class PytestReport(BaseModel):
+    """
+    Authoritative, deterministic test results from the subprocess pytest runner.
+
+    All numeric fields (tests_passed, tests_failed, tests_total,
+    coverage_percent) are parsed from pytest's JSON output files —
+    NOT self-reported by an LLM. These are the trusted inputs that
+    feed directly into TestResult and the orchestrator's four-gate check.
+    """
+
+    # --- Trusted numeric fields (parsed from pytest JSON output) ---
+    tests_passed: int = 0
+    tests_failed: int = 0
+    tests_total: int = 0
+    coverage_percent: float = 0.0
+
+    # --- Diagnostic fields ---
+    no_tests_found: bool = False
+    raw_output: str = ""
+    install_attempted: bool = False
+    install_succeeded: bool | None = None
+    error_detail: str | None = None
+
+
+class EvaluationResult(BaseModel):
+    """
+    LLM-produced evaluation of acceptance criteria and code quality.
+
+    The LLM evaluator receives a pre-run PytestReport embedded in its
+    prompt and focuses exclusively on semantic/qualitative assessment.
+    It does NOT set any numeric fields — those come from PytestReport.
+    """
+
+    critical_issues: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    feedback_for_planner: str
+    success: bool
+
+
 class TestResult(BaseModel):
     """
     Returned by the Tester agent after running the full test suite.
