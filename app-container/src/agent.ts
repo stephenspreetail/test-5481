@@ -1,7 +1,7 @@
 /**
  * Agent wrapper for the App Container
  *
- * Uses kovaQuery from @kova/agent and transforms raw SDKMessage
+ * Uses the Claude Agent SDK query() and transforms raw SDKMessage
  * to AgentStreamEvent format for the backend.
  *
  * Handles:
@@ -9,9 +9,13 @@
  * - Post-result error suppression (dev server startup errors)
  */
 
-import { kovaQuery, type SDKMessage } from "@kova/agent";
-import type { SystemPromptConfig } from "@kova/agent";
+import { query, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { Options as SDKOptions } from "@anthropic-ai/claude-agent-sdk";
+import type { SystemPromptConfig } from "./types.js";
+import { DEFAULT_TOOLS } from "./types.js";
+import { DEFAULT_KOVA_SYSTEM_PROMPT } from "./system-prompt.js";
 import { resolve } from "node:path";
+import { existsSync } from "node:fs";
 
 // =============================================================================
 // Verbose Logging
@@ -224,6 +228,42 @@ function* parseSDKMessage(
 
   // Session initialization: { type: "system", subtype: "init", session_id: "..." }
   if (msg.type === "system" && msg.subtype === "init") {
+    // Log loaded capabilities from the SDK init message
+    // See: https://platform.claude.com/docs/en/agent-sdk/typescript#sdksystemmessage
+    const tools = msg.tools as string[] | undefined;
+    const mcpServers = msg.mcp_servers as { name: string; status: string }[] | undefined;
+    const commands = msg.slash_commands as string[] | undefined;
+    const plugins = (msg as Record<string, unknown>).plugins as { name: string; path: string }[] | undefined;
+
+    log("INIT", `Session: ${msg.session_id}`);
+    log("INIT", `Model: ${msg.model || "default"}`);
+    if (plugins?.length) {
+      log("INIT", `Plugins: ${plugins.map(p => p.name).join(", ")}`);
+    }
+    if (mcpServers?.length) {
+      log("INIT", `MCP servers: ${mcpServers.map(s => `${s.name} (${s.status})`).join(", ")}`);
+    }
+    if (commands?.length) {
+      // Separate plugin skills from built-in commands
+      const skills = commands.filter(c => c.includes(":"));
+      const builtIn = commands.filter(c => !c.includes(":"));
+      if (skills.length) {
+        log("INIT", `Skills (${skills.length}): ${skills.join(", ")}`);
+      }
+      if (builtIn.length) {
+        log("INIT", `Built-in commands (${builtIn.length}): ${builtIn.join(", ")}`);
+      }
+    }
+    if (tools?.length) {
+      // Separate MCP tools from built-in tools
+      const mcpTools = tools.filter(t => t.startsWith("mcp__"));
+      const builtInTools = tools.filter(t => !t.startsWith("mcp__"));
+      log("INIT", `Tools (${builtInTools.length}): ${builtInTools.join(", ")}`);
+      if (mcpTools.length) {
+        log("INIT", `MCP tools (${mcpTools.length}): ${mcpTools.map(t => t.replace(/^mcp__plugin_kova_data-catalog__/, "")).join(", ")}`);
+      }
+    }
+
     yield {
       type: "session_init",
       sessionId: msg.session_id as string,
@@ -307,6 +347,35 @@ function* parseSDKMessage(
 }
 
 // =============================================================================
+// Environment
+// =============================================================================
+
+/**
+ * Build environment with corrected PATH for cross-platform compatibility
+ */
+function buildEnvironment(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) {
+      env[key] = value;
+    }
+  }
+
+  // Add node directory to PATH
+  const nodePath = process.execPath;
+  const nodeDir = nodePath.substring(
+    0,
+    nodePath.lastIndexOf(process.platform === "win32" ? "\\" : "/")
+  );
+
+  if (env.PATH && !env.PATH.includes(nodeDir)) {
+    env.PATH = `${nodeDir}${process.platform === "win32" ? ";" : ":"}${env.PATH}`;
+  }
+
+  return env;
+}
+
+// =============================================================================
 // Main Export
 // =============================================================================
 
@@ -343,16 +412,39 @@ export async function* streamQuery(
   }
 
   try {
-    // Resolve model: explicit option > AGENT_MODEL env var (passed from backend) > kovaQuery default
+    // Resolve model: explicit option > AGENT_MODEL env var
     const model = options.model || process.env.AGENT_MODEL;
 
-    for await (const message of kovaQuery(prompt, {
-      cwd: absoluteCwd,
-      sessionId: options.sessionId,
-      allowedTools: options.allowedTools,
-      systemPrompt: options.systemPrompt,
+    // Build SDK options directly
+    const sdkOptions: SDKOptions = {
       model,
-    })) {
+      allowedTools: options.allowedTools || DEFAULT_TOOLS,
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+      executable: "node",
+      env: buildEnvironment(),
+      cwd: absoluteCwd,
+      systemPrompt: options.systemPrompt || DEFAULT_KOVA_SYSTEM_PROMPT,
+      settingSources: ["project"],
+    };
+
+    // Load Kova plugin if cloned at container startup
+    const pluginName = process.env.KOVA_PLUGIN_NAME;
+    if (pluginName) {
+      const pluginDir = `/opt/plugins/marketplace/${pluginName}`;
+      if (existsSync(`${pluginDir}/.claude-plugin`)) {
+        sdkOptions.plugins = [{ type: "local", path: pluginDir }];
+        log("INIT", `Loading plugin '${pluginName}' from ${pluginDir}`);
+      } else {
+        log("WARN", `Plugin '${pluginName}' not found at ${pluginDir}`);
+      }
+    }
+
+    if (options.sessionId) {
+      sdkOptions.resume = options.sessionId;
+    }
+
+    for await (const message of query({ prompt, options: sdkOptions })) {
       messageCount++;
 
       // Log raw SDK message

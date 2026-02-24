@@ -60,6 +60,9 @@ variables:
     --set app.deployment.env.K8S_ENVIRONMENT=eks-dev
     --set app.deployment.env.K8S_NAMESPACE=kova-apps
     --set app.deployment.env.PREVIEW_DOMAIN=kova.eks.dev01.tk.dev
+    --set app.deployment.env.GITLAB_TOKEN=${GITLAB_TOKEN}
+    --set app.deployment.env.KOVA_PLUGIN_REPO=${KOVA_PLUGIN_REPO}
+    --set app.deployment.env.KOVA_PLUGIN_NAME=${KOVA_PLUGIN_NAME}
     --set app.gateway.tkDevOnly=true
     --set migration.dbHost=${KOVA_DB_HOST}
     --set migration.dbName=${KOVA_DB_NAME}
@@ -146,7 +149,7 @@ image_build_base:
   needs: []
   stage: .pre
 
-# SDK base image (tsc + node-gyp deps for building @kova/agent).
+# SDK base image (tsc + node-gyp deps for native modules).
 image_build_base_sdk:
   extends: [.image_build, .dind_build, .base_image_rules]
   variables:
@@ -164,7 +167,7 @@ image_build:
 
 # Build the app-container image (second Docker image).
 # Uses docker-in-docker to avoid kaniko layer/cache issues with multi-stage builds.
-# Pulls pre-built SDK base from ECR — no dependency on image_build_base_sdk.
+# Pulls pre-built SDK base from ECR for faster builds.
 image_build_app_container:
   extends: [.image_build, .dind_build]
   variables:

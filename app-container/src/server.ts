@@ -13,7 +13,7 @@ import { DevServerManager } from "./dev-server.js";
 import { appContainerLog as log } from "./logger.js";
 import type { HealthResponse, QueryRequest } from "./types.js";
 import { DEFAULT_TOOLS } from "./types.js";
-import { extendKovaAgentPrompt } from "@kova/agent";
+import { extendPrompt } from "./system-prompt.js";
 
 // Configuration from environment
 const AGENT_PORT = parseInt(process.env.AGENT_PORT || "3100");
@@ -21,8 +21,8 @@ const DEV_SERVER_PORT = parseInt(process.env.DEV_SERVER_PORT || "3000");
 const WORKSPACE_DIR = process.env.WORKSPACE_DIR || "/workspace";
 const APP_ID = process.env.APP_ID || "unknown";
 
-// Default system prompt: Kova agent prompt + container-specific instructions
-const DEFAULT_SYSTEM_PROMPT_CONFIG = extendKovaAgentPrompt(
+// Default system prompt: Claude Code preset + container-specific instructions
+const DEFAULT_SYSTEM_PROMPT_CONFIG = extendPrompt(
   `The dev server is managed automatically - do NOT run "bun dev", "bun run dev", or start any dev server manually. The app preview updates automatically when you save files.`
 );
 
@@ -216,8 +216,6 @@ async function main() {
     log.log(`Workspace: ${WORKSPACE_DIR}`);
     log.log(`Agent port: ${AGENT_PORT}`);
     log.log(`Dev server port: ${DEV_SERVER_PORT}`);
-
-    // Note: Skills are automatically copied to project by kovaQuery when first query runs
 
     // Start the agent server
     await app.listen({ port: AGENT_PORT, host: "0.0.0.0" });

@@ -2,14 +2,14 @@
 
 ## Overview
 
-Kova's agent server runs `@kova/agent` (a thin wrapper around Claude Agent SDK) in isolated containers, leveraging modular building blocks—skills, MCP servers, and subagents—to enhance its capabilities for app generation.
+Kova's agent server runs the Claude Agent SDK in isolated containers, with the **Kova Plugin** providing skills, MCP servers, and domain-specific knowledge for app generation.
 
-The `@kova/agent` package (`packages/agent/`) provides:
-- `kovaQuery()` - Core function wrapping Claude Agent SDK with Spreetail defaults
-- Bundled skills (xlsx, data-platform, xlsx-workflow-docs)
-- Data platform integration (Trino client, metadata search, MCP server)
-- System prompts and tool presets
-- Standalone CLI for development outside the web platform
+Previously, Kova maintained a standalone `@kova/agent` package with a bundled CLI, skills, templates, and MCP servers. This was replaced with the **plugin approach** which provides feature parity while eliminating the maintenance burden of a custom CLI and allowing faster iteration on skills. Engineers use **Claude Code + Kova Plugin** for local development and **Claude Agent SDK + Kova Plugin** for the Kova web platform — the same plugin powers both experiences.
+
+The Kova Plugin ([spreetail-claude-plugins](https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins)) provides:
+- Skills (init-project, spreeform, data-platform, xlsx, image-forge, etc.)
+- MCP servers (data-catalog for metadata search)
+- Templates (TanStack Start starter)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -20,7 +20,7 @@ The `@kova/agent` package (`packages/agent/`) provides:
 │  │   Frontend   │────▶│   Backend    │────▶│      App Containers          │ │
 │  │   (React)    │ WS  │  (Fastify)   │ SSE │   (one per user app)         │ │
 │  └──────────────┘     └──────────────┘     └──────────────────────────────┘ │
-│        :5174               :3002              :31xxx (agent) :33xxx (dev)   │
+│        :5174               :3002                                            │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -42,15 +42,18 @@ Each user app runs in an isolated container with two servers:
 │  │  │                  (Claude Code Wrapper)                          │ │    │
 │  │  │                                                                 │ │    │
 │  │  │   ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐   │ │    │
-│  │  │   │   TOOLS     │  │   SKILLS    │  │   SYSTEM PROMPT     │   │ │    │
+│  │  │   │   TOOLS     │  │ KOVA PLUGIN │  │   SYSTEM PROMPT     │   │ │    │
 │  │  │   │             │  │             │  │                     │   │ │    │
-│  │  │   │ • Read      │  │ • xlsx      │  │ preset: claude_code │   │ │    │
-│  │  │   │ • Write     │  │ • xlsx-     │  │ append: Kova rules  │   │ │    │
-│  │  │   │ • Edit      │  │   workflow- │  │                     │   │ │    │
-│  │  │   │ • Bash      │  │   docs      │  │ Tech stack:         │   │ │    │
-│  │  │   │ • Glob      │  │ • (future)  │  │ • React + TS        │   │ │    │
-│  │  │   │ • Grep      │  │             │  │ • Vite              │   │ │    │
-│  │  │   │ • Skill     │  │             │  │ • Tailwind          │   │ │    │
+│  │  │   │ • Read      │  │ Skills:     │  │ preset: claude_code │   │ │    │
+│  │  │   │ • Write     │  │ • init-proj │  │                     │   │ │    │
+│  │  │   │ • Edit      │  │ • spreeform │  │ Plugin provides     │   │ │    │
+│  │  │   │ • Bash      │  │ • data-plat │  │ domain knowledge    │   │ │    │
+│  │  │   │ • Glob      │  │ • xlsx      │  │ via skills & MCP    │   │ │    │
+│  │  │   │ • Grep      │  │ • etc.      │  │                     │   │ │    │
+│  │  │   │ • Skill     │  │             │  │                     │   │ │    │
+│  │  │   │             │  │ MCP:        │  │                     │   │ │    │
+│  │  │   │             │  │ • data-     │  │                     │   │ │    │
+│  │  │   │             │  │   catalog   │  │                     │   │ │    │
 │  │  │   └─────────────┘  └─────────────┘  └─────────────────────┘   │ │    │
 │  │  │                                                                 │ │    │
 │  │  │   ┌─────────────────────────────────────────────────────────┐  │ │    │
@@ -78,22 +81,29 @@ Each user app runs in an isolated container with two servers:
 │  │                      WORKSPACE (/workspace)                          │    │
 │  │                                                                      │    │
 │  │  /workspace/                                                         │    │
-│  │    ├── .claude/skills/     ← Skills copied here on startup          │    │
 │  │    ├── src/                ← Generated app source                   │    │
 │  │    ├── package.json                                                  │    │
 │  │    └── *.xlsx              ← Uploaded workflow files                │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                      PLUGIN (/opt/plugins/marketplace)               │    │
+│  │                                                                      │    │
+│  │  Cloned from GitLab at container startup (entrypoint.sh)            │    │
+│  │  Dependencies installed via bun install                             │    │
+│  │  Loaded by Agent SDK as a local plugin                              │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Modular Building Blocks
+## Plugin Architecture
 
-The agent's capabilities are extended through modular building blocks:
+The Kova Plugin is a Claude Plugin that extends the agent with Spreetail-specific capabilities. It's maintained in a separate repository and loaded at container startup.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         BUILDING BLOCKS ARCHITECTURE                         │
+│                         PLUGIN ARCHITECTURE                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │                          ┌─────────────────────┐                             │
@@ -101,12 +111,18 @@ The agent's capabilities are extended through modular building blocks:
 │                          │   (Claude Code)     │                             │
 │                          └──────────┬──────────┘                             │
 │                                     │                                        │
+│                                     ▼                                        │
+│                          ┌─────────────────────┐                             │
+│                          │    KOVA PLUGIN      │                             │
+│                          │  (.claude-plugin)    │                             │
+│                          └──────────┬──────────┘                             │
+│                                     │                                        │
 │           ┌─────────────────────────┼─────────────────────────┐             │
 │           │                         │                         │             │
 │           ▼                         ▼                         ▼             │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
-│  │     SKILLS      │    │   MCP SERVERS   │    │    SUBAGENTS    │         │
-│  │   (Built-in)    │    │   (Plugins)     │    │  (Delegation)   │         │
+│  │     SKILLS      │    │   MCP SERVERS   │    │    TEMPLATES    │         │
+│  │   (Plugin)      │    │   (Plugin)      │    │    (Plugin)     │         │
 │  └────────┬────────┘    └────────┬────────┘    └────────┬────────┘         │
 │           │                      │                      │                   │
 │           ▼                      ▼                      ▼                   │
@@ -114,51 +130,51 @@ The agent's capabilities are extended through modular building blocks:
 │  │                     CURRENT CAPABILITIES                         │       │
 │  ├─────────────────────────────────────────────────────────────────┤       │
 │  │                                                                  │       │
-│  │  SKILLS (Active) - Located in packages/agent/src/skills/         │       │
-│  │  ├── xlsx                    Excel creation/editing/analysis    │       │
-│  │  │   ├── pandas              Data manipulation                  │       │
-│  │  │   ├── openpyxl            Formulas & formatting              │       │
-│  │  │   └── LibreOffice         Formula recalculation              │       │
-│  │  │                                                               │       │
-│  │  ├── xlsx-workflow-docs      Workflow documentation             │       │
-│  │  │   └── Generates markdown from Excel workflows                │       │
-│  │  │                                                               │       │
-│  │  └── data-platform           Data warehouse integration         │       │
-│  │      └── Trino queries, schema discovery, security patterns     │       │
+│  │  SKILLS                                                          │       │
+│  │  ├── init-project          TanStack Start project scaffolding   │       │
+│  │  ├── spreeform             Spreeform UI component library       │       │
+│  │  ├── data-platform         Data warehouse queries & patterns    │       │
+│  │  ├── tanstack              TanStack Router/Query/Table patterns │       │
+│  │  ├── xlsx                  Excel creation/editing/analysis      │       │
+│  │  ├── xlsx-workflow-docs    Workflow documentation from Excel    │       │
+│  │  ├── image-forge           UI mockup → app planning            │       │
+│  │  └── clickhouse            ClickHouse query patterns            │       │
 │  │                                                                  │       │
-│  │  MCP SERVERS (Active) - Located in packages/agent/src/data-platform/ │  │
-│  │  └── data-catalog            Metadata search, schema discovery  │       │
+│  │  MCP SERVERS                                                     │       │
+│  │  └── data-catalog          Metadata search, schema discovery    │       │
 │  │      └── 8 tools: search_tables, get_schema, list_domains, etc. │       │
 │  │                                                                  │       │
-│  │  SUBAGENTS (Not Yet Implemented)                                 │       │
-│  │  └── (Task tool disabled in container)                          │       │
+│  │  TEMPLATES                                                       │       │
+│  │  └── tanstack-start        TanStack Start project template      │       │
 │  │                                                                  │       │
 │  └─────────────────────────────────────────────────────────────────┘       │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Plugin Loading Flow
+
+```
+Container Start (entrypoint.sh):
+1. Clone plugin marketplace from GitLab (git clone --depth 1)
+2. Install plugin dependencies (bun install)
+3. Start Node.js agent server
+
+Agent Server Start (agent.ts):
+4. Build SDK options with plugin path: { plugins: [{ type: "local", path: pluginDir }] }
+5. Call query() from Claude Agent SDK
+6. SDK loads plugin, registers skills, starts MCP servers
+7. SDK init message reports loaded capabilities (logged by agent)
+```
+
 ## Skills System Detail
 
-Skills provide domain-specific knowledge and tools. They are bundled in the `@kova/agent` package and copied to projects at runtime.
+Skills provide domain-specific knowledge and tools. They are maintained in the Kova Plugin repository and loaded by the Claude Agent SDK at runtime.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            SKILLS ARCHITECTURE                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  SKILL LOADING FLOW (via @kova/agent):                                       │
-│                                                                              │
-│  1. kovaQuery() called with cwd option                                       │
-│     │                                                                        │
-│     ▼                                                                        │
-│  2. ensureSkillsInProject(cwd)                                              │
-│     │   packages/agent/src/skills/ ──copy──▶ {cwd}/.claude/skills/          │
-│     ▼                                                                        │
-│  3. Agent SDK loads skills via settingSources: ["project"]                  │
-│     │                                                                        │
-│     ▼                                                                        │
-│  4. Skills available via "Skill" tool                                       │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                         SKILL STRUCTURE                              │   │
@@ -212,9 +228,12 @@ Skills provide domain-specific knowledge and tools. They are bundled in the `@ko
 │ ┌─────────────────────────────────────────────────────────────────────┐   │
 │ │                                                                      │   │
 │ │  SKILLS (Domain Knowledge + Scripts)                                 │   │
+│ │  ├── init-project ✓           TanStack Start scaffolding            │   │
+│ │  ├── spreeform ✓              Spreeform UI components               │   │
+│ │  ├── data-platform ✓          Database schema, queries, migrations   │   │
 │ │  ├── xlsx ✓                   Spreadsheet operations                │   │
 │ │  ├── xlsx-workflow-docs ✓     Workflow documentation                │   │
-│ │  ├── data-platform           Database schema, queries, migrations   │   │
+│ │  ├── image-forge ✓            UI mockup → app planning             │   │
 │ │  ├── auth                    OAuth, JWT, session management         │   │
 │ │  ├── design-system           UI components, theming, accessibility  │   │
 │ │  ├── api-integration         REST/GraphQL patterns, OpenAPI         │   │
@@ -223,6 +242,7 @@ Skills provide domain-specific knowledge and tools. They are bundled in the `@ko
 │ │  └── analytics               Tracking, dashboards, reporting        │   │
 │ │                                                                      │   │
 │ │  MCP SERVERS (External Integrations)                                 │   │
+│ │  ├── data-catalog ✓           Metadata search, schema discovery     │   │
 │ │  ├── database-mcp            Direct DB access (Postgres, MySQL)     │   │
 │ │  ├── github-mcp              Repository operations, PRs, issues     │   │
 │ │  ├── figma-mcp               Design token extraction, components    │   │
@@ -341,47 +361,55 @@ Skills provide domain-specific knowledge and tools. They are bundled in the `@ko
 │                                 │                                           │
 │  6. PREVIEW                     ▼                                           │
 │  ┌─────────────┐    ┌─────────────────────┐                               │
-│  │  Frontend   │◀───│  Traefik proxy      │                               │
-│  │  iframe     │    │  app-{id}.localhost │                               │
-│  │  shows app  │    │  :8081 → :33xxx     │                               │
-│  └─────────────┘    └─────────────────────┘                               │
+│  │  Frontend   │◀───│  Istio routing      │                               │
+│  │  iframe     │    │  app-{id}.domain    │                               │
+│  │  shows app  │    └─────────────────────┘                               │
+│  └─────────────┘                                                           │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Two Development Experiences, One Plugin
+
+The plugin approach enables feature parity between local development and the Kova web platform:
+
+| Experience | Agent Runtime | Plugin Loading | Use Case |
+|-----------|---------------|----------------|----------|
+| **Claude Code + Plugin** | Claude Code CLI | Installed locally via plugin README | Engineers doing local dev work |
+| **Kova Web Platform** | Claude Agent SDK | Cloned from GitLab at container startup | End users building apps via chat UI |
+
+Both use the same Kova Plugin, so skills can be iterated on rapidly using Claude Code locally and then deployed to the web platform without changes.
+
 ## Tool Access Matrix
 
-| Tool | Container Agent | Backend Agent | Notes |
-|------|-----------------|---------------|-------|
-| Read | ✓ | ✓ | Read files |
-| Write | ✓ | ✓ | Create files |
-| Edit | ✓ | ✓ | Modify files |
-| Bash | ✓ | ✓ | Run commands |
-| Glob | ✓ | ✓ | Find files |
-| Grep | ✓ | ✓ | Search content |
-| Skill | ✓ | ✓ | Invoke skills |
-| Task | ✗ | ✓ | Subagents (disabled in container) |
-| WebSearch | ✗ | ✓ | Search web |
-| WebFetch | ✗ | ✓ | Fetch URLs |
+| Tool | Container Agent | Notes |
+|------|-----------------|-------|
+| Read | ✓ | Read files |
+| Write | ✓ | Create files |
+| Edit | ✓ | Modify files |
+| Bash | ✓ | Run commands |
+| Glob | ✓ | Find files |
+| Grep | ✓ | Search content |
+| Skill | ✓ | Invoke skills (from plugin) |
+| Task | ✓ | Subagents |
+| WebSearch | ✗ | Disabled in container |
+| WebFetch | ✗ | Disabled in container |
 
 ## Summary
 
-Kova's agent architecture is built on **modular building blocks**, centralized in the `@kova/agent` package:
+Kova's agent architecture is built on the **Claude Plugin system**:
 
-1. **Skills** - Domain knowledge + scripts (xlsx, xlsx-workflow-docs, data-platform)
+1. **Skills** - Domain knowledge + scripts (init-project, spreeform, data-platform, xlsx, etc.)
 2. **MCP Servers** - External service integrations (data-catalog for metadata search)
-3. **Subagents** - Parallel specialized work (future)
-4. **Memory** - Persistent context (future)
-5. **Webhooks** - Event-driven automation (future)
+3. **Templates** - Project scaffolding (TanStack Start starter)
 
-The current implementation focuses on the **Excel workflow → Web app** pipeline using the skill system, and **Data Platform integration** via MCP servers for querying Spreetail's data warehouse. The architecture is designed to be extensible—new capabilities can be added as skills, MCP servers, or subagents without changing the core agent infrastructure.
+The plugin is maintained separately in [spreetail-claude-plugins](https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins), enabling rapid iteration without infrastructure changes. The same plugin powers both the local Claude Code experience and the Kova web platform.
 
 ### Key Files
 
 | Location | Purpose |
 |----------|---------|
-| `packages/agent/src/core/query.ts` | `kovaQuery()` - main entry point |
-| `packages/agent/src/skills/` | Bundled skills |
-| `packages/agent/src/data-platform/mcp-server/` | Data catalog MCP server |
-| `packages/agent/src/config/system-prompt.ts` | Default system prompts |
-| `app-container/src/agent.ts` | Transforms SDKMessage → AgentStreamEvent |
+| `app-container/src/agent.ts` | SDK query + SDKMessage → AgentStreamEvent transformation |
+| `app-container/src/system-prompt.ts` | Default system prompt config (Claude Code preset) |
+| `app-container/entrypoint.sh` | Plugin clone + dependency install at container startup |
+| `Dockerfile.appcontainer` | Container image with Claude Code CLI, git, Python, etc. |

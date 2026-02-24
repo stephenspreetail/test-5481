@@ -407,6 +407,10 @@ class AppContainerService {
       DATA_PLATFORM_HOST: config.DATA_PLATFORM_HOST,
       DATA_PLATFORM_USER: config.DATA_PLATFORM_USER,
       DATA_PLATFORM_PASSWORD: config.DATA_PLATFORM_PASSWORD,
+      // GitLab token + plugin marketplace for private plugin
+      GITLAB_TOKEN: config.GITLAB_TOKEN,
+      KOVA_PLUGIN_REPO: config.KOVA_PLUGIN_REPO,
+      KOVA_PLUGIN_NAME: config.KOVA_PLUGIN_NAME,
       // Agent configuration
       VERBOSE_AGENT_LOGGING: config.VERBOSE_AGENT_LOGGING,
       // Vite dev server security: Allow this app's specific preview host

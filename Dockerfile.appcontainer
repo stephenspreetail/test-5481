@@ -1,40 +1,11 @@
 # App Container for Kova
 # Runs Claude Agent SDK + Dev Server for user apps
-#
-# Multi-stage build:
-# 1. Build @kova/agent package from monorepo
-# 2. Build app-container with the bundled agent
 
 # SDK base image — CI passes the ECR-hosted kova-base-sdk image;
-# local builds fall back to plain bun:1-debian (tsc must be installed manually).
+# local builds fall back to plain bun:1-debian.
 ARG SDK_BASE=oven/bun:1-debian
 
-# =============================================================================
-# Stage 1: Build @kova/agent package
-# =============================================================================
-FROM ${SDK_BASE} AS agent-builder
-
-WORKDIR /build
-
-# Copy agent package files
-COPY packages/agent/package.json ./
-
-# Install dependencies
-RUN bun install
-
-# Copy agent source
-COPY packages/agent/ ./
-
-# Build TypeScript
-RUN bun run build
-
-# Create installable tarball
-RUN bun pm pack
-
-# =============================================================================
-# Stage 2: Build app-container
-# =============================================================================
-FROM oven/bun:1-debian
+FROM ${SDK_BASE}
 
 # Install git (required by Claude Code CLI), Python, LibreOffice, and gosu for entrypoint
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -61,15 +32,9 @@ RUN groupadd -g 1001 kova && \
 # Create app directory
 WORKDIR /app
 
-# Copy the built @kova/agent tarball from stage 1
-COPY --from=agent-builder /build/*.tgz /tmp/kova-agent.tgz
-
-# Copy package files
+# Copy package files and install dependencies
 COPY app-container/package.json ./
-
-# Replace workspace:* with the local tarball path, then install
-RUN sed -i 's|"@kova/agent": "workspace:\*"|"@kova/agent": "file:/tmp/kova-agent.tgz"|' package.json && \
-    bun install
+RUN bun install
 
 # Copy source files
 COPY app-container/ ./
@@ -81,7 +46,6 @@ RUN bun run build
 RUN mkdir -p /workspace && chown -R kova:kova /workspace
 
 # Create .claude directory for config and set ownership
-# Note: Skills are automatically copied by KovaAgent to /workspace/.claude/skills/ at runtime
 RUN mkdir -p /home/kova/.claude && chown -R kova:kova /home/kova
 
 # Set ownership of app directory
@@ -98,6 +62,9 @@ COPY --chown=kova:kova app-container/.npmrc.template /workspace/.npmrc
 # 3000 - Dev server (user's app)
 # 3100 - Agent server (Claude Agent SDK)
 EXPOSE 3000 3100
+
+# Create plugins directory for cloned marketplace
+RUN mkdir -p /opt/plugins && chown kova:kova /opt/plugins
 
 # Set workspace as default working directory for agent operations
 ENV WORKSPACE_DIR=/workspace

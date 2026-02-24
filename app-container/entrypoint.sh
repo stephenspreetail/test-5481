@@ -48,10 +48,32 @@ fi
 mkdir -p /workspace/node_modules
 chown -R kova:kova /workspace/node_modules 2>/dev/null || true
 
-# Ensure .claude directory exists for kovaQuery to copy skills into
-# Skills are automatically copied at runtime by @kova/agent's kovaQuery function
+# Ensure .claude directory exists
 mkdir -p /workspace/.claude
 chown kova:kova /workspace/.claude 2>/dev/null || true
+
+# Clone plugin marketplace from private GitLab repo and load specific plugin
+# Agent SDK only supports local plugins, so we must clone first
+if [ -n "$GITLAB_TOKEN" ] && [ -n "$KOVA_PLUGIN_REPO" ] && [ -n "$KOVA_PLUGIN_NAME" ]; then
+  MARKETPLACE_DIR="/opt/plugins/marketplace"
+  PLUGIN_DIR="$MARKETPLACE_DIR/$KOVA_PLUGIN_NAME"
+  if [ ! -d "$PLUGIN_DIR/.claude-plugin" ]; then
+    # Inject oauth2 token into the clone URL for GitLab auth
+    AUTH_URL=$(echo "$KOVA_PLUGIN_REPO" | sed "s|https://|https://oauth2:${GITLAB_TOKEN}@|")
+    echo "[entrypoint] Cloning plugin marketplace from $KOVA_PLUGIN_REPO"
+    GIT_TERMINAL_PROMPT=false gosu kova git clone --depth 1 "$AUTH_URL" "$MARKETPLACE_DIR" 2>&1 || echo "[entrypoint] WARNING: Failed to clone plugin marketplace"
+    if [ ! -d "$PLUGIN_DIR/.claude-plugin" ]; then
+      echo "[entrypoint] ERROR: Plugin '$KOVA_PLUGIN_NAME' not found in marketplace"
+    else
+      # Install plugin dependencies (MCP servers need @modelcontextprotocol/sdk, etc.)
+      if [ -f "$PLUGIN_DIR/package.json" ]; then
+        echo "[entrypoint] Installing plugin dependencies..."
+        cd "$PLUGIN_DIR" && gosu kova bun-real install --frozen-lockfile 2>&1 || gosu kova bun-real install 2>&1 || echo "[entrypoint] WARNING: Failed to install plugin dependencies"
+        cd /app
+      fi
+    fi
+  fi
+fi
 
 # Drop privileges and execute the main command as 'kova' user
 # Using 'exec' ensures the main process becomes PID 1 for proper signal handling

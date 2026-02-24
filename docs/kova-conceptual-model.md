@@ -21,8 +21,8 @@ Kova inverts this relationship. Here's what Kova actually is architecturally:
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │                     Interfaces                            │  │
 │  │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐  │  │
-│  │  │  Chat UI     │  │  CLI Tool    │  │  Generated Apps │  │  │
-│  │  │  (Web SPA)   │  │  (Terminal)  │  │  (Preview/Prod) │  │  │
+│  │  │  Chat UI     │  │ Claude Code │  │  Generated Apps │  │  │
+│  │  │  (Web SPA)   │  │  + Plugin   │  │  (Preview/Prod) │  │  │
 │  │  └─────────────┘  └──────────────┘  └─────────────────┘  │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
@@ -37,9 +37,9 @@ Kova inverts this relationship. Here's what Kova actually is architecturally:
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │                  Agent Execution                          │  │
 │  │                                                           │  │
-│  │    @kova/agent  ──→  Claude Agent SDK  ──→  Claude API    │  │
+│  │    Claude Agent SDK  ──→  Claude API                      │  │
 │  │        │                                                  │  │
-│  │    kovaQuery() with Spreetail defaults, MCP servers,      │  │
+│  │    query() with Kova Plugin (skills, MCP servers),        │  │
 │  │    containerized isolation, permission bypass              │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
@@ -99,9 +99,9 @@ Looking at what's already in the codebase (GitHub/Vercel/Neon integration fields
 │  ┌────────────────────────────────────────────────────────────────────┐  │
 │  │                        Interfaces                                 │  │
 │  │                                                                   │  │
-│  │  App Builder     │  Agent CLI    │  Generated Apps  │  Workflows  │  │
-│  │  (Chat → Code)   │  (Dev tool)   │  (Internal SaaS) │  (Excel →  │  │
-│  │                   │               │                  │   App)     │  │
+│  │  App Builder     │ Claude Code  │  Generated Apps  │  Workflows  │  │
+│  │  (Chat → Code)   │  + Plugin    │  (Internal SaaS) │  (Excel →  │  │
+│  │                   │  (Dev tool)  │                  │   App)     │  │
 │  │                                                                   │  │
 │  │  Anyone at Spreetail can build. Developers get depth.             │  │
 │  │  Business users get accessibility. Both get real apps.            │  │
@@ -126,7 +126,7 @@ Looking at what's already in the codebase (GitHub/Vercel/Neon integration fields
 │  ┌────────────────────────────────────────────────────────────────────┐  │
 │  │                    Agent Execution                                │  │
 │  │                                                                   │  │
-│  │  @kova/agent                                                      │  │
+│  │  Claude Agent SDK + Kova Plugin                                   │  │
 │  │  ├── Model-agnostic (Claude, OpenAI, local models)                │  │
 │  │  ├── MCP protocol (open standard for tool connectivity)           │  │
 │  │  ├── Containerized (isolated, resource-bounded, secure)           │  │

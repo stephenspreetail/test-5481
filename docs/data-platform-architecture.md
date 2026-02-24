@@ -4,7 +4,7 @@
 
 The Data Platform integration provides a comprehensive system for Kova AI agents to discover, understand, and access Spreetail's enterprise data warehouse via Starburst Galaxy/Trino. This document details the architecture, components, and usage patterns.
 
-**Note:** As of the `@kova/agent` refactor, all data platform code has been moved from `app-container/` to `packages/agent/src/data-platform/`. This centralizes the functionality in the reusable agent package.
+**Note:** The data platform code (Trino client, metadata catalog, MCP server, skills) has been moved from the former `@kova/agent` package into the [Kova Plugin](https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins). The plugin is loaded by both Claude Code (for local dev) and the Claude Agent SDK (in Kova app containers).
 
 ---
 
@@ -101,7 +101,7 @@ The Data Platform module enables AI agents to:
 
 ### Data Source Clients
 
-Located in `packages/agent/src/data-platform/clients/`
+Located in the Kova Plugin (`kova-plugin/src/data-platform/clients/`)
 
 #### Base Interface (`base.ts`)
 
@@ -149,7 +149,7 @@ const client = new TrinoClient({
 
 ### Metadata Catalog
 
-Located in `packages/agent/src/data-platform/metadata/`
+Located in the Kova Plugin (`kova-plugin/src/data-platform/metadata/`)
 
 #### Type Definitions (`types.ts`)
 
@@ -234,7 +234,7 @@ Features:
 
 ### MCP Server
 
-Located in `packages/agent/src/data-platform/mcp-server/server.ts`
+Located in the Kova Plugin (`kova-plugin/src/data-platform/mcp-server/server.ts`)
 
 Built using Claude Agent SDK's `createSdkMcpServer`:
 
@@ -276,7 +276,7 @@ All tools return formatted markdown for readability:
 
 ### Skills Integration
 
-Located in `packages/agent/src/skills/data-platform/`
+Located in the Kova Plugin (`kova-plugin/skills/data-platform/`)
 
 Three documentation files guide AI agent behavior:
 
@@ -622,31 +622,31 @@ metadata/dbt/
 ### File Structure
 
 ```
-packages/agent/src/data-platform/
-├── index.ts                    # Module entry point & exports
+kova-plugin/src/data-platform/       # In the Kova Plugin repo
+├── index.ts                          # Module entry point & exports
 ├── clients/
-│   ├── index.ts               # Client exports
-│   ├── base.ts                # Abstract interface
-│   └── trino.ts               # Starburst/Trino implementation
+│   ├── index.ts                     # Client exports
+│   ├── base.ts                      # Abstract interface
+│   └── trino.ts                     # Starburst/Trino implementation
 ├── metadata/
-│   ├── index.ts               # Metadata exports
-│   ├── types.ts               # TypeScript types
-│   ├── loader.ts              # YAML loading & caching
-│   ├── search.ts              # MiniSearch integration
-│   ├── dbt-converter.ts       # dbt → native conversion
-│   ├── README.md              # Metadata documentation
-│   └── dbt/                   # dbt schema files
+│   ├── index.ts                     # Metadata exports
+│   ├── types.ts                     # TypeScript types
+│   ├── loader.ts                    # YAML loading & caching
+│   ├── search.ts                    # MiniSearch integration
+│   ├── dbt-converter.ts             # dbt → native conversion
+│   ├── README.md                    # Metadata documentation
+│   └── dbt/                         # dbt schema files
 └── mcp-server/
-    ├── index.ts               # MCP exports
-    └── server.ts              # Tool definitions
+    ├── index.ts                     # MCP exports
+    └── server.ts                    # Tool definitions
 
-packages/agent/src/skills/data-platform/
-├── SKILL.md                   # Agent skill entry point
-├── QUERIES.md                 # Query patterns & templates
-└── SECURITY.md                # Security guidelines
+kova-plugin/skills/data-platform/    # In the Kova Plugin repo
+├── SKILL.md                         # Agent skill entry point
+├── QUERIES.md                       # Query patterns & templates
+└── SECURITY.md                      # Security guidelines
 ```
 
-**Note:** Skills are bundled in `@kova/agent` and copied to project directories at runtime via `ensureSkillsInProject()` in `packages/agent/src/core/query.ts`.
+**Note:** Skills and MCP servers are provided by the Kova Plugin, which is loaded by the Claude Agent SDK at runtime. See [spreetail-claude-plugins](https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins) for the plugin source.
 
 ### Dependencies
 
