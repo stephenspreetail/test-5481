@@ -86,6 +86,13 @@ const configSchema = z.object({
   PREVIEW_DOMAIN: z.string().optional(),
   PREVIEW_PORT: z.coerce.number().optional(),
 
+  // GitLab token for private plugin marketplace (read_repository scope)
+  GITLAB_TOKEN: z.string().min(1, "GITLAB_TOKEN is required"),
+  // HTTPS git URL of the plugin marketplace repo (cloned at container startup)
+  KOVA_PLUGIN_REPO: z.string().url().startsWith("https://", "KOVA_PLUGIN_REPO must be an HTTPS URL"),
+  // Plugin directory name within the marketplace repo
+  KOVA_PLUGIN_NAME: z.string().min(1, "KOVA_PLUGIN_NAME is required"),
+
   // Logging
   VERBOSE_AGENT_LOGGING: z.enum(["0", "1"]).default("0"),
 }).refine(

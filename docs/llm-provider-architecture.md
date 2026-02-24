@@ -35,7 +35,7 @@ Kova uses a clean provider abstraction layer to configure LLM credentials for ap
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    App Container (Kubernetes Pod)               │
-│  Environment variables consumed by @kova/agent and Claude SDK   │
+│  Environment variables consumed by Claude Agent SDK              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

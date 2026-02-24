@@ -31,13 +31,12 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 COPY backend/package.json backend/
-COPY packages/agent/package.json packages/agent/
 COPY app-container/package.json app-container/
 
 RUN bun install --frozen-lockfile
 
 # =============================================================================
-# Stage 2: Build everything (agent, backend, frontend)
+# Stage 2: Build everything (backend, frontend)
 # =============================================================================
 FROM deps AS build
 
@@ -45,7 +44,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN bun run build:agent
 RUN bun run build:backend
 RUN bun run build:web
 
@@ -63,17 +61,14 @@ WORKDIR /app
 
 COPY --from=build /app/package.json ./
 
-# Built backend + agent + frontend
+# Built backend + frontend
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=build /app/backend/package.json ./backend/
-COPY --from=build /app/packages/agent/dist ./packages/agent/dist
-COPY --from=build /app/packages/agent/package.json ./packages/agent/
 COPY --from=build /app/dist/web ./dist/web
 
 # Production node_modules (includes workspace links)
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/backend/node_modules ./backend/node_modules
-COPY --from=build /app/packages/agent/node_modules ./packages/agent/node_modules
 
 # Migration tooling for Helm pre-upgrade hook (drizzle-kit push)
 COPY --from=build /app/backend/src/db/schema.ts ./backend/src/db/

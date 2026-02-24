@@ -5,7 +5,7 @@ sequenceDiagram
     participant Backend as Backend API<br/>(Fastify)
     participant DB as PostgreSQL<br/>(Drizzle ORM)
     participant Container as App Container<br/>(Docker)
-    participant Agent as Agent Server<br/>(@kova/agent)
+    participant Agent as Agent Server<br/>(Claude Agent SDK)
     participant Claude as Claude API<br/>(Anthropic)
 
     User->>Browser: Enter prompt in chat UI

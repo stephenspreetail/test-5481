@@ -45,7 +45,7 @@ Deploy Kova to AWS EKS with **cross-cluster orchestration** architecture:
 **Three Docker images**:
 1. **kova-backend** - Bun/Fastify API server
 2. **kova-web** - React SPA (nginx)
-3. **kova-app-container** - User app runtime (@kova/agent)
+3. **kova-app-container** - User app runtime (Claude Agent SDK + Kova Plugin)
 
 **Pipeline**: Single multi-project pipeline (like dotnet-multi-project.yml pattern)
 

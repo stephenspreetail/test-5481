@@ -2,19 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Agent CLI",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["--inspect", "packages/agent/src/cli/bin.ts"],
-      "args": ["--cwd", "${workspaceFolder}"],
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "sourceMaps": true,
-      "skipFiles": ["<node_internals>/**"]
-    },
-    {
       "name": "Debug Backend",
       "type": "node",
       "request": "launch",

@@ -194,7 +194,7 @@ k3d cluster start kova-dev
 bun run dev:full
 ```
 
-If you've changed `app-container/` or `packages/agent/`, rebuild the image:
+If you've changed `app-container/`, rebuild the image:
 
 ```bash
 bun run container:rebuild

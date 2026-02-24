@@ -22,7 +22,7 @@ Kova requires **three separate Docker images**:
 
 3. **App Container** (`kova-app-container`)
    - User-generated app runtime
-   - @kova/agent CLI
+   - Claude Agent SDK + Kova Plugin
    - Runs in ops cluster
 
 ### 1.2 Build Pipeline Strategy

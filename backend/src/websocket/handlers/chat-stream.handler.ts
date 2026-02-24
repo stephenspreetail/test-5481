@@ -251,13 +251,13 @@ export async function handleChatStream(
       throw new Error(`Container not responding: ${healthError.message}`);
     }
 
-    // System prompt: KovaAgent uses DEFAULT_KOVA_SYSTEM_PROMPT by default
+    // System prompt: agent uses default Claude Code preset
     // Only override for special cases like workflow analysis
     // TODO: Support custom AI_RULES.md from app directory
     const isWorkflow = isWorkflowAnalysisPrompt(prompt);
     const systemPrompt = isWorkflow
       ? constructWorkflowAnalysisPromptConfig()
-      : undefined; // Let the agent use its default (KOVA_AGENT_APPEND)
+      : undefined; // Let the agent use its default (Claude Code preset)
 
     console.log(
       `[CHAT] System prompt: ${isWorkflow ? "workflow analysis override" : "using agent default"}`,

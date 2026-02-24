@@ -2,14 +2,83 @@
  * Types for the App Container
  */
 
-// Import types from @kova/agent that are still available
-import type { SystemPromptConfig as KovaSystemPromptConfig, AgentTool } from "@kova/agent";
+/**
+ * System prompt configuration using preset with append
+ */
+export interface SystemPromptConfig {
+  type: "preset";
+  preset: "claude_code";
+  append: string;
+}
 
-// Re-export for convenience
-export type SystemPromptConfig = KovaSystemPromptConfig;
-export type { AgentTool };
+/**
+ * Available tools in the Claude Agent SDK
+ */
+export const AVAILABLE_TOOLS = [
+  "Read",
+  "Write",
+  "Edit",
+  "Bash",
+  "Glob",
+  "Grep",
+  "WebSearch",
+  "WebFetch",
+  "Task",
+  "Skill",
+] as const;
 
-export { AVAILABLE_TOOLS, DEFAULT_TOOLS } from "@kova/agent";
+export type AgentTool = (typeof AVAILABLE_TOOLS)[number];
+
+/**
+ * Tool presets for different use cases
+ */
+export const TOOL_PRESETS = {
+  /** Read-only tools for analysis */
+  readOnly: ["Read", "Glob", "Grep"] as AgentTool[],
+
+  /** Tools for code editing (default) */
+  codeEdit: [
+    "Read",
+    "Write",
+    "Edit",
+    "Glob",
+    "Grep",
+    "Bash",
+    "Skill",
+  ] as AgentTool[],
+
+  /** All available tools */
+  all: [...AVAILABLE_TOOLS] as AgentTool[],
+
+  /** Web-enabled tools for research */
+  webEnabled: [
+    "Read",
+    "Glob",
+    "Grep",
+    "WebSearch",
+    "WebFetch",
+  ] as AgentTool[],
+
+  /** Full development tools including web access */
+  fullDev: [
+    "Read",
+    "Write",
+    "Edit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "WebSearch",
+    "WebFetch",
+    "Skill",
+  ] as AgentTool[],
+} as const;
+
+export type ToolPreset = keyof typeof TOOL_PRESETS;
+
+/**
+ * Default tools for code editing operations
+ */
+export const DEFAULT_TOOLS: AgentTool[] = TOOL_PRESETS.codeEdit;
 
 // Re-export agent event types from local agent.ts
 export type {

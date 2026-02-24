@@ -26,10 +26,10 @@ An AI app builder. Build full-stack web applications through natural language co
 │  └──────────────────────────────────────────────────────────┘  │
 │         │                    │                    │             │
 │         ▼                    ▼                    ▼             │
-│  ┌────────────┐    ┌─────────────────┐    ┌──────────────┐     │
-│  │ PostgreSQL │    │  @kova/agent    │    │ App Container│     │
-│  │  (Drizzle) │    │ (Claude SDK)    │    │  (Container) │     │
-│  └────────────┘    └─────────────────┘    └──────────────┘     │
+│  ┌────────────┐    ┌──────────────┐    ┌──────────────┐     │
+│  │ PostgreSQL │    │App Container │    │Claude Plugin │     │
+│  │  (Drizzle) │    │ (Claude SDK) │    │(Skills, MCP) │     │
+│  └────────────┘    └──────────────┘    └──────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -59,11 +59,17 @@ bun run db:push
 
 # 5. Start development
 bun run dev:full        # Full platform (backend + frontend)
-# OR
-bun run dev:agent       # CLI only (no build needed)
 ```
 
 Open http://localhost:5174 for the web UI.
+
+---
+
+## Local AI Development (Claude Code + Plugin)
+
+For AI-assisted development outside of the Kova web platform, use [Claude Code](https://claude.ai/code) with the **Kova Plugin**. The plugin provides Spreetail-specific skills (Spreeform UI, TanStack Start, data platform queries) and MCP servers (data catalog).
+
+See the plugin README for installation and usage: https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins
 
 ---
 
@@ -126,22 +132,6 @@ DATA_PLATFORM_PASSWORD=your_service_account_password
 
 > **Note:** Bun automatically expands `$VAR` in `.env` files. If your password contains `$`, escape it with `\$`. Example: `pa$$word` becomes `pa\$\$word`. See [Bun docs](https://bun.com/docs/runtime/environment-variables).
 
-### For CLI Only
-
-If you just want to use the agent CLI, you need:
-
-```bash
-# Required for CLI
-ANTHROPIC_API_KEY=sk-ant-your-api-key-here
-
-# Data Platform (required for Trino queries and metadata search)
-DATA_PLATFORM_HOST=spreetail.routing.trino.galaxy.starburst.io
-DATA_PLATFORM_USER=your_service_account_username
-DATA_PLATFORM_PASSWORD=your_service_account_password
-```
-
-**Alternative:** Instead of adding data platform credentials to `.env`, you can create `~/.config/kova/data-platform.env` with the `DATA_PLATFORM_*` variables. This keeps credentials separate from the repo.
-
 ---
 
 ## Development Commands
@@ -151,11 +141,6 @@ DATA_PLATFORM_PASSWORD=your_service_account_password
 bun run dev:full         # Backend + Frontend (ports 3002, 5174) - Ctrl+C stops all
 bun run dev:backend      # Backend only
 bun run dev:web          # Frontend only
-
-# Agent CLI
-bun run dev:agent        # Run agent CLI (no build needed)
-bun run build:agent      # Build for production/publishing
-bun run start:agent      # Run the built version
 
 # Database
 bun run db:push          # Apply migrations
@@ -171,92 +156,15 @@ bun run test             # Run tests
 
 ---
 
-## @kova/agent CLI
-
-The standalone agent package provides a terminal-based interface for AI-powered development.
-
-### Usage
-
-```bash
-# Run CLI (no build needed, loads .env from root automatically)
-bun run dev:agent
-
-# Or with arguments
-bun run dev:agent -- --help
-bun run dev:agent -- --project my-app
-bun run dev:agent -- --cwd ~/projects/my-app
-bun run dev:agent -- --prompt "Create a React app"
-
-# Project management
-bun run dev:agent -- projects list
-bun run dev:agent -- projects create my-app
-bun run dev:agent -- projects delete my-app
-```
-
-### Direct Usage (without bun scripts)
-
-```bash
-# Set env var directly
-export ANTHROPIC_API_KEY=sk-ant-...
-bun packages/agent/dist/cli/bin.js
-
-# Or install globally
-cd packages/agent && bun link
-kova-agent --help
-```
-
-### Project Storage
-
-Projects are stored in XDG-compliant locations:
-
-| Platform    | Location                          |
-| ----------- | --------------------------------- |
-| macOS/Linux | `~/.local/share/kova/projects/`   |
-| Windows     | `%LOCALAPPDATA%/kova/projects/`   |
-
-Override with: `KOVA_PROJECTS_DIR=/custom/path`
-
-### Programmatic Usage
-
-```typescript
-import { createAgent } from '@kova/agent';
-
-const agent = createAgent({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-// Stream responses
-for await (const event of agent.streamQuery("Create a hello world app")) {
-  if (event.type === 'text') {
-    console.log(event.text);
-  }
-}
-
-// Or execute and wait
-const result = await agent.executeQuery("Fix the bug in auth.ts");
-console.log(result);
-```
-
----
-
 ## Monorepo Structure
 
 ```
 kova/
 ├── .env.example           # Environment template (copy to .env)
 ├── package.json           # Workspaces root + bun scripts
-├── packages/
-│   └── agent/             # @kova/agent - Standalone AI agent
-│       ├── src/
-│       │   ├── core/      # KovaAgent class (Claude SDK wrapper)
-│       │   ├── config/    # System prompts, defaults
-│       │   ├── tools/     # Tool presets
-│       │   ├── projects/  # XDG project management
-│       │   └── cli/       # Ink-based terminal UI
-│       └── package.json
 ├── src/                   # Frontend (React SPA)
 ├── backend/               # Backend (Fastify + Bun)
-└── app-container/         # Container environment for generated apps
+└── app-container/         # Container environment for generated apps (Claude Agent SDK)
 ```
 
 ---
@@ -266,24 +174,17 @@ kova/
 ### Web Platform Flow
 
 1. User sends a prompt via the chat UI
-2. Backend invokes `@kova/agent` with codebase context
-3. Agent autonomously uses tools (file ops, code search, shell)
+2. Backend forwards the prompt to the app-container via HTTP
+3. App-container invokes Claude Agent SDK, which autonomously uses tools (file ops, code search, shell)
 4. Response streams to frontend showing progress
 5. Generated app hot-reloads in the preview iframe
 
-### CLI Flow
-
-1. User runs `bun run dev:agent` with optional flags
-2. CLI creates/opens project in `~/.local/share/kova/projects/`
-3. Agent runs with full tool access
-4. Responses stream to terminal
-
 ### App Container Flow
 
-1. Backend spawns container with `@kova/agent`
+1. Backend spawns container with Claude Agent SDK
 2. Container receives env vars from backend
 3. Agent runs inside container with access to `/workspace`
-4. MCP servers provide Spreetail docs and Data Catalog
+4. Claude Plugin provides skills and MCP servers
 
 ---
 
@@ -296,8 +197,7 @@ kova/
 | UI Components | Radix UI, shadcn/ui                                               |
 | Backend       | Fastify, Bun                                                      |
 | Database      | PostgreSQL, Drizzle ORM                                           |
-| AI Agent      | @kova/agent, Claude Agent SDK                                     |
-| CLI           | Ink (React for CLI)                                               |
+| AI Agent      | Claude Agent SDK + [Kova Plugin](https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins) |
 | Build         | Vite, TypeScript                                                  |
 | Testing       | Vitest                                                            |
 

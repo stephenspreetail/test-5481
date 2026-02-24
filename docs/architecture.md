@@ -171,30 +171,19 @@ useEffect(() => {
 
 The core workflow of Kova is that a user sends a prompt to the AI which edits the code and is reflected in the preview. We'll break this down step-by-step.
 
-1. **Forwarding to the App Container** - When a user sends a prompt, the backend forwards it to the app's container via HTTP POST to `/query`. The container runs `kovaQuery()` from the `@kova/agent` package, which wraps the Claude Agent SDK with Spreetail-specific defaults (system prompts, tools, MCP servers).
+1. **Forwarding to the App Container** - When a user sends a prompt, the backend forwards it to the app's container via HTTP POST to `/query`. The container runs `query()` from the Claude Agent SDK. Skills and MCP servers are provided by the Kova Plugin (cloned from the [spreetail-claude-plugins](https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins) repo at container startup).
 
 2. **Stream the agent response to the UI** - The container streams events via SSE (Server-Sent Events) back to the backend, which translates them to WebSocket messages for the frontend. This provides real-time visual feedback showing tool calls and their results.
 
-3. **Agent executes tools autonomously** - The Claude Agent autonomously decides which tools to use and executes them directly. For example, it might read existing files to understand the codebase, then write new files or edit existing ones to implement the requested feature. It also has access to skills (xlsx, data-platform) and MCP servers (data-catalog).
+3. **Agent executes tools autonomously** - The Claude Agent autonomously decides which tools to use and executes them directly. For example, it might read existing files to understand the codebase, then write new files or edit existing ones to implement the requested feature. It also has access to skills and MCP servers provided by the Kova Plugin.
 
 4. **App Preview** - When changes are made, the backend ensures there is a running app container for that app (container name `app-{appId}`), and Traefik routes `http://app-{appId}.localhost:8081` to that container's dev server (port 3000 on the shared `kova-network`).
 
-To recap, Kova uses `@kova/agent` (which wraps the Claude Agent SDK) to give the AI direct access to file operations, shell commands, skills, and MCP servers. The agent autonomously implements the requested changes, and the backend manages app containers for live preview.
+To recap, Kova uses the Claude Agent SDK with the Kova Plugin to give the AI direct access to file operations, shell commands, skills, and MCP servers. The agent autonomously implements the requested changes, and the backend manages app containers for live preview.
 
 ## Key Directories
 
 ```
-├── packages/
-│   └── agent/                # @kova/agent - Standalone AI agent package
-│       └── src/
-│           ├── core/         # kovaQuery() - thin wrapper around Claude Agent SDK
-│           ├── config/       # System prompts, defaults, credentials
-│           ├── tools/        # Tool presets and constants
-│           ├── projects/     # XDG-compliant project management
-│           ├── data-platform/ # Trino client, metadata search, MCP server
-│           ├── skills/       # Bundled skills (xlsx, data-platform, etc.)
-│           └── cli/          # Ink-based terminal UI
-│
 ├── src/                      # Frontend React application
 │   ├── client/api/           # API client layer
 │   │   ├── client_factory.ts # Factory that returns ApiClient
@@ -216,7 +205,7 @@ To recap, Kova uses `@kova/agent` (which wraps the Claude Agent SDK) to give the
 │       ├── db/               # Drizzle ORM with PostgreSQL schema
 │       └── config/           # Server configuration
 │
-├── app-container/            # Docker image for running user apps (uses @kova/agent)
+├── app-container/            # Docker image for running user apps (Claude Agent SDK + Kova Plugin)
 ├── traefik/                  # Traefik reverse proxy configuration (static + dynamic)
 └── docker-compose.yml        # Development infrastructure
 ```

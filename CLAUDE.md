@@ -160,17 +160,6 @@ JWT_SECRET=<output from first openssl command>
 ENCRYPTION_KEY=<output from second openssl command>
 ```
 
-### Agent CLI
-
-```sh
-bun run dev:agent            # Run agent CLI (no build needed)
-bun run dev:agent -- --help  # Show CLI help
-
-# Production build (for publishing/deployment)
-bun run build:agent          # Build the agent package
-bun run start:agent          # Run the built version
-```
-
 ## Architecture
 
 ### Overview
@@ -193,14 +182,6 @@ const apps = await client.listApps();
 
 ### Key Directories
 
-- `packages/agent/` - **@kova/agent** - Standalone AI agent package
-  - `src/core/` - `kovaQuery()` - thin wrapper around Claude Agent SDK
-  - `src/config/` - System prompts, defaults, credentials
-  - `src/tools/` - Tool presets and constants
-  - `src/projects/` - XDG-compliant project management
-  - `src/data-platform/` - Trino client, metadata search, MCP server
-  - `src/skills/` - Bundled skills (xlsx, data-platform, etc.)
-  - `src/cli/` - Ink-based terminal UI
 - `src/client/api/` - API client layer
   - `client_factory.ts` - Factory that returns ApiClient
   - `client_interface.ts` - Interface definition
@@ -215,7 +196,7 @@ const apps = await client.listApps();
 - `src/hooks/` - React hooks (most use TanStack Query + client factory)
 - `src/atoms/` - Jotai atoms for global state
 - `src/components/` - React components
-- `app-container/` - Docker image for running user-generated apps (uses @kova/agent)
+- `app-container/` - Docker image for running user-generated apps (Claude Agent SDK + Kova Plugin)
 
 ### Client-Server Communication
 
@@ -227,19 +208,19 @@ const apps = await client.listApps();
 
 ### LLM Integration Pattern
 
-Kova uses `@kova/agent` (wrapping the Claude Agent SDK) for AI-powered code generation. The agent has access to tools like:
+Kova uses the Claude Agent SDK for AI-powered code generation. The agent has access to tools like:
 
 - File operations (read, write, edit, delete)
 - Code search (glob, grep)
 - Shell execution (npm install, etc.)
-- Skills (xlsx, data-platform, etc.)
-- MCP servers (data-catalog for metadata search)
+- Skills (via Claude Plugin)
+- MCP servers (via Claude Plugin)
 
 Flow:
 
 1. User sends a prompt via the chat UI
 2. Backend forwards the prompt to the app-container via HTTP
-3. App-container invokes `kovaQuery()` from `@kova/agent`
+3. App-container invokes `query()` from the Claude Agent SDK
 4. Agent autonomously uses tools to implement the requested changes
 5. Response streams back: container → backend (SSE) → frontend (WebSocket)
 6. Generated app hot-reloads in the preview iframe
@@ -266,8 +247,7 @@ When creating new features that need backend access:
 - Drizzle ORM with PostgreSQL
 - Tailwind CSS v4
 - Radix UI / shadcn/ui components
-- **@kova/agent** - Standalone AI agent package (wraps Claude Agent SDK)
-- Ink (React for CLI) - Terminal UI for agent CLI
+- Claude Agent SDK + [Kova Plugin](https://gitlab.com/spreetail/engineering/scaled-innovation/spreetail-claude-plugins) - AI agent for code generation
 
 ## Testing
 
