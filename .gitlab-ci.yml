@@ -63,6 +63,7 @@ variables:
     --set app.deployment.env.GITLAB_TOKEN=${GITLAB_TOKEN}
     --set app.deployment.env.KOVA_PLUGIN_REPO=${KOVA_PLUGIN_REPO}
     --set app.deployment.env.KOVA_PLUGIN_NAME=${KOVA_PLUGIN_NAME}
+    --set app.deployment.env.KOVA_PLUGIN_BRANCH=${KOVA_PLUGIN_BRANCH}
     --set app.gateway.tkDevOnly=true
     --set migration.dbHost=${KOVA_DB_HOST}
     --set migration.dbName=${KOVA_DB_NAME}

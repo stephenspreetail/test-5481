@@ -23,7 +23,7 @@
 # This pattern is used by official Docker images like PostgreSQL, Redis, etc.
 # See: https://denibertovic.com/posts/handling-permissions-with-docker-volumes/
 #
-# NOTE: Claude Code CLI refuses to run as root even with --dangerously-skip-permissions,
+# NOTE: Claude Agent SDK refuses to run as root even with --dangerously-skip-permissions,
 # so we MUST drop to a non-root user before starting the Node server.
 #
 # =============================================================================
@@ -55,13 +55,17 @@ chown kova:kova /workspace/.claude 2>/dev/null || true
 # Clone plugin marketplace from private GitLab repo and load specific plugin
 # Agent SDK only supports local plugins, so we must clone first
 if [ -n "$GITLAB_TOKEN" ] && [ -n "$KOVA_PLUGIN_REPO" ] && [ -n "$KOVA_PLUGIN_NAME" ]; then
+  if [ -z "$KOVA_PLUGIN_BRANCH" ]; then
+    echo "[entrypoint] ERROR: KOVA_PLUGIN_BRANCH is required but not set"
+    exit 1
+  fi
   MARKETPLACE_DIR="/opt/plugins/marketplace"
   PLUGIN_DIR="$MARKETPLACE_DIR/$KOVA_PLUGIN_NAME"
   if [ ! -d "$PLUGIN_DIR/.claude-plugin" ]; then
     # Inject oauth2 token into the clone URL for GitLab auth
     AUTH_URL=$(echo "$KOVA_PLUGIN_REPO" | sed "s|https://|https://oauth2:${GITLAB_TOKEN}@|")
-    echo "[entrypoint] Cloning plugin marketplace from $KOVA_PLUGIN_REPO"
-    GIT_TERMINAL_PROMPT=false gosu kova git clone --depth 1 "$AUTH_URL" "$MARKETPLACE_DIR" 2>&1 || echo "[entrypoint] WARNING: Failed to clone plugin marketplace"
+    echo "[entrypoint] Cloning plugin marketplace from $KOVA_PLUGIN_REPO (branch: $KOVA_PLUGIN_BRANCH)"
+    GIT_TERMINAL_PROMPT=false gosu kova git clone --depth 1 --branch "$KOVA_PLUGIN_BRANCH" "$AUTH_URL" "$MARKETPLACE_DIR" 2>&1 || echo "[entrypoint] WARNING: Failed to clone plugin marketplace"
     if [ ! -d "$PLUGIN_DIR/.claude-plugin" ]; then
       echo "[entrypoint] ERROR: Plugin '$KOVA_PLUGIN_NAME' not found in marketplace"
     else
@@ -74,6 +78,13 @@ if [ -n "$GITLAB_TOKEN" ] && [ -n "$KOVA_PLUGIN_REPO" ] && [ -n "$KOVA_PLUGIN_NA
     fi
   fi
 fi
+
+# Log versions at startup (runs as root before privilege drop)
+echo "[entrypoint] ===== Versions ====="
+echo "[entrypoint] Bun:              $(bun-real --version 2>/dev/null || echo unknown)"
+echo "[entrypoint] Agent SDK:        $(node -e "console.log(require('/app/node_modules/@anthropic-ai/claude-agent-sdk/package.json').version)" 2>/dev/null || echo unknown)"
+echo "[entrypoint] Plugin:           ${KOVA_PLUGIN_NAME:-none} (branch: ${KOVA_PLUGIN_BRANCH:-main})"
+echo "[entrypoint] ====================="
 
 # Drop privileges and execute the main command as 'kova' user
 # Using 'exec' ensures the main process becomes PID 1 for proper signal handling

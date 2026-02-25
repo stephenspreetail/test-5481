@@ -7,7 +7,7 @@ ARG SDK_BASE=oven/bun:1-debian
 
 FROM ${SDK_BASE}
 
-# Install git (required by Claude Code CLI), Python, LibreOffice, and gosu for entrypoint
+# Install git (required by Claude Agent SDK), Python, LibreOffice, and gosu for entrypoint
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     bash \
@@ -21,11 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python packages for xlsx skill (pandas, openpyxl)
 RUN pip3 install --no-cache-dir --break-system-packages pandas openpyxl
 
-# Install Claude Code CLI globally
-RUN bun install -g @anthropic-ai/claude-code
-
 # Create non-root user for running the agent
-# Claude Code CLI refuses to run as root, so we run as 'kova' user via gosu (see entrypoint.sh)
+# Claude Agent SDK refuses to run as root, so we run as 'kova' user via gosu (see entrypoint.sh)
 RUN groupadd -g 1001 kova && \
     useradd -u 1001 -g kova -s /bin/bash -m kova
 
@@ -86,7 +83,7 @@ RUN chmod +x /usr/local/bin/bun-wrapper && \
 # We use the "gosu entrypoint pattern" to handle named volume permissions.
 #
 # Problem: Named volume for node_modules is created with root ownership,
-# but Claude Code CLI refuses to run as root.
+# but Claude Agent SDK refuses to run as root.
 #
 # Solution: Container starts as root, entrypoint.sh fixes volume ownership,
 # then uses 'gosu' to drop privileges to 'kova' user before running the app.
