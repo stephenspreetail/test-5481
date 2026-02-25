@@ -1,3 +1,4 @@
+import type { ContentBlock } from "@/types/content-blocks";
 import type { Message } from "@/types";
 import type {
   AppNameUpdate,
@@ -50,7 +51,7 @@ export class WebSocketClient {
   // Track streaming content for delta accumulation
   private streamingContent: Map<
     number,
-    { messages: Message[]; assistantContent: string }
+    { messages: Message[]; assistantContent: string; contentBlocks: ContentBlock[] }
   > = new Map();
   private titleUpdateCallbacks: Set<(chatId: number, title: string) => void> =
     new Set();
@@ -184,12 +185,29 @@ export class WebSocketClient {
           const chunk = message as ChatStreamChunk;
           const callbacks = this.chatStreams.get(chunk.chatId);
           if (callbacks) {
-            // Store messages for delta accumulation
-            this.streamingContent.set(chunk.chatId, {
-              messages: chunk.messages as Message[],
-              assistantContent: "",
-            });
-            callbacks.onUpdate(chunk.messages as Message[]);
+            const existing = this.streamingContent.get(chunk.chatId);
+            if (existing && existing.contentBlocks.length > 0) {
+              // Preserve accumulated contentBlocks when backend sends
+              // the final chunk with the saved DB message
+              existing.messages = chunk.messages as Message[];
+              const chunkMessages = chunk.messages as Message[];
+              const lastMsg = chunkMessages[chunkMessages.length - 1];
+              if (lastMsg?.role === "assistant") {
+                chunkMessages[chunkMessages.length - 1] = {
+                  ...lastMsg,
+                  contentBlocks: [...existing.contentBlocks],
+                } as Message;
+              }
+              callbacks.onUpdate(chunkMessages);
+            } else {
+              // Initial chunk — start fresh
+              this.streamingContent.set(chunk.chatId, {
+                messages: chunk.messages as Message[],
+                assistantContent: "",
+                contentBlocks: [],
+              });
+              callbacks.onUpdate(chunk.messages as Message[]);
+            }
           }
           break;
         }
@@ -202,8 +220,21 @@ export class WebSocketClient {
             const streaming = this.streamingContent.get(delta.chatId) || {
               messages: [],
               assistantContent: "",
+              contentBlocks: [],
             };
             streaming.assistantContent += delta.delta;
+
+            // Accumulate structured content blocks
+            if (delta.blockType) {
+              console.log("[WS] Delta received:", {
+                blockType: delta.blockType,
+                blockData: delta.blockData,
+                deltaLen: delta.delta.length,
+                toolName: delta.toolName,
+              });
+              this.accumulateBlock(streaming.contentBlocks, delta);
+            }
+
             this.streamingContent.set(delta.chatId, streaming);
 
             // Call onDelta if provided
@@ -219,14 +250,17 @@ export class WebSocketClient {
               streamingMessages[streamingMessages.length - 1] = {
                 ...lastMsg,
                 content: streaming.assistantContent,
+                contentBlocks: [...streaming.contentBlocks],
               };
             } else {
               streamingMessages.push({
                 id: -1, // Temporary ID for streaming
                 role: "assistant",
                 content: streaming.assistantContent,
+                contentBlocks: [...streaming.contentBlocks],
               } as Message);
             }
+            console.log("[WS] contentBlocks:", streaming.contentBlocks.length, streaming.contentBlocks.map(b => b.type));
             callbacks.onUpdate(streamingMessages);
           }
           break;
@@ -315,6 +349,55 @@ export class WebSocketClient {
       }
     } catch (err) {
       console.error("Failed to parse WebSocket message:", err);
+    }
+  }
+
+  /**
+   * Accumulate a structured content block from a delta event.
+   * Text deltas merge into the last text block; tool blocks create new entries.
+   */
+  private accumulateBlock(
+    blocks: ContentBlock[],
+    delta: ChatStreamDelta,
+  ): void {
+    const { blockType, blockData } = delta;
+    if (!blockType) return;
+
+    if (blockType === "text") {
+      // Merge text into the last text block, or create a new one
+      const lastBlock = blocks[blocks.length - 1];
+      if (lastBlock && lastBlock.type === "text") {
+        lastBlock.text += delta.delta;
+      } else {
+        blocks.push({ type: "text", text: delta.delta });
+      }
+    } else if (blockType === "tool_result") {
+      // Tool result - just a completion signal, append as-is
+      blocks.push({ type: "tool_result", toolName: "" });
+    } else if (blockType === "file_edit" && blockData) {
+      blocks.push({
+        type: "file_edit",
+        operation: (blockData.operation as "write" | "edit") ?? "edit",
+        filePath: (blockData.filePath as string) ?? "",
+      });
+    } else if (blockType === "bash" && blockData) {
+      blocks.push({
+        type: "bash",
+        command: (blockData.command as string) ?? "",
+      });
+    } else if (blockType === "tool_use" && blockData) {
+      // Extract detail from various tool-specific fields
+      const detail = (blockData.skillName as string)
+        || (blockData.activeTask as string)
+        || (blockData.pattern as string)
+        || undefined;
+      blocks.push({
+        type: "tool_use",
+        toolName: (blockData.toolName as string) ?? "",
+        displayName: (blockData.displayName as string) ?? "",
+        filePath: blockData.filePath as string | undefined,
+        detail,
+      });
     }
   }
 

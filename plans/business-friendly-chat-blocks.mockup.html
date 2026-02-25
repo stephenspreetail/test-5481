@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* Kova Dark Theme Variables — matches chat-feedback-display-upgrade.mockup.html */
+    :root {
+      --background: #25292e;
+      --background-lighter: #2b3138;
+      --background-darker: #1f2226;
+      --background-darkest: #1a1d20;
+      --foreground: #dddddd;
+      --card: #3B4144;
+      --card-foreground: #e0e6ed;
+      --muted: #3a4048;
+      --muted-foreground: #7a8494;
+      --border: #3a4048;
+      --primary: #6b9fc9;
+      --sidebar-accent: #3a4048;
+      --accent-foreground: #e0e6ed;
+      --teal-500: #0AA68C;
+      --radius: 0.625rem;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .chat-container {
+      max-width: 710px;
+      width: 100%;
+    }
+
+    /* ===== User Message ===== */
+    .user-message {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+    }
+
+    .user-bubble {
+      background: var(--sidebar-accent);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      max-width: 80%;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--foreground);
+      margin-left: 96px;
+    }
+
+    /* ===== Assistant Message ===== */
+    .assistant-message {
+      margin-bottom: 20px;
+    }
+
+    /* ===== Text Block ===== */
+    .text-block {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--foreground);
+      padding: 8px 2px;
+    }
+
+    .text-block p {
+      margin: 6px 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(58, 64, 72, 0.4);
+      border-radius: 6px;
+      background: rgba(58, 64, 72, 0.15);
+    }
+
+    .text-block code {
+      background: var(--muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 13px;
+      color: #c8ced8;
+    }
+
+    /* ===== Phase Group ===== */
+    .phase-group {
+      margin: 8px 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--background-darker);
+      overflow: hidden;
+    }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .phase-header:hover {
+      background: rgba(58, 64, 72, 0.3);
+    }
+
+    .phase-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .phase-number.complete {
+      background: rgba(10, 166, 140, 0.15);
+      color: var(--teal-500);
+    }
+
+    .phase-number.active {
+      background: rgba(107, 159, 201, 0.15);
+      color: var(--primary);
+    }
+
+    .phase-number.pending {
+      background: rgba(58, 64, 72, 0.5);
+      color: var(--muted-foreground);
+    }
+
+    .phase-title {
+      flex: 1;
+      font-size: 13px;
+      color: var(--accent-foreground);
+      font-weight: 400;
+    }
+
+    .phase-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    .phase-status svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .check-icon {
+      color: var(--teal-500);
+    }
+
+    .chevron {
+      width: 16px;
+      height: 16px;
+      color: var(--muted-foreground);
+      transition: transform 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .chevron.open {
+      transform: rotate(180deg);
+    }
+
+    /* ===== Phase Items (expanded) ===== */
+    .phase-items {
+      padding: 0 14px 10px;
+      padding-left: 46px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .phase-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--accent-foreground);
+    }
+
+    .phase-item-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      color: var(--teal-500);
+    }
+
+    .phase-item-icon.active-icon {
+      color: var(--primary);
+    }
+
+    .phase-item-label {
+      color: var(--accent-foreground);
+    }
+
+    .phase-item-label.active-label {
+      color: var(--primary);
+    }
+
+    .phase-item-label.muted-label {
+      color: var(--muted-foreground);
+    }
+
+    /* ===== Active Phase ===== */
+    .phase-group.phase-active {
+      border-color: rgba(107, 159, 201, 0.3);
+    }
+
+    .phase-group.phase-active .phase-header {
+      background: rgba(107, 159, 201, 0.05);
+    }
+
+    .phase-active .phase-title {
+      color: var(--primary);
+    }
+
+    /* ===== Spinner ===== */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .spinner.small {
+      width: 12px;
+      height: 12px;
+      border-width: 1.5px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ===== Progress Steps Indicator ===== */
+    .progress-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 6px 2px 2px;
+      margin-bottom: 4px;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted-foreground);
+    }
+
+    .progress-step.active-step {
+      color: var(--primary);
+    }
+
+    .progress-step.complete-step {
+      color: var(--teal-500);
+    }
+
+    .progress-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .progress-dot.complete-dot {
+      background: var(--teal-500);
+    }
+
+    .progress-dot.active-dot {
+      background: var(--primary);
+      box-shadow: 0 0 6px rgba(107, 159, 201, 0.4);
+    }
+
+    .progress-line {
+      width: 32px;
+      height: 2px;
+      background: var(--muted);
+      margin: 0 4px;
+    }
+
+    .progress-line.complete-line {
+      background: var(--teal-500);
+    }
+
+    .progress-line.active-line {
+      background: linear-gradient(90deg, var(--teal-500), var(--primary));
+    }
+
+    /* ===== Technical Details Link ===== */
+    .tech-details-link {
+      padding: 4px 10px 6px;
+      margin-left: 46px;
+      font-size: 11px;
+      color: var(--muted-foreground);
+      opacity: 0.6;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .tech-details-link:hover {
+      opacity: 1;
+      color: var(--primary);
+    }
+
+    .tech-details-link svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* ===== Message Footer ===== */
+    .message-footer {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 2px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    .message-footer svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .footer-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .footer-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--muted-foreground);
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .footer-btn:hover {
+      background: var(--muted);
+      color: var(--accent-foreground);
+    }
+
+    /* ===== Section Label ===== */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted-foreground);
+      padding: 12px 2px 4px;
+      opacity: 0.7;
+    }
+
+    /* ===== Timestamp ===== */
+    .timestamp {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      padding: 16px 0 12px;
+    }
+
+    /* ===== Duration Badge ===== */
+    .duration-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted-foreground);
+      background: rgba(58, 64, 72, 0.4);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+
+    <!-- ========================================================= -->
+    <!-- EXAMPLE 1: Completed "Hello World" — All phases collapsed  -->
+    <!-- ========================================================= -->
+
+    <div class="section-label">Completed Response — Phases Collapsed</div>
+
+    <div class="user-message">
+      <div class="user-bubble">hello world app</div>
+    </div>
+
+    <div class="assistant-message">
+
+      <!-- Progress steps indicator -->
+      <div class="progress-steps">
+        <div class="progress-step complete-step">
+          <div class="progress-dot complete-dot"></div>
+          Setup
+        </div>
+        <div class="progress-line complete-line"></div>
+        <div class="progress-step complete-step">
+          <div class="progress-dot complete-dot"></div>
+          Build
+        </div>
+        <div class="progress-line complete-line"></div>
+        <div class="progress-step complete-step">
+          <div class="progress-dot complete-dot"></div>
+          Verify
+        </div>
+      </div>
+
+      <!-- Phase 1: Setting up — collapsed -->
+      <div class="phase-group">
+        <div class="phase-header">
+          <div class="phase-number complete">
+            <!-- Checkmark -->
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="phase-title">Setting up your project</span>
+          <span class="phase-status">
+            <span class="duration-badge">12s</span>
+          </span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Phase 2: Building — collapsed -->
+      <div class="phase-group">
+        <div class="phase-header">
+          <div class="phase-number complete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="phase-title">Building your app</span>
+          <span class="phase-status">
+            <span class="duration-badge">28s</span>
+          </span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Phase 3: Verifying — collapsed -->
+      <div class="phase-group">
+        <div class="phase-header">
+          <div class="phase-number complete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="phase-title">Verifying everything works</span>
+          <span class="phase-status">
+            <span class="duration-badge">52s</span>
+          </span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Summary text -->
+      <div class="text-block">
+        <p>Your Hello World app is ready! It features a clean, centered layout with TanStack Start, React, and TypeScript.</p>
+      </div>
+
+      <!-- Message footer -->
+      <div class="message-footer">
+        <button class="footer-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        </button>
+        <div class="footer-item">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>3 minutes ago</span>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ===== Timestamp ===== -->
+    <div class="timestamp">Feb 23 at 11:26 AM</div>
+
+
+    <!-- ========================================================= -->
+    <!-- EXAMPLE 2: Active / Streaming — Phase 2 in progress       -->
+    <!-- ========================================================= -->
+
+    <div class="section-label" style="margin-top: 24px;">Active Response — Currently Building</div>
+
+    <div class="user-message">
+      <div class="user-bubble">add a contact form with email validation</div>
+    </div>
+
+    <div class="assistant-message">
+
+      <div class="text-block">
+        <p>I'll create a contact form with proper email validation for you.</p>
+      </div>
+
+      <!-- Progress steps indicator — step 2 active -->
+      <div class="progress-steps">
+        <div class="progress-step complete-step">
+          <div class="progress-dot complete-dot"></div>
+          Setup
+        </div>
+        <div class="progress-line complete-line"></div>
+        <div class="progress-step active-step">
+          <div class="progress-dot active-dot"></div>
+          Build
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step">
+          <div class="progress-dot"></div>
+          Verify
+        </div>
+      </div>
+
+      <!-- Phase 1: Setup — collapsed, complete -->
+      <div class="phase-group">
+        <div class="phase-header">
+          <div class="phase-number complete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="phase-title">Setting up</span>
+          <span class="phase-status">
+            <span class="duration-badge">4s</span>
+          </span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Phase 2: Building — ACTIVE, expanded -->
+      <div class="phase-group phase-active">
+        <div class="phase-header">
+          <div class="phase-number active">
+            <div class="spinner small"></div>
+          </div>
+          <span class="phase-title">Building your contact form</span>
+          <svg class="chevron open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="phase-items">
+          <!-- Completed sub-step -->
+          <div class="phase-item">
+            <svg class="phase-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="phase-item-label">Created form component</span>
+          </div>
+          <div class="phase-item">
+            <svg class="phase-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="phase-item-label">Added name and email fields</span>
+          </div>
+          <!-- Active sub-step -->
+          <div class="phase-item" style="background: rgba(107, 159, 201, 0.06); border-radius: 6px; padding: 5px 10px;">
+            <div class="spinner small" style="flex-shrink: 0;"></div>
+            <span class="phase-item-label active-label">Adding email validation</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- EXAMPLE 3: Completed with expanded detail + tech toggle   -->
+    <!-- ========================================================= -->
+
+    <div class="section-label" style="margin-top: 32px;">Completed — Phase Expanded with Details</div>
+
+    <div class="user-message">
+      <div class="user-bubble">connect to the inventory database and show a table</div>
+    </div>
+
+    <div class="assistant-message">
+
+      <div class="text-block">
+        <p>I'll connect to your inventory data and build a sortable table to display it.</p>
+      </div>
+
+      <!-- Progress steps indicator — all complete -->
+      <div class="progress-steps">
+        <div class="progress-step complete-step">
+          <div class="progress-dot complete-dot"></div>
+          Connect
+        </div>
+        <div class="progress-line complete-line"></div>
+        <div class="progress-step complete-step">
+          <div class="progress-dot complete-dot"></div>
+          Build
+        </div>
+        <div class="progress-line complete-line"></div>
+        <div class="progress-step complete-step">
+          <div class="progress-dot complete-dot"></div>
+          Verify
+        </div>
+      </div>
+
+      <!-- Phase 1: Connecting — collapsed -->
+      <div class="phase-group">
+        <div class="phase-header">
+          <div class="phase-number complete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="phase-title">Connecting to data source</span>
+          <span class="phase-status">
+            <span class="duration-badge">6s</span>
+          </span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Phase 2: Building — expanded, all complete -->
+      <div class="phase-group">
+        <div class="phase-header">
+          <div class="phase-number complete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="phase-title">Building data display</span>
+          <span class="phase-status">
+            <span class="duration-badge">34s</span>
+          </span>
+          <svg class="chevron open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="phase-items">
+          <div class="phase-item">
+            <svg class="phase-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="phase-item-label">Connected to inventory database</span>
+          </div>
+          <div class="phase-item">
+            <svg class="phase-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="phase-item-label">Created data table component</span>
+          </div>
+          <div class="phase-item">
+            <svg class="phase-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="phase-item-label">Added sorting and filtering</span>
+          </div>
+        </div>
+        <!-- Technical details toggle -->
+        <div class="tech-details-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Show technical details
+        </div>
+      </div>
+
+      <!-- Phase 3: Verify — collapsed -->
+      <div class="phase-group">
+        <div class="phase-header">
+          <div class="phase-number complete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="phase-title">Verifying everything works</span>
+          <span class="phase-status">
+            <span class="duration-badge">48s</span>
+          </span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Summary text -->
+      <div class="text-block">
+        <p>Done! Your app now displays inventory data with sortable columns and search filtering.</p>
+      </div>
+
+      <!-- Message footer -->
+      <div class="message-footer">
+        <button class="footer-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        </button>
+        <div class="footer-item">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>1 minute ago</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,6 +1,8 @@
 import type { Problem, ProblemReport } from "@/shared/tsc_types";
+import type { ContentBlock } from "./content-blocks";
 import { z } from "zod";
 export type { ProblemReport, Problem };
+export type { ContentBlock };
 
 export interface AppOutput {
   type: "stdout" | "stderr" | "info" | "client-error" | "input-requested";
@@ -77,6 +79,8 @@ export interface Message {
   id: number;
   role: "user" | "assistant";
   content: string;
+  /** Structured content blocks for rich rendering (only present during streaming) */
+  contentBlocks?: ContentBlock[];
   approvalState?: "approved" | "rejected" | null;
   commitHash?: string | null;
   dbTimestamp?: string | null;

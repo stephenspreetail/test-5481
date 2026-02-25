@@ -68,6 +68,10 @@ export interface ChatStreamDelta {
   chatId: number;
   delta: string;
   toolName?: string;
+  /** Structured block type for rich rendering */
+  blockType?: string;
+  /** Structured block data (shape depends on blockType) */
+  blockData?: Record<string, unknown>;
 }
 
 export interface ChatStreamEnd {
