@@ -411,6 +411,7 @@ class AppContainerService {
       GITLAB_TOKEN: config.GITLAB_TOKEN,
       KOVA_PLUGIN_REPO: config.KOVA_PLUGIN_REPO,
       KOVA_PLUGIN_NAME: config.KOVA_PLUGIN_NAME,
+      KOVA_PLUGIN_BRANCH: config.KOVA_PLUGIN_BRANCH,
       // Agent configuration
       VERBOSE_AGENT_LOGGING: config.VERBOSE_AGENT_LOGGING,
       // Vite dev server security: Allow this app's specific preview host
