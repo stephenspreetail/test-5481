@@ -127,7 +127,38 @@ export function ChatPanel({
     const chat = await getClient().getChat(chatId);
     setMessagesById((prev) => {
       const next = new Map(prev);
-      next.set(chatId, chat.messages);
+      const existing = prev.get(chatId) ?? [];
+
+      // Preserve contentBlocks from streaming state when merging DB messages.
+      // DB messages only have flat `content`; streaming messages carry
+      // structured contentBlocks for rich rendering.
+      const blocksByMsgId = new Map<number, typeof existing[0]["contentBlocks"]>();
+      for (const m of existing) {
+        if (m.contentBlocks?.length && m.id > 0) {
+          blocksByMsgId.set(m.id, m.contentBlocks);
+        }
+      }
+      // Also check the last existing assistant message (may have temp id: -1)
+      const lastExisting = existing[existing.length - 1];
+      const lastDbMsg = chat.messages[chat.messages.length - 1];
+      if (
+        lastExisting?.role === "assistant" &&
+        lastExisting?.contentBlocks?.length &&
+        lastExisting.id <= 0 &&
+        lastDbMsg?.role === "assistant"
+      ) {
+        blocksByMsgId.set(lastDbMsg.id, lastExisting.contentBlocks);
+      }
+
+      const merged = chat.messages.map((dbMsg) => {
+        const blocks = blocksByMsgId.get(dbMsg.id);
+        if (blocks) {
+          return { ...dbMsg, contentBlocks: blocks };
+        }
+        return dbMsg;
+      });
+
+      next.set(chatId, merged);
       return next;
     });
   }, [chatId, setMessagesById]);

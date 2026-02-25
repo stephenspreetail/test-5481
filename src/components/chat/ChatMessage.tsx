@@ -22,6 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { ContentBlockRenderer } from "./blocks/ContentBlockRenderer";
 import {
   KovaMarkdownParser,
   VanillaMarkdownParser,
@@ -140,8 +141,15 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
             >
               {message.role === "assistant" ? (
                 <>
-                  <KovaMarkdownParser content={message.content} />
-                  {isLastMessage && isStreaming && (
+                  {message.contentBlocks && message.contentBlocks.length > 0 ? (
+                    <ContentBlockRenderer
+                      contentBlocks={message.contentBlocks}
+                      isStreaming={!!(isLastMessage && isStreaming)}
+                    />
+                  ) : (
+                    <KovaMarkdownParser content={message.content} />
+                  )}
+                  {isLastMessage && isStreaming && !(message.contentBlocks && message.contentBlocks.length > 0) && (
                     <div className="mt-4 ml-4 relative w-5 h-5 animate-spin">
                       <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-(--primary) dark:bg-teal-500 rounded-full"></div>
                       <div className="absolute bottom-0 left-0 w-2 h-2 bg-(--primary) dark:bg-teal-500 rounded-full opacity-80"></div>

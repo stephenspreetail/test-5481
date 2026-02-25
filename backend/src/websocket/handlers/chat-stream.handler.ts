@@ -1,3 +1,5 @@
+import { mkdirSync, appendFileSync } from "node:fs";
+import { join } from "node:path";
 import { and, count, desc, eq } from "drizzle-orm";
 import { WebSocket } from "ws";
 import { config } from "../../config/index.js";
@@ -45,6 +47,10 @@ export interface ChatStreamDelta {
   delta: string;
   /** Tool being used (if any) */
   toolName?: string;
+  /** Structured block type for rich rendering */
+  blockType?: string;
+  /** Structured block data (shape depends on blockType) */
+  blockData?: Record<string, unknown>;
 }
 
 export interface ChatStreamEnd {
@@ -81,6 +87,141 @@ export interface AppNameUpdate {
 export interface ChatCancelMessage {
   type: "chat:cancel";
   chatId: number;
+}
+
+// ---- Tool display helpers (duplicated from frontend for backend use) ----
+
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  Read: "Reading",
+  Write: "Creating",
+  Edit: "Editing",
+  Glob: "Searching files",
+  Grep: "Searching code",
+  Bash: "Running",
+  Skill: "Using skill",
+  TodoWrite: "Planning",
+};
+
+function getToolDisplayName(toolName: string): string {
+  return TOOL_DISPLAY_NAMES[toolName] ?? `Using ${toolName}`;
+}
+
+function extractToolFilePath(toolName: string, toolInput: unknown): string | undefined {
+  if (!toolInput || typeof toolInput !== "object") return undefined;
+  const input = toolInput as Record<string, unknown>;
+  if (toolName === "Read" || toolName === "Write" || toolName === "Edit") {
+    const fp = (input.file_path as string) ?? undefined;
+    if (!fp) return undefined;
+    const segments = fp.replace(/\\/g, "/").split("/");
+    return segments.length <= 2 ? segments.join("/") : segments.slice(-2).join("/");
+  }
+  return undefined;
+}
+
+function extractToolCommand(toolInput: unknown): string | undefined {
+  if (!toolInput || typeof toolInput !== "object") return undefined;
+  const cmd = (toolInput as Record<string, unknown>).command as string | undefined;
+  if (!cmd) return undefined;
+  const firstLine = cmd.split("\n")[0].trim();
+  return firstLine.length > 60 ? firstLine.slice(0, 57) + "..." : firstLine;
+}
+
+function extractToolPattern(toolInput: unknown): string | undefined {
+  if (!toolInput || typeof toolInput !== "object") return undefined;
+  return (toolInput as Record<string, unknown>).pattern as string | undefined;
+}
+
+function buildBlockData(toolName: string, toolInput: unknown): Record<string, unknown> {
+  const displayName = getToolDisplayName(toolName);
+  const filePath = extractToolFilePath(toolName, toolInput);
+  const command = toolName === "Bash" ? extractToolCommand(toolInput) : undefined;
+  const pattern = (toolName === "Glob" || toolName === "Grep") ? extractToolPattern(toolInput) : undefined;
+
+  // Determine specific block type
+  if ((toolName === "Write" || toolName === "Edit") && filePath) {
+    return {
+      type: "file_edit",
+      operation: toolName === "Write" ? "write" : "edit",
+      filePath,
+    };
+  }
+  if (toolName === "Bash" && command) {
+    return { type: "bash", command };
+  }
+
+  // Skill tool - extract the skill name for display
+  if (toolName === "Skill" && toolInput && typeof toolInput === "object") {
+    const skillName = (toolInput as Record<string, unknown>).skill as string | undefined;
+    return {
+      type: "tool_use",
+      toolName: "Skill",
+      displayName: skillName ? `Using ${skillName} skill` : "Using skill",
+      skillName,
+    };
+  }
+
+  // TodoWrite - extract the active task for display
+  if (toolName === "TodoWrite" && toolInput && typeof toolInput === "object") {
+    const todos = (toolInput as Record<string, unknown>).todos as Array<{ content: string; status: string }> | undefined;
+    const activeTask = todos?.find(t => t.status === "in_progress")?.content;
+    return {
+      type: "tool_use",
+      toolName: "TodoWrite",
+      displayName: "Planning",
+      activeTask,
+    };
+  }
+
+  return {
+    type: "tool_use",
+    toolName,
+    displayName,
+    filePath,
+    pattern,
+  };
+}
+
+// ---- Per-app content block logging ----
+
+const LOGS_DIR = join(process.cwd(), "logs", "content-blocks");
+let logsDirCreated = false;
+
+function ensureLogsDir(): void {
+  if (!logsDirCreated) {
+    try {
+      mkdirSync(LOGS_DIR, { recursive: true });
+      logsDirCreated = true;
+    } catch {
+      // Directory may already exist
+      logsDirCreated = true;
+    }
+  }
+}
+
+function logContentBlock(
+  appId: number,
+  chatId: number,
+  eventType: string,
+  blockType: string | undefined,
+  blockData: Record<string, unknown> | undefined,
+  extra?: Record<string, unknown>,
+): void {
+  ensureLogsDir();
+  const entry = {
+    timestamp: new Date().toISOString(),
+    appId,
+    chatId,
+    eventType,
+    blockType,
+    blockData,
+    ...extra,
+  };
+  const logPath = join(LOGS_DIR, `app-${appId}.jsonl`);
+  try {
+    appendFileSync(logPath, JSON.stringify(entry) + "\n");
+  } catch (err) {
+    console.error(`[CHAT] Failed to write content block log for app ${appId}:`, err);
+  }
 }
 
 // Track active streams so we can cancel them
@@ -294,6 +435,8 @@ export async function handleChatStream(
     const decoder = new TextDecoder();
     let buffer = "";
 
+    logContentBlock(app.id, chatId, "stream_start", undefined, undefined, { prompt: prompt.substring(0, 200) });
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -328,7 +471,9 @@ export async function handleChatStream(
               case "text":
                 if (event.text) {
                   assistantContent += event.text;
-                  sendDelta(ws, chatId, event.text);
+                  sendDelta(ws, chatId, event.text, undefined, "text");
+                  console.log(`[CHAT] [app:${app.id}] text delta (${event.text.length} chars)`);
+                  logContentBlock(app.id, chatId, "text", "text", undefined, { textLength: event.text.length });
                 }
                 break;
 
@@ -336,7 +481,11 @@ export async function handleChatStream(
                 if (event.toolName) {
                   const toolUseText = `\n[Using tool: ${event.toolName}]\n`;
                   assistantContent += toolUseText;
-                  sendDelta(ws, chatId, toolUseText, event.toolName);
+                  const blockData = buildBlockData(event.toolName, event.toolInput);
+                  const blockType = blockData.type as string;
+                  sendDelta(ws, chatId, toolUseText, event.toolName, blockType, blockData);
+                  console.log(`[CHAT] [app:${app.id}] tool_use: ${event.toolName} → blockType=${blockType}`, JSON.stringify(blockData));
+                  logContentBlock(app.id, chatId, "tool_use", blockType, blockData, { toolName: event.toolName });
                   // Track if files were modified
                   if (event.toolName === "Write" || event.toolName === "Edit") {
                     updatedFiles = true;
@@ -344,9 +493,14 @@ export async function handleChatStream(
                 }
                 break;
 
-              case "tool_result":
-                // Tool results are handled internally by the SDK
+              case "tool_result": {
+                // Forward tool results for rich rendering (no text added to assistantContent)
+                const toolResultData: Record<string, unknown> = { type: "tool_result" };
+                sendDelta(ws, chatId, "", undefined, "tool_result", toolResultData);
+                console.log(`[CHAT] [app:${app.id}] tool_result`);
+                logContentBlock(app.id, chatId, "tool_result", "tool_result", toolResultData);
                 break;
+              }
 
               case "result":
                 costUsd = event.costUsd;
@@ -371,6 +525,11 @@ export async function handleChatStream(
         }
       }
     }
+
+    logContentBlock(app.id, chatId, "stream_end", undefined, undefined, {
+      contentLength: assistantContent.length,
+      updatedFiles,
+    });
 
     // Save assistant message to database and update chat's updatedAt
     if (assistantContent) {
@@ -487,12 +646,16 @@ function sendDelta(
   chatId: number,
   delta: string,
   toolName?: string,
+  blockType?: string,
+  blockData?: Record<string, unknown>,
 ) {
   const deltaMsg: ChatStreamDelta = {
     type: "chat:response:delta",
     chatId,
     delta,
     toolName,
+    blockType,
+    blockData,
   };
   ws.send(JSON.stringify(deltaMsg));
 }
