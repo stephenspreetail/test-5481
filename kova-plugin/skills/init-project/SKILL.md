@@ -69,6 +69,7 @@ The template includes everything needed for a Spreetail app:
 | TanStack Router | File-based routing ready |
 | TanStack Query | QueryClientProvider in __root.tsx |
 | Spreeform | Installed and CSS configured |
+| ClientOnly wrapper | Built-in via `@tanstack/react-router` for SSR-safe providers |
 | Tailwind CSS v4 | Vite plugin configured |
 | TypeScript | Strict mode enabled |
 | 404 Page | notFoundComponent configured |
@@ -104,165 +105,15 @@ project/
 | `import { ... } from '@tanstack/start'` | `import { ... } from '@tanstack/react-start'` |
 | `.validator()` | `.inputValidator()` |
 
-### Server Functions
-
-```typescript
-import { createServerFn } from '@tanstack/react-start'
-
-// GET request (no input)
-const getData = createServerFn({ method: 'GET' })
-  .handler(async () => {
-    const data = await fetchFromDatabase()
-    return data
-  })
-
-// POST request with validation
-const submitData = createServerFn({ method: 'POST' })
-  .inputValidator((data: { name: string }) => data)
-  .handler(async ({ data }) => {
-    await saveToDatabase(data)
-    return { success: true }
-  })
-```
-
-### Using Server Functions with TanStack Query
-
-```typescript
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-
-function MyComponent() {
-  const queryClient = useQueryClient()
-
-  // Fetch data
-  const { data, isLoading } = useQuery({
-    queryKey: ['items'],
-    queryFn: () => getData(),
-  })
-
-  // Mutate data
-  const mutation = useMutation({
-    mutationFn: submitData,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['items'] })
-    },
-  })
-
-  return (
-    <button onClick={() => mutation.mutate({ name: 'New Item' })}>
-      Add Item
-    </button>
-  )
-}
-```
-
-## File-Based Routing
-
-TanStack Start uses file-based routing in `src/routes/`:
-
-| File | Route |
-|------|-------|
-| `index.tsx` | `/` |
-| `about.tsx` | `/about` |
-| `users/index.tsx` | `/users` |
-| `users/$id.tsx` | `/users/:id` (dynamic) |
-| `__root.tsx` | Layout wrapper |
-
-### Route Example
-
-```tsx
-// src/routes/users/$id.tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/users/$id')({
-  component: UserPage,
-  loader: async ({ params }) => {
-    return await fetchUser(params.id)
-  },
-})
-
-function UserPage() {
-  const user = Route.useLoaderData()
-  return <div>{user.name}</div>
-}
-```
+For server functions, routing, TanStack Query, and TanStack Table patterns, see the **/tanstack** skill.
 
 ## Adding Spreeform Page Layout
 
-For a full app with sidebar, update `src/routes/__root.tsx`:
+When adding a full page layout with sidebar, theme, or navigation — refer to the **/spreeform** skill for complete examples and SSR compatibility rules.
 
-```tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
-import {
-  Page, PageBody, PageContainer,
-  Sidebar, SidebarContent, SidebarHeader, SidebarMenu,
-  SidebarMenuItem, SidebarMenuButton, SidebarProvider,
-  ThemeProvider, Toaster
-} from '@spreetail/spreeform'
-
-import appCss from '../styles.css?url'
-
-const queryClient = new QueryClient()
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-    links: [{ rel: 'stylesheet', href: appCss }],
-  }),
-  component: RootComponent,
-  notFoundComponent: () => <div>Page not found</div>,
-  shellComponent: RootDocument,
-})
-
-function RootComponent() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system">
-        <SidebarProvider>
-          <Sidebar>
-            <SidebarHeader>My App</SidebarHeader>
-            <SidebarContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a href="/">Dashboard</a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarContent>
-          </Sidebar>
-          <Page>
-            <PageBody>
-              <PageContainer>
-                <Outlet />
-              </PageContainer>
-            </PageBody>
-          </Page>
-        </SidebarProvider>
-        <Toaster />
-      </ThemeProvider>
-    </QueryClientProvider>
-  )
-}
-
-function RootDocument({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  )
-}
-```
+**Key points:**
+- `ThemeProvider` and `SidebarProvider` **must** be wrapped in `<ClientOnly>` (from `@tanstack/react-router`) to avoid `localStorage` crashes during server-side rendering
+- See **/spreeform** → "SSR Compatibility" and "Page Layout" sections for full code examples
 
 ## Architecture Guidelines
 
@@ -279,8 +130,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 - [ ] Replace `{{PROJECT_NAME}}` with actual project name
 - [ ] Run `bun install`
 - [ ] Run `bun dev` to verify setup
-- [ ] Create `src/components/` directory as needed
-- [ ] Create `src/server/` directory for server functions
 
 ## Template Info
 

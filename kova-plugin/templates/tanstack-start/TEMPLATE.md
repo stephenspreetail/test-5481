@@ -11,6 +11,7 @@ Pre-configured TanStack Start project with Spreeform UI components.
 - Tailwind CSS v4
 - TypeScript
 - QueryClientProvider pre-configured
+- ClientOnly wrapper for SSR-safe providers (built-in via `@tanstack/react-router`)
 - 404 page pre-configured
 
 ## Template Variables

@@ -188,6 +188,7 @@ function ItemsComponent() {
 | Infinite re-renders in table | Unstable `columns` reference | Wrap in `useMemo()` |
 | Query key mismatch | Typo in key | Use `queryOptions` factory |
 | Hydration mismatch | Date/random values | Use `useEffect` for client-only values |
+| `localStorage is not defined` | `ThemeProvider`/`SidebarProvider` rendered during SSR | Wrap in `<ClientOnly>` from `@tanstack/react-router` (see **/spreeform** → SSR Compatibility) |
 
 ## Related Skills
 

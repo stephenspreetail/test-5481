@@ -149,19 +149,12 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 
 `ThemeProvider` and `SidebarProvider` use `localStorage` internally. During SSR (server-side rendering), `localStorage` does not exist, so rendering these components on the server will crash with a `ReferenceError`.
 
-### The Fix: `ClientOnly` Wrapper
+### The Fix: `ClientOnly` from TanStack Router
 
-Create a `ClientOnly` helper that defers rendering until the component is mounted in the browser:
+TanStack Router provides a built-in `ClientOnly` component that renders a fallback during SSR and only renders children after hydration. **No custom wrapper needed.**
 
 ```tsx
-// src/components/client-only.tsx
-import { useState, useEffect, type ReactNode } from "react";
-
-export function ClientOnly({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted ? <>{children}</> : <>{fallback}</>;
-}
+import { ClientOnly } from "@tanstack/react-router";
 ```
 
 ### What to Wrap
@@ -176,7 +169,7 @@ export function ClientOnly({ children, fallback = null }: { children: ReactNode;
 ### Usage
 
 ```tsx
-import { ClientOnly } from "../components/client-only";
+import { ClientOnly } from "@tanstack/react-router";
 
 <ClientOnly>
   <ThemeProvider defaultTheme="system">
@@ -199,7 +192,7 @@ import {
   SidebarMenuItem, SidebarMenuButton, SidebarProvider,
   ThemeProvider, Toaster
 } from "@spreetail/spreeform";
-import { ClientOnly } from "../components/client-only";
+import { ClientOnly } from "@tanstack/react-router";
 
 <ClientOnly>
 <ThemeProvider defaultTheme="system">
