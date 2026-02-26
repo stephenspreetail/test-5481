@@ -260,9 +260,24 @@ def cmd_list_recent(cache):
     print("  python3 migrate.py --import <number-or-path> [--branch <name>] [--yes]")
 
 
-def cmd_list_all(cache, token, page=1, page_size=50):
+def cmd_list_all(cache, token, page=1, page_size=50, search=None):
     projects = require_projects(cache, token)
     age = cache_age_str(cache["fetched_at"])
+
+    if search:
+        terms = search.lower().split()
+        projects = [p for p in projects
+                    if all(t in p["path_with_namespace"].lower() for t in terms)]
+        print(f"{len(projects)} repos matching '{search}' ({age}):\n")
+        for i, p in enumerate(projects, 1):
+            vis = p.get("visibility", "")
+            tag = f" [{vis}]" if vis else ""
+            # show original index alongside search rank
+            print(f"  {i:4}.  {p['path_with_namespace']}{tag}")
+        if not projects:
+            print("  No matches found.")
+        return
+
     total_pages = (len(projects) + page_size - 1) // page_size
     page = max(1, min(page, total_pages))
     start = (page - 1) * page_size
@@ -431,6 +446,8 @@ Claude Code usage (non-interactive):
                         help="page number for --list-all (default: 1)")
     parser.add_argument("--page-size", type=int, default=50, metavar="N",
                         help="repos per page for --list-all (default: 50)")
+    parser.add_argument("--search", metavar="TERM",
+                        help="filter --list-all by keyword(s) in repo path")
     parser.add_argument("--refresh", action="store_true",
                         help="re-fetch repo list from GitLab and exit")
     parser.add_argument("--import", dest="import_repo", metavar="REPO",
@@ -462,7 +479,7 @@ Claude Code usage (non-interactive):
     if args.list_recent:
         cmd_list_recent(cache)
     elif args.list_all:
-        cmd_list_all(cache, gitlab_pat, args.page, args.page_size)
+        cmd_list_all(cache, gitlab_pat, args.page, args.page_size, args.search)
     elif args.refresh:
         cmd_refresh(cache, gitlab_pat)
     elif args.import_repo:
