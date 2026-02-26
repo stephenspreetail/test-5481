@@ -37,7 +37,7 @@ import {
   Search,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -71,6 +71,13 @@ export default function AppDetailsPage() {
   // Get the appId from search params and find the corresponding app
   const appId = search.appId ? Number(search.appId) : null;
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
+
+  // Sync selectedAppId atom when landing on this page (handles direct nav, refresh, app card clicks)
+  useEffect(() => {
+    if (appId !== null) {
+      setSelectedAppId(appId);
+    }
+  }, [appId, setSelectedAppId]);
 
   // Chats for this app
   const { chats, loading: chatsLoading, refreshChats } = useChats(appId);

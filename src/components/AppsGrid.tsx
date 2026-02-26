@@ -1,9 +1,12 @@
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { App } from "@/types";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
+import { useSetAtom } from "jotai";
 import { Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -11,6 +14,8 @@ export function AppsGrid() {
   const navigate = useNavigate();
   const { apps, loading, error } = useLoadApps();
   const [searchQuery, setSearchQuery] = useState("");
+  const setSelectedAppId = useSetAtom(selectedAppIdAtom);
+  const setSelectedChatId = useSetAtom(selectedChatIdAtom);
 
   // Filter and sort apps: most recent edit first
   const filteredApps = useMemo(() => {
@@ -38,6 +43,8 @@ export function AppsGrid() {
   }, [apps]);
 
   const handleAppClick = (appId: number) => {
+    setSelectedAppId(appId);
+    setSelectedChatId(null);
     navigate({
       to: "/app-details",
       search: { appId },
