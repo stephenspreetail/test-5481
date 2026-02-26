@@ -260,14 +260,19 @@ def cmd_list_recent(cache):
     print("  python3 migrate.py --import <number-or-path> [--branch <name>] [--yes]")
 
 
-def cmd_list_all(cache, token):
+def cmd_list_all(cache, token, page=1, page_size=50):
     projects = require_projects(cache, token)
     age = cache_age_str(cache["fetched_at"])
-    print(f"{len(projects)} GitLab repositories ({age}):\n")
-    for i, p in enumerate(projects, 1):
+    total_pages = (len(projects) + page_size - 1) // page_size
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * page_size
+    end = min(start + page_size, len(projects))
+    print(f"{len(projects)} GitLab repositories ({age}) — page {page}/{total_pages}:\n")
+    for i, p in enumerate(projects[start:end], start + 1):
         vis = p.get("visibility", "")
         tag = f" [{vis}]" if vis else ""
         print(f"  {i:4}.  {p['path_with_namespace']}{tag}")
+    print(f"\nPage {page}/{total_pages}  |  --page {page - 1} for previous  |  --page {page + 1} for next" if total_pages > 1 else "")
 
 
 def cmd_refresh(cache, token):
@@ -421,7 +426,11 @@ Claude Code usage (non-interactive):
     parser.add_argument("--list-recent", action="store_true",
                         help="show recently imported repos and exit")
     parser.add_argument("--list-all", action="store_true",
-                        help="show all cached repos and exit")
+                        help="show cached repos and exit")
+    parser.add_argument("--page", type=int, default=1, metavar="N",
+                        help="page number for --list-all (default: 1)")
+    parser.add_argument("--page-size", type=int, default=50, metavar="N",
+                        help="repos per page for --list-all (default: 50)")
     parser.add_argument("--refresh", action="store_true",
                         help="re-fetch repo list from GitLab and exit")
     parser.add_argument("--import", dest="import_repo", metavar="REPO",
@@ -453,7 +462,7 @@ Claude Code usage (non-interactive):
     if args.list_recent:
         cmd_list_recent(cache)
     elif args.list_all:
-        cmd_list_all(cache, gitlab_pat)
+        cmd_list_all(cache, gitlab_pat, args.page, args.page_size)
     elif args.refresh:
         cmd_refresh(cache, gitlab_pat)
     elif args.import_repo:
