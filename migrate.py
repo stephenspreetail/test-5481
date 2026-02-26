@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """
 GitLab → GitHub Branch Import Tool
-Imports a selected GitLab repository as a new branch in this GitHub repository.
-Usage:
+
+Interactive mode (terminal):
     GITLAB_PAT=<token> python3 migrate.py
-    python3 migrate.py          # will prompt for PAT
+
+Non-interactive mode (Claude Code / scripting):
+    python3 migrate.py --list-recent
+    python3 migrate.py --list-all
+    python3 migrate.py --refresh
+    python3 migrate.py --import spreetail/some/repo [--branch claude/foo-XYZ] [--yes]
+    python3 migrate.py --import 42               # number from --list-all
 """
 
+import argparse
 import json
 import os
 import shutil
@@ -22,13 +29,12 @@ REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE_FILE = os.path.expanduser("~/.cache/gl2gh_migrate.json")
 MAX_RECENT = 5
 
-# Fields we need to keep per project (avoids storing giant blobs in the cache)
 PROJECT_KEYS = ("id", "path", "path_with_namespace", "http_url_to_repo",
                 "default_branch", "visibility")
 
 
 # ---------------------------------------------------------------------------
-# Cache helpers
+# Cache
 # ---------------------------------------------------------------------------
 
 def _slim(project):
@@ -51,15 +57,26 @@ def save_cache(cache):
 
 def add_to_recent(cache, project):
     slim = _slim(project)
-    # Remove existing entry for the same repo, then prepend
     cache["recent"] = [r for r in cache["recent"]
                        if r["path_with_namespace"] != slim["path_with_namespace"]]
     cache["recent"].insert(0, slim)
     cache["recent"] = cache["recent"][:MAX_RECENT]
 
 
+def cache_age_str(fetched_at):
+    if not fetched_at:
+        return "no cache"
+    try:
+        ts = datetime.fromisoformat(fetched_at)
+        delta = datetime.now(timezone.utc) - ts
+        hours = int(delta.total_seconds() // 3600)
+        return f"cache {hours}h old" if hours else "cache fresh"
+    except ValueError:
+        return "cache age unknown"
+
+
 # ---------------------------------------------------------------------------
-# GitLab API helpers
+# GitLab API
 # ---------------------------------------------------------------------------
 
 def gitlab_get(path, token):
@@ -75,7 +92,6 @@ def gitlab_get(path, token):
 
 
 def fetch_projects(token):
-    """Fetch all GitLab projects from the API and return slim dicts."""
     print("Fetching your GitLab repositories…", end="", flush=True)
     projects, page = [], 1
     while True:
@@ -93,6 +109,15 @@ def fetch_projects(token):
         page += 1
     print(f" {len(projects)} repos found.")
     return [_slim(p) for p in projects]
+
+
+def require_projects(cache, token):
+    """Return cached repo list, fetching if empty."""
+    if not cache["repos"]:
+        cache["repos"] = fetch_projects(token)
+        cache["fetched_at"] = datetime.now(timezone.utc).isoformat()
+        save_cache(cache)
+    return cache["repos"]
 
 
 # ---------------------------------------------------------------------------
@@ -146,129 +171,221 @@ def ensure_filter_repo():
 
 
 def strip_large_files(repo_path):
-    rev_result = run(
-        ["git", "rev-list", "--objects", "--all"],
-        cwd=repo_path, capture=True, fatal=False,
-    )
+    rev_result = run(["git", "rev-list", "--objects", "--all"],
+                     cwd=repo_path, capture=True, fatal=False)
     if rev_result.returncode != 0:
         return False
-
     proc = subprocess.run(
         ["git", "cat-file",
          "--batch-check=%(objecttype) %(objectname) %(objectsize) %(rest)"],
-        input=rev_result.stdout,
-        cwd=repo_path, capture_output=True, text=True,
+        input=rev_result.stdout, cwd=repo_path, capture_output=True, text=True,
     )
     over_limit = [
         line for line in proc.stdout.splitlines()
         if line.startswith("blob") and int(line.split()[2]) > 99 * 1024 * 1024
     ]
-
     if not over_limit:
         return False
-
     total_mb = sum(int(l.split()[2]) for l in over_limit) / 1024 / 1024
     print(f"  Found {len(over_limit)} blob(s) over 99 MB ({total_mb:.0f} MB total) — stripping…")
-
     if not ensure_filter_repo():
         return False
-
     run(["git-filter-repo", "--strip-blobs-bigger-than", "99M", "--force"],
         cwd=repo_path)
     return True
 
 
-def import_branch(gitlab_clone_url, github_push_url, gitlab_pat, branch_name):
-    auth_url = inject_pat(gitlab_clone_url, gitlab_pat)
-
+def do_import(selected, github_url, gitlab_pat, branch_name):
+    auth_url = inject_pat(selected["http_url_to_repo"], gitlab_pat)
     with tempfile.TemporaryDirectory(prefix="gl2gh_") as tmpdir:
         repo_path = os.path.join(tmpdir, "repo")
-
         print("\nStep 1/3  Cloning from GitLab…")
         run(["git", "clone", auth_url, repo_path])
-
         print("Step 2/3  Checking for large files…")
         if not strip_large_files(repo_path):
             print("  No oversized files found.")
-
-        br_result = run(["git", "branch", "--show-current"],
-                        cwd=repo_path, capture=True, fatal=False)
-        source_branch = br_result.stdout.strip() or "main"
-
+        br = run(["git", "branch", "--show-current"],
+                 cwd=repo_path, capture=True, fatal=False)
+        source_branch = br.stdout.strip() or "main"
         print(f"Step 3/3  Pushing {source_branch} → {branch_name} on GitHub…")
-        run(["git", "push", github_push_url, f"{source_branch}:{branch_name}"],
+        run(["git", "push", github_url, f"{source_branch}:{branch_name}"],
             cwd=repo_path)
+    print(f"\nDone — '{selected['path_with_namespace']}' imported to '{branch_name}'.")
 
-    print(f"\nDone — GitLab default branch imported to '{branch_name}' successfully.")
+
+def default_branch_name(selected):
+    repo_slug = selected["path"].replace("_", "-").lower()
+    suffix = get_session_suffix()
+    return f"claude/{repo_slug}-{suffix}" if suffix else f"claude/{repo_slug}"
 
 
-# ---------------------------------------------------------------------------
-# Interactive prompts
-# ---------------------------------------------------------------------------
-
-def prompt_pat():
+def resolve_repo(cache, token, spec):
+    """Resolve --import value: an integer index or a path_with_namespace string."""
+    projects = require_projects(cache, token)
     try:
-        pat = input("Enter your GitLab Personal Access Token: ").strip()
-    except (KeyboardInterrupt, EOFError):
-        print("\nAborted.")
-        sys.exit(0)
-    if not pat:
-        print("No token provided. Exiting.")
+        idx = int(spec)
+        if 1 <= idx <= len(projects):
+            return projects[idx - 1]
+        print(f"Error: index {idx} out of range (1–{len(projects)}).")
         sys.exit(1)
-    return pat
+    except ValueError:
+        pass
+    # Match by path_with_namespace (exact or partial)
+    matches = [p for p in projects if spec.lower() in p["path_with_namespace"].lower()]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        print(f"Ambiguous: '{spec}' matches {len(matches)} repos:")
+        for m in matches[:10]:
+            print(f"  {m['path_with_namespace']}")
+        sys.exit(1)
+    print(f"Error: no repo matching '{spec}'.")
+    sys.exit(1)
 
 
-def prompt_recent_or_browse(recent, fetched_at):
-    """
-    Show recent repos. Returns ('recent', project) or ('browse', None)
-    or ('refresh', None).
-    """
-    print("\nRecently imported repos:")
+# ---------------------------------------------------------------------------
+# Non-interactive sub-commands
+# ---------------------------------------------------------------------------
+
+def cmd_list_recent(cache):
+    recent = cache.get("recent", [])
+    if not recent:
+        print("No recently imported repos yet.")
+        return
+    print(f"Recently imported repos ({cache_age_str(cache['fetched_at'])}):\n")
     for i, r in enumerate(recent, 1):
         print(f"  {i}.  {r['path_with_namespace']}")
-
-    age = ""
-    if fetched_at:
-        try:
-            ts = datetime.fromisoformat(fetched_at)
-            delta = datetime.now(timezone.utc) - ts
-            hours = int(delta.total_seconds() // 3600)
-            age = f" (cache {hours}h old)" if hours else " (cache fresh)"
-        except ValueError:
-            pass
-
     print()
-    prompt = (
-        f"Pick a recent repo (1–{len(recent)}), "
-        f"[b]rowse all{age}, or [r]efresh cache: "
-    )
-    while True:
-        try:
-            raw = input(prompt).strip().lower()
-        except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            sys.exit(0)
-
-        if raw == "r":
-            return "refresh", None
-        if raw == "b":
-            return "browse", None
-        try:
-            choice = int(raw)
-            if 1 <= choice <= len(recent):
-                return "recent", recent[choice - 1]
-            print(f"  Please enter 1–{len(recent)}, b, or r.")
-        except ValueError:
-            print(f"  Please enter 1–{len(recent)}, b, or r.")
+    print("To import one, run:")
+    print("  python3 migrate.py --import <number-or-path> [--branch <name>] [--yes]")
 
 
-def prompt_project(projects):
-    print(f"\n{len(projects)} GitLab repositories (cached):\n")
+def cmd_list_all(cache, token):
+    projects = require_projects(cache, token)
+    age = cache_age_str(cache["fetched_at"])
+    print(f"{len(projects)} GitLab repositories ({age}):\n")
     for i, p in enumerate(projects, 1):
         vis = p.get("visibility", "")
         tag = f" [{vis}]" if vis else ""
         print(f"  {i:4}.  {p['path_with_namespace']}{tag}")
 
+
+def cmd_refresh(cache, token):
+    cache["repos"] = fetch_projects(token)
+    cache["fetched_at"] = datetime.now(timezone.utc).isoformat()
+    save_cache(cache)
+    print(f"Cache updated: {len(cache['repos'])} repos stored.")
+
+
+def cmd_import(cache, token, spec, branch_arg, yes):
+    selected = resolve_repo(cache, token, spec)
+    github_url = get_github_remote()
+    if not github_url:
+        print("Error: could not detect GitHub remote URL.")
+        sys.exit(1)
+
+    branch_name = branch_arg or default_branch_name(selected)
+    default_branch = selected.get("default_branch") or "main"
+
+    print(f"\nSelected: {selected['path_with_namespace']}")
+    print(f" Default: {default_branch}")
+    print(f"  Target: {github_url}  →  branch '{branch_name}'")
+
+    if not yes:
+        try:
+            answer = input("\nProceed? [y/N] ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted.")
+            sys.exit(0)
+        if answer != "y":
+            print("Aborted.")
+            sys.exit(0)
+
+    do_import(selected, github_url, token, branch_name)
+    add_to_recent(cache, selected)
+    save_cache(cache)
+
+
+# ---------------------------------------------------------------------------
+# Interactive mode (terminal)
+# ---------------------------------------------------------------------------
+
+def interactive(cache, token):
+    if cache["recent"]:
+        print("\nRecently imported repos:")
+        for i, r in enumerate(cache["recent"], 1):
+            print(f"  {i}.  {r['path_with_namespace']}")
+
+        age = cache_age_str(cache["fetched_at"])
+        prompt = (f"\nPick a recent repo (1–{len(cache['recent'])}), "
+                  f"[b]rowse all ({age}), or [r]efresh: ")
+
+        while True:
+            try:
+                raw = input(prompt).strip().lower()
+            except (KeyboardInterrupt, EOFError):
+                print("\nAborted.")
+                sys.exit(0)
+            if raw == "r":
+                cmd_refresh(cache, token)
+                selected = _browse(cache)
+                break
+            if raw == "b":
+                require_projects(cache, token)
+                selected = _browse(cache)
+                break
+            try:
+                choice = int(raw)
+                if 1 <= choice <= len(cache["recent"]):
+                    selected = cache["recent"][choice - 1]
+                    break
+                print(f"  Please enter 1–{len(cache['recent'])}, b, or r.")
+            except ValueError:
+                print(f"  Please enter 1–{len(cache['recent'])}, b, or r.")
+    else:
+        require_projects(cache, token)
+        selected = _browse(cache)
+
+    github_url = get_github_remote()
+    if not github_url:
+        try:
+            github_url = input("Enter target GitHub repo URL: ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted.")
+            sys.exit(0)
+
+    branch_name = default_branch_name(selected)
+    try:
+        raw = input(f"Target branch name [{branch_name}]: ").strip()
+        if raw:
+            branch_name = raw
+    except (KeyboardInterrupt, EOFError):
+        print("\nAborted.")
+        sys.exit(0)
+
+    default_branch = selected.get("default_branch") or "main"
+    print(f"\n  Import '{selected['path_with_namespace']}' (branch: {default_branch})")
+    print(f"  → '{branch_name}' on GitHub")
+    try:
+        if input("\nProceed? [y/N] ").strip().lower() != "y":
+            print("Aborted.")
+            sys.exit(0)
+    except (KeyboardInterrupt, EOFError):
+        print("\nAborted.")
+        sys.exit(0)
+
+    do_import(selected, github_url, token, branch_name)
+    add_to_recent(cache, selected)
+    save_cache(cache)
+
+
+def _browse(cache):
+    projects = cache["repos"]
+    print(f"\n{len(projects)} repos:\n")
+    for i, p in enumerate(projects, 1):
+        vis = p.get("visibility", "")
+        tag = f" [{vis}]" if vis else ""
+        print(f"  {i:4}.  {p['path_with_namespace']}{tag}")
     print()
     while True:
         try:
@@ -276,7 +393,7 @@ def prompt_project(projects):
             choice = int(raw)
             if 1 <= choice <= len(projects):
                 return projects[choice - 1]
-            print(f"  Please enter a number between 1 and {len(projects)}.")
+            print(f"  Please enter 1–{len(projects)}.")
         except ValueError:
             print("  Please enter a valid number.")
         except (KeyboardInterrupt, EOFError):
@@ -284,108 +401,66 @@ def prompt_project(projects):
             sys.exit(0)
 
 
-def prompt_branch(default):
-    try:
-        raw = input(f"Target branch name [{default}]: ").strip()
-    except (KeyboardInterrupt, EOFError):
-        print("\nAborted.")
-        sys.exit(0)
-    return raw if raw else default
-
-
-def confirm(message):
-    try:
-        answer = input(message).strip().lower()
-    except (KeyboardInterrupt, EOFError):
-        print("\nAborted.")
-        sys.exit(0)
-    return answer == "y"
-
-
 # ---------------------------------------------------------------------------
-# Main
+# Entry point
 # ---------------------------------------------------------------------------
 
 def main():
-    # 1. GitLab PAT
-    gitlab_pat = os.environ.get("GITLAB_PAT") or prompt_pat()
+    parser = argparse.ArgumentParser(
+        description="Import a GitLab repo as a branch in this GitHub repo.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Claude Code usage (non-interactive):
+  python3 migrate.py --list-recent
+  python3 migrate.py --list-all
+  python3 migrate.py --refresh
+  python3 migrate.py --import spreetail/some/repo --yes
+  python3 migrate.py --import 42 --branch claude/my-branch --yes
+        """,
+    )
+    parser.add_argument("--list-recent", action="store_true",
+                        help="show recently imported repos and exit")
+    parser.add_argument("--list-all", action="store_true",
+                        help="show all cached repos and exit")
+    parser.add_argument("--refresh", action="store_true",
+                        help="re-fetch repo list from GitLab and exit")
+    parser.add_argument("--import", dest="import_repo", metavar="REPO",
+                        help="repo index (from --list-all) or path to import")
+    parser.add_argument("--branch", metavar="NAME",
+                        help="target GitHub branch name (default: auto-generated)")
+    parser.add_argument("--yes", "-y", action="store_true",
+                        help="skip confirmation prompt")
+    args = parser.parse_args()
+
+    gitlab_pat = os.environ.get("GITLAB_PAT")
+    if not gitlab_pat:
+        # Only need the PAT for operations that hit the API
+        needs_api = args.refresh or args.import_repo or not any(
+            [args.list_recent, args.list_all]
+        )
+        if needs_api or not args.list_recent:
+            try:
+                gitlab_pat = input("Enter your GitLab Personal Access Token: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nAborted.")
+                sys.exit(0)
+            if not gitlab_pat:
+                print("No token provided.")
+                sys.exit(1)
 
     cache = load_cache()
 
-    # 2. Select a project
-    selected = None
-
-    if cache["recent"]:
-        action, project = prompt_recent_or_browse(cache["recent"], cache["fetched_at"])
-
-        if action == "recent":
-            selected = project
-
-        elif action == "refresh":
-            cache["repos"] = fetch_projects(gitlab_pat)
-            cache["fetched_at"] = datetime.now(timezone.utc).isoformat()
-            save_cache(cache)
-            selected = prompt_project(cache["repos"])
-
-        else:  # browse
-            if not cache["repos"]:
-                print("No cached repo list — fetching…")
-                cache["repos"] = fetch_projects(gitlab_pat)
-                cache["fetched_at"] = datetime.now(timezone.utc).isoformat()
-                save_cache(cache)
-            selected = prompt_project(cache["repos"])
-
+    if args.list_recent:
+        cmd_list_recent(cache)
+    elif args.list_all:
+        cmd_list_all(cache, gitlab_pat)
+    elif args.refresh:
+        cmd_refresh(cache, gitlab_pat)
+    elif args.import_repo:
+        cmd_import(cache, gitlab_pat, args.import_repo, args.branch, args.yes)
     else:
-        # No recents yet — fetch (or use cache) and browse
-        if not cache["repos"]:
-            cache["repos"] = fetch_projects(gitlab_pat)
-            cache["fetched_at"] = datetime.now(timezone.utc).isoformat()
-            save_cache(cache)
-        selected = prompt_project(cache["repos"])
-
-    gitlab_url = selected["http_url_to_repo"]
-    default_branch = selected.get("default_branch") or "main"
-    print(f"\nSelected: {selected['path_with_namespace']}")
-    print(f"   Clone: {gitlab_url}")
-    print(f" Default: {default_branch}")
-
-    # 3. Resolve GitHub target
-    github_url = get_github_remote()
-    if not github_url:
-        print("\nCould not detect GitHub remote URL from git config.")
-        try:
-            github_url = input("Enter target GitHub repo URL: ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            sys.exit(0)
-        if not github_url:
-            print("No URL provided. Exiting.")
-            sys.exit(1)
-
-    print(f"  Target: {github_url}")
-
-    # 4. Target branch name
-    repo_slug = selected["path"].replace("_", "-").lower()
-    suffix = get_session_suffix()
-    default_target = f"claude/{repo_slug}-{suffix}" if suffix else f"claude/{repo_slug}"
-    print()
-    target_branch = prompt_branch(default_target)
-
-    # 5. Confirm
-    print(f"\n  This will import '{selected['path_with_namespace']}' "
-          f"(default branch: {default_branch})")
-    print(f"  into the branch '{target_branch}' of the GitHub repo.")
-    print("  Any existing content on that branch will be overwritten.")
-    if not confirm("\nProceed? [y/N] "):
-        print("Aborted.")
-        sys.exit(0)
-
-    # 6. Import
-    import_branch(gitlab_url, github_url, gitlab_pat, target_branch)
-
-    # 7. Save to recents
-    add_to_recent(cache, selected)
-    save_cache(cache)
+        # No flags → fully interactive mode
+        interactive(cache, gitlab_pat)
 
 
 if __name__ == "__main__":
