@@ -416,13 +416,14 @@ export class ApiClient {
     options: {
       chatId: number;
       redo?: boolean;
+      promptType?: string;
       attachments?: FileAttachment[];
       onUpdate: (messages: Message[]) => void;
       onEnd: (response: ChatResponseEnd) => void;
       onError: (error: string) => void;
     },
   ): void {
-    const { chatId, redo, attachments, onUpdate, onEnd, onError } = options;
+    const { chatId, redo, promptType, attachments, onUpdate, onEnd, onError } = options;
 
     // Convert FileAttachment[] to the format expected by WebSocket
     const processAttachments = async (): Promise<
@@ -475,6 +476,7 @@ export class ApiClient {
             {
               attachments: processedAttachments,
               redo,
+              promptType,
             },
           );
         });

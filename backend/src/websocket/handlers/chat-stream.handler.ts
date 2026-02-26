@@ -6,8 +6,7 @@ import { config } from "../../config/index.js";
 import { db } from "../../db/index.js";
 import { apps, chats, messages } from "../../db/schema.js";
 import {
-  constructWorkflowAnalysisPromptConfig,
-  isWorkflowAnalysisPrompt,
+  constructAnalysisPromptConfig,
 } from "../../prompts/system_prompt.js";
 import { appContainerService } from "../../services/app-container.service.js";
 import {
@@ -26,6 +25,8 @@ export interface ChatStreamMessage {
     fileName?: string;
   }>;
   redo?: boolean;
+  /** Explicit prompt type from the frontend (e.g. "excel-workflow", "image-forge", "data-platform") */
+  promptType?: string;
   /** Session ID for multi-turn conversations */
   sessionId?: string;
 }
@@ -393,15 +394,13 @@ export async function handleChatStream(
     }
 
     // System prompt: agent uses default Claude Code preset
-    // Only override for special cases like workflow analysis
-    // TODO: Support custom AI_RULES.md from app directory
-    const isWorkflow = isWorkflowAnalysisPrompt(prompt);
-    const systemPrompt = isWorkflow
-      ? constructWorkflowAnalysisPromptConfig()
-      : undefined; // Let the agent use its default (Claude Code preset)
+    // Only override when the frontend passes an explicit promptType
+    const systemPrompt = message.promptType
+      ? constructAnalysisPromptConfig(message.promptType)
+      : undefined;
 
     console.log(
-      `[CHAT] System prompt: ${isWorkflow ? "workflow analysis override" : "using agent default"}`,
+      `[CHAT] System prompt: ${systemPrompt ? `override for promptType="${message.promptType}"` : "using agent default"}`,
     );
 
     const response = await fetch(queryUrl, {

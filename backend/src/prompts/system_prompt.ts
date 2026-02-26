@@ -16,9 +16,22 @@ export interface SystemPromptConfig {
 }
 
 /**
- * Append for workflow documentation tasks.
+ * Append for Excel workflow analysis tasks.
  */
-export const WORKFLOW_ANALYSIS_APPEND = `You are assisting with file analysis and documentation.`;
+export const EXCEL_WORKFLOW_ANALYSIS_APPEND =
+  `You are analyzing an Excel workbook to document its workflow structure, formulas, and data flow. Use the xlsx-workflow-docs skill for detailed analysis guidance and output format.`;
+
+/**
+ * Append for image-forge analysis tasks.
+ */
+export const IMAGE_FORGE_ANALYSIS_APPEND =
+  `You are analyzing a UI mockup, screenshot, or wireframe to create a detailed app planning document. Use the image-forge skill for component detection, layout analysis, and output format.`;
+
+/**
+ * Append for data-platform analysis tasks.
+ */
+export const DATA_PLATFORM_ANALYSIS_APPEND =
+  `You are analyzing data platform configuration and schema. Use the data-platform skill for discovering tables, schemas, and generating appropriate queries.`;
 
 /**
  * Default system prompt config for Kova.
@@ -32,30 +45,22 @@ export const DEFAULT_KOVA_SYSTEM_PROMPT: SystemPromptConfig = {
 };
 
 /**
- * Check if a prompt is a workflow analysis prompt
+ * Known analysis prompt types and their appends.
  */
-export function isWorkflowAnalysisPrompt(prompt: string): boolean {
-  const lowerPrompt = prompt.toLowerCase();
-  return (
-    lowerPrompt.startsWith("document the workflow") ||
-    lowerPrompt.startsWith("analyze the ui image") ||
-    lowerPrompt.includes(".xlsx") ||
-    (lowerPrompt.includes("app planning document") &&
-      (lowerPrompt.includes(".png") ||
-        lowerPrompt.includes(".jpg") ||
-        lowerPrompt.includes(".jpeg") ||
-        lowerPrompt.includes(".gif") ||
-        lowerPrompt.includes(".webp")))
-  );
-}
+const ANALYSIS_PROMPT_APPENDS: Record<string, string> = {
+  "excel-workflow": EXCEL_WORKFLOW_ANALYSIS_APPEND,
+  "image-forge": IMAGE_FORGE_ANALYSIS_APPEND,
+  "data-platform": DATA_PLATFORM_ANALYSIS_APPEND,
+};
 
 /**
- * Construct a system prompt for workflow analysis.
+ * Construct a system prompt config for an analysis type.
+ * Returns undefined for unknown types, letting the agent use its default.
  */
-export function constructWorkflowAnalysisPromptConfig(): SystemPromptConfig {
-  return {
-    type: "preset",
-    preset: "claude_code",
-    append: WORKFLOW_ANALYSIS_APPEND,
-  };
+export function constructAnalysisPromptConfig(
+  type: string,
+): SystemPromptConfig | undefined {
+  const append = ANALYSIS_PROMPT_APPENDS[type];
+  if (!append) return undefined;
+  return { type: "preset", preset: "claude_code", append };
 }

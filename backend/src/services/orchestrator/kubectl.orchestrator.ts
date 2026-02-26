@@ -4,9 +4,9 @@
  * Stable, declarative, production-ready approach
  */
 
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { existsSync } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { writeFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -99,6 +99,25 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
         `Namespace '${this.options.namespace}' does not exist. Run: kubectl create namespace ${this.options.namespace}`
       );
     }
+  }
+
+  /**
+   * Build routable URLs for a container (Istio Gateway based).
+   * This MUST be the single source of truth for agent/preview URLs.
+   * Pod-IP-based URLs are NOT reachable from the host on Windows/WSL2.
+   */
+  private buildRoutableUrls(containerName: string): { agentUrl: string; previewUrl: string } {
+    const hostname = `${containerName}.${this.options.previewDomain}`;
+    const isHttps = this.options.previewPort === 443 || this.options.previewPort === 8443;
+    const protocol = isHttps ? "https" : "http";
+    const portSuffix = (this.options.previewPort === 443 || this.options.previewPort === 80)
+      ? ""
+      : `:${this.options.previewPort}`;
+    const baseUrl = `${protocol}://${hostname}${portSuffix}`;
+    return {
+      agentUrl: `${baseUrl}/agent`,
+      previewUrl: baseUrl,
+    };
   }
 
   async spawnContainer(config: SpawnContainerConfig): Promise<ContainerInfo> {
@@ -711,6 +730,82 @@ export class KubectlOrchestrator implements ContainerOrchestrator {
     }
 
     return cleanedCount;
+  }
+
+  async copyFileToContainer(appId: number, localPath: string, containerPath: string): Promise<void> {
+    // Get the pod name from the deployment label selector
+    const podName = (
+      await this.kubectl(
+        "get", "pod",
+        "-l", `kova.app-id=${appId}`,
+        "-n", this.options.namespace,
+        "-o", "jsonpath={.items[0].metadata.name}"
+      )
+    ).trim();
+
+    if (!podName) {
+      throw new Error(`No running pod found for app ${appId}`);
+    }
+
+    console.log(
+      `[KubectlOrchestrator] Copying ${localPath} → ${podName}:${containerPath}`
+    );
+
+    // Use kubectl exec with stdin pipe instead of kubectl cp.
+    // kubectl cp is broken on Windows — it interprets the drive letter colon
+    // (C:) as a <pod>:<path> separator. This is a known, unfixed kubectl bug.
+    // https://github.com/kubernetes/kubectl/issues/1406
+    const kubectlArgs = [
+      ...(this.options.context ? ["--context", this.options.context] : []),
+      "exec", "-i",
+      podName,
+      "-n", this.options.namespace,
+      "--",
+      "sh", "-c", `cat > '${containerPath}'`,
+    ];
+
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn("kubectl", kubectlArgs, {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      let stderr = "";
+      child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+      child.on("error", (err) => reject(err));
+      child.on("close", (code) => {
+        if (code !== 0) {
+          reject(new Error(`kubectl exec failed (code ${code}): ${stderr}`));
+        } else {
+          resolve();
+        }
+      });
+
+      const fileStream = createReadStream(localPath);
+      fileStream.on("error", (err) => reject(err));
+      fileStream.pipe(child.stdin);
+    });
+
+    console.log(
+      `[KubectlOrchestrator] File copied successfully to ${podName}:${containerPath}`
+    );
+  }
+
+  async readFileFromContainer(appId: number, containerPath: string): Promise<string> {
+    const podName = (
+      await this.kubectl(
+        "get", "pod",
+        "-l", `kova.app-id=${appId}`,
+        "-n", this.options.namespace,
+        "-o", "jsonpath={.items[0].metadata.name}"
+      )
+    ).trim();
+
+    if (!podName) {
+      throw new Error(`No running pod found for app ${appId}`);
+    }
+
+    return this.kubectl("exec", podName, "-n", this.options.namespace, "--", "cat", containerPath);
   }
 
   async deletePersistentStorage(appId: number): Promise<void> {

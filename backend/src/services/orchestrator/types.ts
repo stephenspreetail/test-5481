@@ -98,6 +98,18 @@ export interface ContainerOrchestrator {
   cleanupIdleContainers(maxIdleMs: number): Promise<number>;
 
   /**
+   * Copy a file from the host filesystem into a running container
+   * Used for workflow file uploads (Excel, images) that need to be in the container workspace
+   */
+  copyFileToContainer(appId: number, localPath: string, containerPath: string): Promise<void>;
+
+  /**
+   * Read a file from a running container's filesystem
+   * Returns the file content as a string
+   */
+  readFileFromContainer(appId: number, containerPath: string): Promise<string>;
+
+  /**
    * Delete persistent storage for an app (PVC/volume)
    * Called when an app is permanently deleted
    */

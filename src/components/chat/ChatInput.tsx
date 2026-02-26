@@ -175,11 +175,12 @@ export function ChatInput({ chatId }: { chatId?: number }) {
           });
         }
 
-        // Auto-send the workflow prompt
+        // Auto-send the workflow prompt with explicit promptType
         streamMessage({
           prompt,
           chatId,
           redo: false,
+          promptType: workflowType,
         });
       }
     } catch (e) {
@@ -247,9 +248,10 @@ export function ChatInput({ chatId }: { chatId?: number }) {
       });
       console.log("[BuildApp] File content length:", content?.length);
 
-      // Send the workflow content as the next prompt
+      // Send the workflow content with a build instruction as the prompt
+      const buildPrompt = `Build a complete web application based on the following workflow plan document. Implement all the features, data models, and UI described in the plan.\n\n${content}`;
       await streamMessage({
-        prompt: content,
+        prompt: buildPrompt,
         chatId,
         redo: false,
       });

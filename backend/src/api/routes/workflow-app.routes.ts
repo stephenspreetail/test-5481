@@ -137,7 +137,17 @@ export async function workflowAppRoutes(app: FastifyInstance) {
 
         app.log.info(`Started container for app ${newApp.id}`);
 
-        // 5. Build the planning prompt and workflow doc filename
+        // 5. Copy workflow file into container workspace
+        const localFilePath = path.join(appDir, fileName);
+        await appContainerService.copyFileToContainer(
+          newApp.id,
+          localFilePath,
+          `/workspace/${fileName}`
+        );
+
+        app.log.info(`Copied workflow file to container for app ${newApp.id}`);
+
+        // 6. Build the planning prompt and workflow doc filename
         const workflowDocFilename = workflowType === "image-forge"
           ? `${workbookName}_app_plan.md`
           : `${workbookName}_workflow.md`;
@@ -151,11 +161,11 @@ export async function workflowAppRoutes(app: FastifyInstance) {
         };
       } catch (error) {
         app.log.error(error, "Failed to create workflow app");
-        reply.status(500).send({
+        reply.status(500);
+        return {
           error: "Failed to create workflow app",
           details: (error as Error).message,
-        });
-        return {} as CreateWorkflowAppResponse;
+        } as unknown as CreateWorkflowAppResponse;
       }
     }
   );

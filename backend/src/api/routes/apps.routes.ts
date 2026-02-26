@@ -612,6 +612,17 @@ export async function appsRoutes(app: FastifyInstance) {
         return;
       }
 
+      // Try container first (authoritative when running), then fall back to host.
+      // readFileFromContainer queries k8s by label directly — no in-memory map dependency.
+      const containerPath = `/workspace/${normalizedFilePath}`;
+      try {
+        const content = await appContainerService.readFileFromContainer(appId, containerPath);
+        return { content };
+      } catch {
+        // No running container or file not in container — fall through to host
+      }
+
+      // Fallback: host filesystem (original behavior)
       try {
         const content = readFileSync(fullPath, "utf-8");
         return { content };

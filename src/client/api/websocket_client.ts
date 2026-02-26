@@ -432,6 +432,7 @@ export class WebSocketClient {
     options?: {
       attachments?: Array<{ type: string; data: string; fileName?: string }>;
       redo?: boolean;
+      promptType?: string;
     },
   ): void {
     this.chatStreams.set(chatId, callbacks);
@@ -442,6 +443,7 @@ export class WebSocketClient {
       prompt,
       attachments: options?.attachments,
       redo: options?.redo,
+      promptType: options?.promptType,
     };
 
     this.send(request);

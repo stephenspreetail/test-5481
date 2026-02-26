@@ -51,6 +51,7 @@ export interface ChatStreamRequest {
     fileName?: string;
   }>;
   redo?: boolean;
+  promptType?: string;
 }
 
 export interface ChatStreamChunk {

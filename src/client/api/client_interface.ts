@@ -163,6 +163,7 @@ export interface IApiClient {
     options: {
       chatId: number;
       redo?: boolean;
+      promptType?: string;
       attachments?: FileAttachment[];
       onUpdate: (messages: Message[]) => void;
       onEnd: (response: ChatResponseEnd) => void;

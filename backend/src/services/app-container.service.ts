@@ -502,6 +502,28 @@ class AppContainerService {
   }
 
   /**
+   * Copy a file from the host filesystem into a running container's workspace
+   */
+  async copyFileToContainer(appId: number, localPath: string, containerPath: string): Promise<void> {
+    await orchestrator.copyFileToContainer(appId, localPath, containerPath);
+  }
+
+  /**
+   * Read a file from a running container's workspace
+   */
+  async readFileFromContainer(appId: number, containerPath: string): Promise<string> {
+    return orchestrator.readFileFromContainer(appId, containerPath);
+  }
+
+  /**
+   * Check if a container is currently running for the given app
+   */
+  isContainerRunning(appId: number): boolean {
+    const containerInfo = appContainers.get(appId);
+    return containerInfo?.state === "running" && containerInfo.containerId !== null;
+  }
+
+  /**
    * Stop an app container
    */
   async stopContainer(

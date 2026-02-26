@@ -60,12 +60,14 @@ export function useStreamChat({
       prompt,
       chatId,
       redo,
+      promptType,
       attachments,
       onSettled,
     }: {
       prompt: string;
       chatId: number;
       redo?: boolean;
+      promptType?: string;
       attachments?: FileAttachment[];
       onSettled?: () => void;
     }) => {
@@ -98,6 +100,7 @@ export function useStreamChat({
         getClient().streamMessage(prompt, {
           chatId,
           redo,
+          promptType,
           attachments,
           onUpdate: (streamingMessages: Message[]) => {
             if (!hasIncrementedStreamCount) {
