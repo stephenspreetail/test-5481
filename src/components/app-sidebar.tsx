@@ -1,21 +1,14 @@
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
-import { dropdownOpenAtom } from "@/atoms/uiAtoms";
-import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
+import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useAtom, useSetAtom } from "jotai";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { useSetAtom } from "jotai";
 import {
-  Binoculars,
-  BinocularsIcon,
   HelpCircle,
-  Home,
   LogOut,
-  SearchCode,
-  SearchX,
   Settings,
   Sparkles,
-  Store,
   User,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -45,8 +38,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppList } from "./AppList";
-import { HelpDialog } from "./HelpDialog"; // Import the new dialog
-import { HubList } from "./HubList";
+import { HelpDialog } from "./HelpDialog";
 import { SettingsList } from "./SettingsList";
 
 // Menu items.
@@ -57,16 +49,6 @@ const items = [
     icon: Sparkles,
   },
   {
-    title: "Discovery",
-    to: "/discovery",
-    icon: BinocularsIcon,
-  },
-  {
-    title: "Hub",
-    to: "/hub",
-    icon: Store,
-  },
-  {
     title: "Settings",
     to: "/settings",
     icon: Settings,
@@ -74,7 +56,7 @@ const items = [
 ];
 
 // Selected flyout panel
-type SelectedPanel = "Apps" | "Settings" | "Hub" | null;
+type SelectedPanel = "Apps" | "Settings" | null;
 
 // Determine initial panel based on route
 function getInitialPanel(pathname: string): SelectedPanel {
@@ -87,9 +69,6 @@ function getInitialPanel(pathname: string): SelectedPanel {
   }
   if (pathname.startsWith("/settings")) {
     return "Settings";
-  }
-  if (pathname.startsWith("/hub")) {
-    return "Hub";
   }
   return null;
 }
@@ -104,15 +83,12 @@ export function AppSidebar() {
     pathname.startsWith("/app-details") ||
     pathname === "/chat";
   const isSettingsRoute = pathname.startsWith("/settings");
-  const isHubRoute = pathname.startsWith("/hub");
 
   const [selectedPanel, setSelectedPanel] = useState<SelectedPanel>(() =>
     getInitialPanel(pathname)
   );
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
-  const [isDropdownOpen] = useAtom(dropdownOpenAtom);
   const { currentUser, logout } = useAuth();
-  const navigate = useNavigate();
   const hasExpandedOnMount = useRef(false);
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const setSelectedChatId = useSetAtom(selectedChatIdAtom);
@@ -150,8 +126,6 @@ export function AppSidebar() {
         setSelectedPanel("Apps");
       } else if (isSettingsRoute) {
         setSelectedPanel("Settings");
-      } else if (isHubRoute) {
-        setSelectedPanel("Hub");
       } else {
         setSelectedPanel("Apps");
       }
@@ -188,7 +162,6 @@ export function AppSidebar() {
           <div className="w-[240px] overflow-hidden">
             <AppList show={selectedPanel === "Apps"} />
             <SettingsList show={selectedPanel === "Settings"} />
-            <HubList show={selectedPanel === "Hub"} />
           </div>
         </div>
       </SidebarContent>
@@ -269,7 +242,7 @@ function AppIcons({
               (item.to !== "/" && pathname.startsWith(item.to));
 
             // Items with flyout panels
-            const hasFlyout = item.title === "Apps" || item.title === "Settings" || item.title === "Hub";
+            const hasFlyout = item.title === "Apps" || item.title === "Settings";
 
             return (
               <SidebarMenuItem key={item.title}>

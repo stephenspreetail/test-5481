@@ -344,6 +344,12 @@ export class ApiClient {
     return { success: true };
   }
 
+  async restartDevServer(appId: number): Promise<{ ok: boolean }> {
+    return this.request(`/api/apps/${appId}/dev-server/restart`, {
+      method: "POST",
+    });
+  }
+
   async getAppStatus(appId: number): Promise<{ status: string; url?: string }> {
     return this.request(`/api/apps/${appId}/status`);
   }

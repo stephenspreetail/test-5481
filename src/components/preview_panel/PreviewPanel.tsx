@@ -61,10 +61,6 @@ export function PreviewPanel() {
   // Use refs for callbacks to avoid triggering cleanup when functions recreate
   const runAppRef = useRef(runApp);
   const stopAppRef = useRef(stopApp);
-  // Track if component is mounted to handle React StrictMode double-render
-  const isMountedRef = useRef(true);
-  // Track pending stop timeout for cleanup debouncing
-  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     runAppRef.current = runApp;
@@ -73,36 +69,11 @@ export function PreviewPanel() {
     stopAppRef.current = stopApp;
   }, [stopApp]);
 
-  // Track mounted state
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
   const messageCount = appOutput.length;
   const latestMessage =
     messageCount > 0 ? appOutput[messageCount - 1]?.message : undefined;
 
   useEffect(() => {
-    // DEBUG: Verify this is the fixed version with StrictMode handling
-    console.log(
-      "[PreviewPanel] useEffect running - BUILD-20260104-FIX-v3 - selectedAppId:",
-      selectedAppId,
-      "prevRef:",
-      runningAppIdRef.current,
-    );
-
-    // Cancel any pending stop from a previous cleanup (handles StrictMode double-render)
-    if (stopTimeoutRef.current) {
-      console.log(
-        "[PreviewPanel] Cancelling pending stop (StrictMode remount detected)",
-      );
-      clearTimeout(stopTimeoutRef.current);
-      stopTimeoutRef.current = null;
-    }
-
     const previousAppId = runningAppIdRef.current;
 
     // Check if the selected app ID has changed
@@ -124,39 +95,18 @@ export function PreviewPanel() {
     }
 
     // Cleanup function: Only runs on unmount now since selectedAppId is the only dep
+    // NOTE: We intentionally do NOT stop the container on unmount.
+    // The container has an idle timeout that handles cleanup.
+    // Stopping on unmount caused a race condition where navigating
+    // between pages killed the container while a chat stream was active.
     return () => {
       console.log(
-        "[PreviewPanel] CLEANUP running - BUILD-20260104-FIX-v3 - currentRef:",
-        runningAppIdRef.current,
-        "selectedAppId at cleanup:",
+        "[PreviewPanel] CLEANUP running - selectedAppId:",
         selectedAppId,
+        "currentRef:",
+        runningAppIdRef.current,
+        "(container left running for idle timeout)",
       );
-      const currentRunningApp = runningAppIdRef.current;
-      if (currentRunningApp !== null) {
-        // Delay the stop to handle React StrictMode's unmount/remount cycle
-        // If component remounts quickly (StrictMode), the stop will be cancelled
-        console.debug(
-          "Scheduling app stop (will cancel if StrictMode remount):",
-          currentRunningApp,
-        );
-        stopTimeoutRef.current = setTimeout(() => {
-          // Only stop if component is still unmounted after the delay
-          if (!isMountedRef.current) {
-            console.debug(
-              "Component truly unmounted, stopping app",
-              currentRunningApp,
-            );
-            stopAppRef.current(currentRunningApp);
-          } else {
-            console.debug(
-              "Component remounted, skipping stop for app",
-              currentRunningApp,
-            );
-          }
-          stopTimeoutRef.current = null;
-        }, 100); // 100ms delay to detect StrictMode remount
-        // Don't clear the ref here - let the timeout or remount handle it
-      }
     };
     // Only depend on selectedAppId - function refs are used to avoid cleanup on callback changes
   }, [selectedAppId]);

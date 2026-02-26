@@ -121,6 +121,7 @@ export interface IApiClient {
     onOutput: (output: AppOutput) => void,
     removeNodeModules?: boolean,
   ): Promise<{ success: boolean }>;
+  restartDevServer(appId: number): Promise<{ ok: boolean }>;
   respondToAppInput(params: RespondToAppInputParams): Promise<void>;
   clearSessionData(appId: number): Promise<void>;
 

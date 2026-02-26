@@ -11,6 +11,7 @@ import {
   Eye,
   Globe,
   MoreVertical,
+  RefreshCw,
   Shield,
   Trash2,
   Wrench,
@@ -84,11 +85,31 @@ export const ActionHeader = () => {
     restartApp({ removeNodeModules: true });
   }, [restartApp]);
 
+  const { mutate: restartDevServer, isPending: isRestartingDevServer } =
+    useMutation({
+      mutationFn: async () => {
+        if (selectedAppId === null) throw new Error("No app selected");
+        return getClient().restartDevServer(selectedAppId);
+      },
+      onSuccess: async () => {
+        await refreshAppIframe();
+        showSuccess("Preview server restarted");
+      },
+      onError: (error) => {
+        showError(`Failed to restart preview: ${error}`);
+      },
+    });
+
+  const onRestartDevServer = useCallback(() => {
+    restartDevServer();
+  }, [restartDevServer]);
+
   const useClearSessionData = () => {
     return useMutation({
       mutationFn: () => {
+        if (selectedAppId === null) throw new Error("No app selected");
         const client = getClient();
-        return client.clearSessionData();
+        return client.clearSessionData(selectedAppId);
       },
       onSuccess: async () => {
         await refreshAppIframe();
@@ -285,6 +306,21 @@ export const ActionHeader = () => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuItem
+                onClick={onRestartDevServer}
+                disabled={isRestartingDevServer}
+              >
+                <RefreshCw
+                  size={16}
+                  className={isRestartingDevServer ? "animate-spin" : ""}
+                />
+                <div className="flex flex-col">
+                  <span>Restart Preview</span>
+                  <span className="text-xs text-muted-foreground">
+                    Restarts Vite to clear stale modules
+                  </span>
+                </div>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onCleanRestart}>
                 <Cog size={16} />
                 <div className="flex flex-col">
