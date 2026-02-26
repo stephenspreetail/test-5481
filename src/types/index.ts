@@ -4,6 +4,18 @@ import { z } from "zod";
 export type { ProblemReport, Problem };
 export type { ContentBlock };
 
+/**
+ * Authenticated user (from /api/auth/me). Role is set by Entra SSO when available.
+ * Use this type anywhere we reference the current user shape to keep a single source of truth.
+ */
+export type UserRole = "Developer" | "Business" | "Admin";
+
+export interface User {
+  id: number;
+  email: string;
+  role?: UserRole;
+}
+
 export interface AppOutput {
   type: "stdout" | "stderr" | "info" | "client-error" | "input-requested";
   message: string;

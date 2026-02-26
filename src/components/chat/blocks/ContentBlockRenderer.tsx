@@ -1,5 +1,8 @@
+import { currentUserAtom } from "@/atoms/authAtoms";
 import type { ContentBlock } from "@/types/content-blocks";
-import { isToolActivityBlock } from "@/types/content-blocks";
+import { useAtomValue } from "jotai";
+import { groupBlocks, type RenderGroup } from "./content-block-groups";
+import { PhaseBasedDisplay } from "./business/PhaseBasedDisplay";
 import { TextBlockView } from "./TextBlockView";
 import { ToolGroupView } from "./ToolGroupView";
 
@@ -8,60 +11,34 @@ interface ContentBlockRendererProps {
   isStreaming: boolean;
 }
 
-type RenderGroup =
-  | { type: "text"; text: string }
-  | { type: "tool_group"; blocks: ContentBlock[] };
-
-/**
- * Groups adjacent content blocks for rendering:
- * - Consecutive tool activity blocks form a tool group
- * - Text blocks stand alone
- * - Text blocks break tool groups
- */
-function groupBlocks(blocks: ContentBlock[]): RenderGroup[] {
-  const groups: RenderGroup[] = [];
-  let currentToolGroup: ContentBlock[] = [];
-
-  const flushToolGroup = () => {
-    if (currentToolGroup.length > 0) {
-      groups.push({ type: "tool_group", blocks: [...currentToolGroup] });
-      currentToolGroup = [];
-    }
-  };
-
-  for (const block of blocks) {
-    if (block.type === "text") {
-      flushToolGroup();
-      // Merge adjacent text groups
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup && lastGroup.type === "text") {
-        lastGroup.text += block.text;
-      } else {
-        groups.push({ type: "text", text: block.text });
-      }
-    } else if (isToolActivityBlock(block)) {
-      currentToolGroup.push(block);
-    }
-    // thinking blocks are ignored for now
-  }
-
-  flushToolGroup();
-  return groups;
-}
-
 export function ContentBlockRenderer({
   contentBlocks,
   isStreaming,
 }: ContentBlockRendererProps) {
+  const currentUser = useAtomValue(currentUserAtom);
+  const role = currentUser?.role;
+  const isBusinessView = role === "Business";
+
+  if (isBusinessView) {
+    return (
+      <PhaseBasedDisplay
+        contentBlocks={contentBlocks}
+        isStreaming={isStreaming}
+      />
+    );
+  }
+
   const groups = groupBlocks(contentBlocks);
 
   // Track which tool group is the last one (for streaming indicator)
   let toolGroupIndex = 0;
-  const totalToolGroups = groups.filter((g) => g.type === "tool_group").length;
+  const totalToolGroups = groups.filter(
+    (g: RenderGroup) => g.type === "tool_group",
+  ).length;
 
   return (
     <>
-      {groups.map((group, i) => {
+      {groups.map((group: RenderGroup, i: number) => {
         if (group.type === "text") {
           return <TextBlockView key={i} text={group.text} />;
         }

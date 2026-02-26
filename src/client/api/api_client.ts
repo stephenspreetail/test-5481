@@ -17,6 +17,7 @@ import type {
   LanguageModelProvider,
   ListAppsResponse,
   Message,
+  User,
   Version,
 } from "@/types";
 import type { IApiClient } from "./client_interface";
@@ -190,7 +191,7 @@ export class ApiClient {
     this.wsClient?.disconnect();
   }
 
-  async getCurrentUser(): Promise<{ id: number; email: string }> {
+  async getCurrentUser(): Promise<User> {
     return this.request("/api/auth/me", { method: "GET" });
   }
 

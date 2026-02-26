@@ -61,6 +61,7 @@ import type {
   SystemDebugInfo,
   TokenCountParams,
   TokenCountResult,
+  User,
   UserBudgetInfo,
   VercelDeployment,
   VercelProject,
@@ -88,7 +89,7 @@ export interface IApiClient {
   login(email: string, password: string): Promise<{ accessToken: string; refreshToken: string }>;
   register(email: string, password: string): Promise<{ accessToken: string; refreshToken: string }>;
   logout(): Promise<void>;
-  getCurrentUser(): Promise<{ id: number; email: string }>;
+  getCurrentUser(): Promise<User>;
 
   // =====================
   // Apps
