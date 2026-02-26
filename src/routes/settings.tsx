@@ -1,9 +1,0 @@
-import { createRoute } from "@tanstack/react-router";
-import SettingsPage from "../pages/settings";
-import { rootRoute } from "./root";
-
-export const settingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/settings",
-  component: SettingsPage,
-});

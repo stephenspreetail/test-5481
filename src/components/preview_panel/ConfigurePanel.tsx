@@ -23,7 +23,6 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useState } from "react";
-import { NeonConfigure } from "./NeonConfigure";
 
 const EnvironmentVariablesTitle = () => (
   <div className="flex items-center gap-2">
@@ -398,11 +397,6 @@ export const ConfigurePanel = () => {
         </CardContent>
       </Card>
 
-      {/* Neon Database Configuration */}
-      {/* Neon Connector */}
-      <div className="grid grid-cols-1 gap-6">
-        <NeonConfigure />
-      </div>
     </div>
   );
 };

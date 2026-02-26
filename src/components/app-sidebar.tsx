@@ -7,7 +7,6 @@ import { useSetAtom } from "jotai";
 import {
   HelpCircle,
   LogOut,
-  Settings,
   Sparkles,
   User,
 } from "lucide-react";
@@ -39,7 +38,6 @@ import {
 } from "@/components/ui/sidebar";
 import { AppList } from "./AppList";
 import { HelpDialog } from "./HelpDialog";
-import { SettingsList } from "./SettingsList";
 
 // Menu items.
 const items = [
@@ -48,30 +46,7 @@ const items = [
     to: "/",
     icon: Sparkles,
   },
-  {
-    title: "Settings",
-    to: "/settings",
-    icon: Settings,
-  },
 ];
-
-// Selected flyout panel
-type SelectedPanel = "Apps" | "Settings" | null;
-
-// Determine initial panel based on route
-function getInitialPanel(pathname: string): SelectedPanel {
-  if (
-    pathname === "/" ||
-    pathname.startsWith("/app-details") ||
-    pathname === "/chat"
-  ) {
-    return "Apps";
-  }
-  if (pathname.startsWith("/settings")) {
-    return "Settings";
-  }
-  return null;
-}
 
 export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar();
@@ -82,11 +57,8 @@ export function AppSidebar() {
     pathname === "/" ||
     pathname.startsWith("/app-details") ||
     pathname === "/chat";
-  const isSettingsRoute = pathname.startsWith("/settings");
 
-  const [selectedPanel, setSelectedPanel] = useState<SelectedPanel>(() =>
-    getInitialPanel(pathname)
-  );
+  const [showAppList, setShowAppList] = useState(() => isAppRoute);
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const { currentUser, logout } = useAuth();
   const hasExpandedOnMount = useRef(false);
@@ -101,47 +73,29 @@ export function AppSidebar() {
 
   // Expand sidebar on initial mount if there's a panel to show
   useEffect(() => {
-    if (!hasExpandedOnMount.current && selectedPanel && state === "collapsed") {
+    if (!hasExpandedOnMount.current && showAppList && state === "collapsed") {
       toggleSidebar();
       hasExpandedOnMount.current = true;
     }
-  }, [selectedPanel, state, toggleSidebar]);
+  }, [showAppList, state, toggleSidebar]);
 
-  // Handle clicking on a menu item - switch to that panel
-  const handleMenuClick = (panel: SelectedPanel) => {
-    setSelectedPanel(panel);
-    if (state === "collapsed") {
-      toggleSidebar();
-    }
-  };
-
-  // Handle toggle button - update panel state (SidebarTrigger handles the actual toggle)
+  // Handle toggle button
   const handleToggleSidebar = () => {
     if (state === "expanded") {
-      // Closing - clear the panel
-      setSelectedPanel(null);
+      setShowAppList(false);
     } else {
-      // Opening - default to the appropriate panel based on current route
-      if (isAppRoute) {
-        setSelectedPanel("Apps");
-      } else if (isSettingsRoute) {
-        setSelectedPanel("Settings");
-      } else {
-        setSelectedPanel("Apps");
-      }
+      setShowAppList(true);
     }
   };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent className="overflow-hidden flex flex-col pt-2">
-        {/* Top row: Toggle + Logo - matches the layout of menu icons + flyout panel below */}
+        {/* Top row: Toggle + Logo */}
         <div className="flex items-center shrink-0">
-          {/* Toggle aligned with menu icons column */}
           <div className="w-14 flex justify-center shrink-0 pl-3">
             <SidebarTrigger onClick={handleToggleSidebar} />
           </div>
-          {/* Logo aligned with flyout panel */}
           <Link to="/" className="flex items-center gap-2 pl-6 hover:opacity-80 transition-opacity">
             <img src={kovaLogo} alt="Kova" className="h-8 w-8" />
             <img src={vitaliLogo} alt="Vitali" className="h-16" />
@@ -152,16 +106,52 @@ export function AppSidebar() {
         <div className="flex flex-1 min-h-0">
           {/* Left Column: Menu items */}
           <div className="shrink-0">
-            <AppIcons
-              selectedPanel={selectedPanel}
-              onPanelClick={handleMenuClick}
-              onClearAppSelection={handleClearAppSelection}
-            />
+            <SidebarGroup className="pr-0">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.map((item) => {
+                    const isActive =
+                      item.to === "/" &&
+                      (pathname === "/" ||
+                        pathname.startsWith("/app-details") ||
+                        pathname === "/chat");
+
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          size="sm"
+                          className="font-medium w-14"
+                        >
+                          <Link
+                            to={item.to}
+                            className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
+                              isActive ? "bg-sidebar-accent" : ""
+                            }`}
+                            onClick={() => {
+                              setShowAppList(true);
+                              if (state === "collapsed") {
+                                toggleSidebar();
+                              }
+                              handleClearAppSelection();
+                            }}
+                          >
+                            <div className="flex flex-col items-center gap-1">
+                              <item.icon className="h-5 w-5" />
+                              <span className="text-xs">{item.title}</span>
+                            </div>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </div>
-          {/* Right Column: App List Section */}
+          {/* Right Column: App List */}
           <div className="w-[240px] overflow-hidden">
-            <AppList show={selectedPanel === "Apps"} />
-            <SettingsList show={selectedPanel === "Settings"} />
+            <AppList show={showAppList} />
           </div>
         </div>
       </SidebarContent>
@@ -213,73 +203,5 @@ export function AppSidebar() {
 
       <SidebarRail />
     </Sidebar>
-  );
-}
-
-function AppIcons({
-  selectedPanel,
-  onPanelClick,
-  onClearAppSelection,
-}: {
-  selectedPanel: SelectedPanel;
-  onPanelClick: (panel: SelectedPanel) => void;
-  onClearAppSelection: () => void;
-}) {
-  const routerState = useRouterState();
-  const pathname = routerState.location.pathname;
-
-  return (
-    <SidebarGroup className="pr-0">
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map((item) => {
-            // For Apps, also highlight when on /app-details or /chat
-            const isActive =
-              (item.to === "/" &&
-                (pathname === "/" ||
-                  pathname.startsWith("/app-details") ||
-                  pathname === "/chat")) ||
-              (item.to !== "/" && pathname.startsWith(item.to));
-
-            // Items with flyout panels
-            const hasFlyout = item.title === "Apps" || item.title === "Settings";
-
-            return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton
-                  asChild
-                  size="sm"
-                  className="font-medium w-14"
-                >
-                  <Link
-                    to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
-                      isActive ? "bg-sidebar-accent" : ""
-                    }`}
-                    onClick={() => {
-                      // Open flyout panel for items that have one, close for others
-                      if (hasFlyout) {
-                        onPanelClick(item.title as SelectedPanel);
-                      } else {
-                        onPanelClick(null);
-                      }
-                      // Clear app selection when clicking Apps
-                      if (item.title === "Apps") {
-                        onClearAppSelection();
-                      }
-                    }}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      <item.icon className="h-5 w-5" />
-                      <span className="text-xs">{item.title}</span>
-                    </div>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
   );
 }

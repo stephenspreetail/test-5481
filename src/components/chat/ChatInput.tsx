@@ -44,7 +44,6 @@ import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useRunApp } from "@/hooks/useRunApp";
 import { usePostHog } from "posthog-js/react";
-import { AutoApproveSwitch } from "../AutoApproveSwitch";
 import {
   Tooltip,
   TooltipContent,
@@ -855,9 +854,6 @@ function ChatInputActions({
             )}
             Reject
           </Button>
-          <div className="flex items-center space-x-1 ml-auto">
-            <AutoApproveSwitch />
-          </div>
         </div>
       </div>
 

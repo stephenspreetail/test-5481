@@ -1,6 +1,5 @@
 import { appBasePathAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
 import { getClient } from "@/client/api/client_factory";
-import { GitHubConnector } from "@/components/GitHubConnector";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -379,16 +378,6 @@ export default function AppDetailsPage() {
           Open in Chat
           <MessageCircle className="h-4 w-4" />
         </Button>
-      </div>
-
-      {/* Integrations Section */}
-      <div className="w-full max-w-2xl mx-auto mt-4 p-6 bg-card rounded-2xl shadow-sm text-gray-900 dark:text-gray-100">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Integrations
-        </h3>
-        <div className="space-y-4">
-          <GitHubConnector appId={appId} folderName={selectedApp.path} />
-        </div>
       </div>
 
       {/* Chats Section */}

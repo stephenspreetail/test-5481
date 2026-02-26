@@ -2,7 +2,6 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { CreateAppDialog } from "@/components/CreateAppDialog";
-import { NeonConnector } from "@/components/NeonConnector";
 import { TemplateCard } from "@/components/TemplateCard";
 import {
   WorkflowTypeCard,
@@ -192,7 +191,6 @@ const HubPage: React.FC = () => {
           </section>
         )}
 
-        <BackendSection />
       </div>
 
       <CreateAppDialog
@@ -204,21 +202,5 @@ const HubPage: React.FC = () => {
   );
 };
 
-function BackendSection() {
-  return (
-    <section id="backend-services" className="mb-12">
-      <h2 className="text-2xl font-bold text-black dark:text-white mb-2">
-        Backend Services
-      </h2>
-      <p className="text-md text-gray-600 dark:text-gray-400 mb-6">
-        Connect to backend services for your projects.
-      </p>
-
-      <div className="grid grid-cols-1 gap-6">
-        <NeonConnector />
-      </div>
-    </section>
-  );
-}
 
 export default HubPage;

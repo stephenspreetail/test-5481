@@ -15,7 +15,6 @@ import { ConfigurePanel } from "./ConfigurePanel";
 import { Console } from "./Console";
 import { PreviewIframe } from "./PreviewIframe";
 import { Problems } from "./Problems";
-import { PublishPanel } from "./PublishPanel";
 import { SecurityPanel } from "./SecurityPanel";
 
 interface ConsoleHeaderProps {
@@ -122,8 +121,6 @@ export function PreviewPanel() {
                 <CodeView loading={loading} app={app} />
               ) : previewMode === "configure" ? (
                 <ConfigurePanel />
-              ) : previewMode === "publish" ? (
-                <PublishPanel />
               ) : previewMode === "security" ? (
                 <SecurityPanel />
               ) : (

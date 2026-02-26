@@ -15,7 +15,6 @@ import { Folder, Info, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { UnconnectedGitHubConnector } from "@/components/GitHubConnector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,9 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useLoadApps } from "@/hooks/useLoadApps";
-import { useSettings } from "@/hooks/useSettings";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import type { GithubRepository } from "@/types";
 import { Label } from "@radix-ui/react-label";
 import { useNavigate } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
@@ -57,12 +54,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
   const { refreshApps } = useLoadApps();
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   // GitHub import state
-  const [repos, setRepos] = useState<GithubRepository[]>([]);
-  const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [importing, setImporting] = useState(false);
-  const { settings, refreshSettings } = useSettings();
-  const isAuthenticated = !!settings?.githubAccessToken;
 
   const [githubAppName, setGithubAppName] = useState("");
   const [githubNameExists, setGithubNameExists] = useState(false);
@@ -71,24 +64,9 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     if (isOpen) {
       setGithubAppName("");
       setGithubNameExists(false);
-      // Fetch GitHub repos if authenticated
-      if (isAuthenticated) {
-        fetchRepos();
-      }
     }
-  }, [isOpen, isAuthenticated]);
+  }, [isOpen]);
 
-  const fetchRepos = async () => {
-    setLoading(true);
-    try {
-      const fetchedRepos = await getClient().listGithubRepos();
-      setRepos(fetchedRepos);
-    } catch (err: unknown) {
-      showError("Failed to fetch repositories.: " + (err as any).toString());
-    } finally {
-      setLoading(false);
-    }
-  };
   const handleUrlBlur = async () => {
     if (!url.trim()) return;
     const repoName = extractRepoNameFromUrl(url);
@@ -119,40 +97,6 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       const appName = githubAppName.trim() || repoName;
       const result = await getClient().cloneRepoFromUrl({
         url,
-        installCommand: installCommand.trim() || undefined,
-        startCommand: startCommand.trim() || undefined,
-        appName,
-      });
-      if ("error" in result) {
-        showError(result.error);
-        setImporting(false);
-        return;
-      }
-      setSelectedAppId(result.app.id);
-      showSuccess(`Successfully imported ${result.app.name}`);
-      const chatId = await getClient().createChat(result.app.id);
-      navigate({ to: "/chat", search: { id: chatId } });
-      if (!result.hasAiRules) {
-        streamMessage({
-          prompt: AI_RULES_PROMPT,
-          chatId,
-        });
-      }
-      onClose();
-    } catch (error: unknown) {
-      showError("Failed to import repository: " + (error as any).toString());
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const handleSelectRepo = async (repo: GithubRepository) => {
-    setImporting(true);
-
-    try {
-      const appName = githubAppName.trim() || repo.name;
-      const result = await getClient().cloneRepoFromUrl({
-        url: `https://github.com/${repo.full_name}.git`,
         installCommand: installCommand.trim() || undefined,
         startCommand: startCommand.trim() || undefined,
         appName,
@@ -317,19 +261,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
             </AlertDescription>
           </Alert>
           <Tabs defaultValue="local-folder" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsList className="grid w-full grid-cols-2 h-auto">
               <TabsTrigger
                 value="local-folder"
                 className="text-xs sm:text-sm px-2 py-2"
               >
                 Local Folder
-              </TabsTrigger>
-              <TabsTrigger
-                value="github-repos"
-                className="text-xs sm:text-sm px-2 py-2"
-              >
-                <span className="hidden sm:inline">Your GitHub Repos</span>
-                <span className="sm:hidden">GitHub Repos</span>
               </TabsTrigger>
               <TabsTrigger
                 value="github-url"
@@ -501,133 +438,6 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   {importAppMutation.isPending ? <>Importing...</> : "Import"}
                 </Button>
               </DialogFooter>
-            </TabsContent>
-            <TabsContent value="github-repos" className="space-y-4">
-              {!isAuthenticated ? (
-                <UnconnectedGitHubConnector
-                  appId={null}
-                  folderName=""
-                  settings={settings}
-                  refreshSettings={refreshSettings}
-                  handleRepoSetupComplete={() => undefined}
-                  expanded={false}
-                />
-              ) : (
-                <>
-                  {loading && (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="animate-spin h-6 w-6" />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label className="text-xs sm:text-sm ml-2 mb-2">
-                      App name (optional)
-                    </Label>
-                    <Input
-                      value={githubAppName}
-                      onChange={handleGithubAppNameChange}
-                      placeholder="Leave empty to use repository name"
-                      className="w-full pr-8 text-sm"
-                      disabled={importing}
-                    />
-                    {isCheckingGithubName && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      </div>
-                    )}
-                    {githubNameExists && (
-                      <p className="text-xs sm:text-sm text-yellow-500">
-                        An app with this name already exists. Please choose a
-                        different name.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col space-y-2 max-h-64 overflow-y-auto overflow-x-hidden">
-                    {!loading && repos.length === 0 && (
-                      <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
-                        No repositories found
-                      </p>
-                    )}
-                    {repos.map((repo) => (
-                      <div
-                        key={repo.full_name}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors min-w-0"
-                      >
-                        <div className="min-w-0 flex-1 overflow-hidden mr-2">
-                          <p className="font-semibold truncate text-sm">
-                            {repo.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {repo.full_name}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSelectRepo(repo)}
-                          disabled={importing}
-                          className="flex-shrink-0 text-xs"
-                        >
-                          {importing ? (
-                            <Loader2 className="animate-spin h-4 w-4" />
-                          ) : (
-                            "Import"
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {repos.length > 0 && (
-                    <>
-                      <Accordion type="single" collapsible>
-                        <AccordionItem value="advanced-options">
-                          <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
-                            Advanced options
-                          </AccordionTrigger>
-                          <AccordionContent className="space-y-4">
-                            <div className="grid gap-2">
-                              <Label className="text-xs sm:text-sm">
-                                Install command
-                              </Label>
-                              <Input
-                                value={installCommand}
-                                onChange={(e) =>
-                                  setInstallCommand(e.target.value)
-                                }
-                                placeholder="pnpm install"
-                                className="text-sm"
-                                disabled={importing}
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label className="text-xs sm:text-sm">
-                                Start command
-                              </Label>
-                              <Input
-                                value={startCommand}
-                                onChange={(e) =>
-                                  setStartCommand(e.target.value)
-                                }
-                                placeholder="pnpm dev"
-                                className="text-sm"
-                                disabled={importing}
-                              />
-                            </div>
-                            {!commandsValid && (
-                              <p className="text-xs sm:text-sm text-red-500">
-                                Both commands are required when customizing.
-                              </p>
-                            )}
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    </>
-                  )}
-                </>
-              )}
             </TabsContent>
             <TabsContent value="github-url" className="space-y-4">
               <div className="space-y-2">
