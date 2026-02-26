@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,9 +14,17 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [entraEnabled, setEntraEnabled] = useState(false);
 
   const setAuthState = useSetAtom(authStateAtom);
   const setCurrentUser = useSetAtom(currentUserAtom);
+
+  useEffect(() => {
+    getClient()
+      .getAuthConfig()
+      .then((cfg) => setEntraEnabled(cfg.entraEnabled))
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +49,6 @@ export default function LoginPage() {
         await client.register(email, password);
       }
 
-      // Fetch user info and update auth state
       const user = await client.getCurrentUser();
       setCurrentUser(user);
       setAuthState("authenticated");
@@ -58,7 +65,6 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="bg-card rounded-lg shadow-lg p-8">
-          {/* Logo/Branding */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Kova
@@ -68,7 +74,28 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Form */}
+          {entraEnabled && (
+            <>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  window.location.href = "/api/auth/entra/login";
+                }}
+              >
+                Sign in with Microsoft
+              </Button>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+            </>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -131,7 +158,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Toggle login/register */}
           <div className="mt-6 text-center text-sm">
             <span className="text-gray-600 dark:text-gray-400">
               {isLogin ? "Don't have an account? " : "Already have an account? "}

@@ -64,6 +64,10 @@ variables:
     --set app.deployment.env.KOVA_PLUGIN_REPO=${KOVA_PLUGIN_REPO}
     --set app.deployment.env.KOVA_PLUGIN_NAME=${KOVA_PLUGIN_NAME}
     --set app.deployment.env.KOVA_PLUGIN_BRANCH=${KOVA_PLUGIN_BRANCH}
+    --set app.deployment.env.ENTRA_TENANT_ID=${ENTRA_TENANT_ID}
+    --set app.deployment.env.ENTRA_CLIENT_ID=${ENTRA_CLIENT_ID}
+    --set app.deployment.env.ENTRA_CLIENT_SECRET=${ENTRA_CLIENT_SECRET}
+    --set app.deployment.env.ENTRA_REDIRECT_URI=${ENTRA_REDIRECT_URI}
     --set app.gateway.tkDevOnly=true
     --set migration.dbHost=${KOVA_DB_HOST}
     --set migration.dbName=${KOVA_DB_NAME}

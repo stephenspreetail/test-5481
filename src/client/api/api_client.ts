@@ -20,12 +20,7 @@ import type {
   Version,
 } from "@/types";
 import type { IApiClient } from "./client_interface";
-import type {
-  ApiClientConfig,
-  AuthResponse,
-  LoginRequest,
-  RegisterRequest,
-} from "./types";
+import type { ApiClientConfig, AuthResponse } from "./types";
 import {
   type AppOutputCallbacks,
   type ChatStreamCallbacks,
@@ -160,6 +155,10 @@ export class ApiClient {
   // =====================
   // Authentication
   // =====================
+
+  async getAuthConfig(): Promise<{ entraEnabled: boolean }> {
+    return this.request("/api/auth/config");
+  }
 
   async login(email: string, password: string): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>("/api/auth/login", {

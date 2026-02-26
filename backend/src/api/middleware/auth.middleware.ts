@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 export interface JWTPayload {
   userId: number;
   email: string;
+  role: string;
 }
 
 // Augment @fastify/jwt module to use our JWTPayload type

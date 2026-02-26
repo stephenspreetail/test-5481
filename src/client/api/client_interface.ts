@@ -84,6 +84,7 @@ export interface IApiClient {
   // =====================
   // Authentication
   // =====================
+  getAuthConfig(): Promise<{ entraEnabled: boolean }>;
   login(email: string, password: string): Promise<{ accessToken: string; refreshToken: string }>;
   register(email: string, password: string): Promise<{ accessToken: string; refreshToken: string }>;
   logout(): Promise<void>;

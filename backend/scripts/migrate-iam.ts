@@ -45,7 +45,7 @@ const databaseUrl = `postgresql://${DB_USER}:${encodedToken}@${DB_HOST}:${DB_POR
 
 console.log("Running drizzle-kit push...");
 
-const proc = Bun.spawn(["bun", "run", "drizzle-kit", "push"], {
+const proc = Bun.spawn(["bun", "run", "drizzle-kit", "push", "--force"], {
   cwd: `${import.meta.dir}/..`,
   env: { ...process.env, DATABASE_URL: databaseUrl },
   stdout: "inherit",
@@ -59,3 +59,17 @@ if (exitCode !== 0) {
 }
 
 console.log("Migration completed successfully");
+
+// Grant privileges on all tables to the app service user (kova_svc).
+// drizzle-kit push runs as kova_admin, so newly created tables are not
+// automatically accessible to kova_svc. This runs after every push to
+// ensure any new tables are covered.
+const APP_USER = "kova_svc";
+console.log(`Granting privileges to ${APP_USER}...`);
+const { Client } = await import("pg");
+const client = new Client({ connectionString: databaseUrl });
+await client.connect();
+await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${APP_USER}`);
+await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_USER}`);
+await client.end();
+console.log(`Grants applied successfully`);

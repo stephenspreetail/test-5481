@@ -73,9 +73,10 @@ kill %1 2>/dev/null
 bun run dev:full                  # Backend :3002 + Frontend :5174
 ```
 
-Login at `http://localhost:5174/login` with:
-- **Email**: `dev@kova.local`
-- **Password**: `devpassword123`
+Login at `http://localhost:5174/login`. Two auth methods are supported:
+
+- **Email/password** — use `dev@kova.local` / `devpassword123` after running the seed script above.
+- **Entra ID SSO** — shown as "Sign in with Microsoft" when all four `ENTRA_*` vars are set in `.env` (see `.env.example`). No seed script needed.
 
 Teardown: `bun run scripts/cluster-down.ts` (add `--volumes` for full cleanup).
 

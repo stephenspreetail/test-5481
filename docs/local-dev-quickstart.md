@@ -144,13 +144,15 @@ You can stop the backend in the first terminal after seeding (Ctrl+C). It will s
 
 Dev credentials: `dev@kova.local` / `devpassword123`
 
+> If you have Entra ID configured (all four `ENTRA_*` vars set in `.env`), you can skip this step and sign in with Microsoft instead.
+
 ### 9. Start developing
 
 ```bash
 bun run dev:full
 ```
 
-Open http://localhost:5174/login and sign in with the dev credentials.
+Open http://localhost:5174/login and sign in with email/password or your Microsoft (Entra ID) account.
 
 ### 10. Validate with sandbox tests
 
@@ -170,7 +172,7 @@ Expected smoke test output:
 [PASS] K8s namespace kova-apps exists
 [PASS] Cluster identity verified: kova.dev/cluster-name=k3d-kova-dev
 [PASS] Backend is ready
-[PASS] Authenticated as dev@kova.local (id=1)
+[PASS] Backend is ready
 [PASS] Test passed: 00-smoke
 Results: 1 passed, 0 failed
 ```

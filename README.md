@@ -61,7 +61,10 @@ bun run db:push
 bun run dev:full        # Full platform (backend + frontend)
 ```
 
-Open http://localhost:5174 for the web UI.
+Open http://localhost:5174 for the web UI. Two auth methods are supported:
+
+- **Email/password** — works out of the box. Register via the sign-up form or set a password for an existing account with `bun run --env-file=.env backend/scripts/set-dev-password.ts <email> <password>`.
+- **Entra ID SSO** — "Sign in with Microsoft" appears automatically when `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, and `ENTRA_REDIRECT_URI` are set in `.env`.
 
 ---
 

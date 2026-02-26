@@ -18,10 +18,33 @@ import {
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }),
+  role: varchar("role", { length: 50 }).notNull().default("Business"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const userIdentities = pgTable(
+  "user_identities",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: varchar("provider", { length: 50 }).notNull(),
+    providerUserId: varchar("provider_user_id", { length: 255 }).notNull(),
+    providerEmail: varchar("provider_email", { length: 255 }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    unique("user_identities_provider_uid_unique").on(
+      table.provider,
+      table.providerUserId,
+    ),
+  ],
+);
 
 export const refreshTokens = pgTable("refresh_tokens", {
   id: serial("id").primaryKey(),
@@ -274,9 +297,17 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   settings: one(userSettings),
   secrets: many(userSecrets),
   refreshTokens: many(refreshTokens),
+  identities: many(userIdentities),
   languageModelProviders: many(languageModelProviders),
   languageModels: many(languageModels),
   mcpServers: many(mcpServers),
+}));
+
+export const userIdentitiesRelations = relations(userIdentities, ({ one }) => ({
+  user: one(users, {
+    fields: [userIdentities.userId],
+    references: [users.id],
+  }),
 }));
 
 export const appsRelations = relations(apps, ({ many, one }) => ({

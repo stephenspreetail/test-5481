@@ -86,6 +86,12 @@ const configSchema = z.object({
   PREVIEW_DOMAIN: z.string().optional(),
   PREVIEW_PORT: z.coerce.number().optional(),
 
+  // Entra ID SSO (optional — SSO enabled when all four are present)
+  ENTRA_TENANT_ID: z.string().optional(),
+  ENTRA_CLIENT_ID: z.string().optional(),
+  ENTRA_CLIENT_SECRET: z.string().optional(),
+  ENTRA_REDIRECT_URI: z.string().optional(),
+
   // GitLab token for private plugin marketplace (read_repository scope)
   GITLAB_TOKEN: z.string().min(1, "GITLAB_TOKEN is required"),
   // HTTPS git URL of the plugin marketplace repo (cloned at container startup)

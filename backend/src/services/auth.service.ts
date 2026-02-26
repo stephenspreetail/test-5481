@@ -1,9 +1,9 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import { config } from "../config/index.js";
 import { db } from "../db/index.js";
-import { refreshTokens, userSettings, users } from "../db/schema.js";
+import { refreshTokens, userIdentities, userSettings, users } from "../db/schema.js";
 
 const SALT_ROUNDS = 12;
 
@@ -25,6 +25,7 @@ function parseDurationMs(duration: string): number {
 export interface User {
   id: number;
   email: string;
+  role: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,10 +37,104 @@ export interface TokenPair {
 
 class AuthService {
   /**
-   * Register a new user
+   * Find or create a user by external identity (used by all OAuth providers).
+   * 1. Lookup user_identities by (provider, providerUserId)
+   * 2. If found: return associated user
+   * 3. If not found: check users by email (link existing or create new)
+   * 4. Insert user_identities row
+   * 5. Create default userSettings on new user creation
+   */
+  async findOrCreateByIdentity(
+    provider: string,
+    providerUserId: string,
+    providerEmail: string,
+    metadata?: Record<string, unknown>,
+    role?: string,
+  ): Promise<User> {
+    const resolvedRole = role ?? "Business";
+
+    // 1. Look up existing identity
+    const existingIdentity = await db
+      .select()
+      .from(userIdentities)
+      .where(
+        and(
+          eq(userIdentities.provider, provider),
+          eq(userIdentities.providerUserId, providerUserId),
+        ),
+      )
+      .limit(1);
+
+    if (existingIdentity.length > 0) {
+      // 2. Identity found — update role and return associated user
+      const updated = await db
+        .update(users)
+        .set({ role: resolvedRole, updatedAt: sql`now()` })
+        .where(eq(users.id, existingIdentity[0].userId))
+        .returning();
+
+      if (updated.length === 0) throw new Error("User not found for existing identity");
+      const u = updated[0];
+      return { id: u.id, email: u.email, role: u.role, createdAt: u.createdAt, updatedAt: u.updatedAt };
+    }
+
+    // 3. No identity yet — find or create user by email
+    const email = providerEmail.toLowerCase();
+    let userId: number;
+    let isNewUser = false;
+
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      userId = existingUser[0].id;
+      await db.update(users).set({ role: resolvedRole, updatedAt: sql`now()` }).where(eq(users.id, userId));
+    } else {
+      const newUser = await db
+        .insert(users)
+        .values({ email, role: resolvedRole })
+        .returning();
+      userId = newUser[0].id;
+      isNewUser = true;
+    }
+
+    // 4. Insert identity row
+    await db.insert(userIdentities).values({
+      userId,
+      provider,
+      providerUserId,
+      providerEmail: email,
+      metadata: metadata ?? null,
+    });
+
+    // 5. Create default settings for new users
+    if (isNewUser) {
+      await db.insert(userSettings).values({
+        userId,
+        settings: {
+          telemetryConsent: "unset",
+          zoomLevel: "100",
+        },
+      });
+    }
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const u = user[0];
+    return { id: u.id, email: u.email, role: u.role, createdAt: u.createdAt, updatedAt: u.updatedAt };
+  }
+
+  /**
+   * Register a new user with email/password.
    */
   async register(email: string, password: string): Promise<User> {
-    // Check if user already exists
     const existing = await db
       .select()
       .from(users)
@@ -50,39 +145,25 @@ class AuthService {
       throw new Error("User already exists");
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // Create user
     const result = await db
       .insert(users)
-      .values({
-        email: email.toLowerCase(),
-        passwordHash,
-      })
+      .values({ email: email.toLowerCase(), passwordHash })
       .returning();
 
     const user = result[0];
 
-    // Create default settings for user
     await db.insert(userSettings).values({
       userId: user.id,
-      settings: {
-        telemetryConsent: "unset",
-        zoomLevel: "100",
-      },
+      settings: { telemetryConsent: "unset", zoomLevel: "100" },
     });
 
-    return {
-      id: user.id,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+    return { id: user.id, email: user.email, role: user.role, createdAt: user.createdAt, updatedAt: user.updatedAt };
   }
 
   /**
-   * Authenticate a user and return user data (not tokens - those are handled by Fastify JWT)
+   * Authenticate a user with email/password.
    */
   async authenticate(email: string, password: string): Promise<User> {
     const result = await db
@@ -96,18 +177,38 @@ class AuthService {
     }
 
     const user = result[0];
-    const validPassword = await bcrypt.compare(password, user.passwordHash);
 
-    if (!validPassword) {
+    if (!user.passwordHash) {
       throw new Error("Invalid credentials");
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new Error("Invalid credentials");
+    }
+
+    return { id: user.id, email: user.email, role: user.role, createdAt: user.createdAt, updatedAt: user.updatedAt };
+  }
+
+  /**
+   * Update user password.
+   */
+  async updatePassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+    const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+    if (result.length === 0) throw new Error("User not found");
+
+    const user = result[0];
+
+    if (!user.passwordHash) throw new Error("Current password is incorrect");
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new Error("Current password is incorrect");
+
+    const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await db.update(users).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(users.id, userId));
+
+    await this.revokeAllRefreshTokens(userId);
   }
 
   /**
@@ -120,17 +221,10 @@ class AuthService {
       .where(eq(users.id, userId))
       .limit(1);
 
-    if (result.length === 0) {
-      return null;
-    }
+    if (result.length === 0) return null;
 
     const user = result[0];
-    return {
-      id: user.id,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+    return { id: user.id, email: user.email, role: user.role, createdAt: user.createdAt, updatedAt: user.updatedAt };
   }
 
   /**
@@ -141,41 +235,29 @@ class AuthService {
       Date.now() + parseDurationMs(config.JWT_REFRESH_EXPIRES_IN),
     );
 
-    await db.insert(refreshTokens).values({
-      userId,
-      token,
-      expiresAt,
-    });
+    await db.insert(refreshTokens).values({ userId, token, expiresAt });
   }
 
   /**
    * Validate and consume a refresh token
    */
-  async validateRefreshToken(
-    token: string,
-  ): Promise<{ userId: number } | null> {
+  async validateRefreshToken(token: string): Promise<{ userId: number } | null> {
     const result = await db
       .select()
       .from(refreshTokens)
       .where(eq(refreshTokens.token, token))
       .limit(1);
 
-    if (result.length === 0) {
-      return null;
-    }
+    if (result.length === 0) return null;
 
     const storedToken = result[0];
 
-    // Check if expired
     if (new Date() > storedToken.expiresAt) {
-      // Delete expired token
-      await db
-        .delete(refreshTokens)
-        .where(eq(refreshTokens.id, storedToken.id));
+      await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
       return null;
     }
 
-    // Delete the used token (one-time use)
+    // One-time use
     await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
 
     return { userId: storedToken.userId };
@@ -205,45 +287,6 @@ class AuthService {
    */
   generateRefreshToken(): string {
     return crypto.randomBytes(64).toString("hex");
-  }
-
-  /**
-   * Update user password
-   */
-  async updatePassword(
-    userId: number,
-    currentPassword: string,
-    newPassword: string,
-  ): Promise<void> {
-    const result = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (result.length === 0) {
-      throw new Error("User not found");
-    }
-
-    const user = result[0];
-    const validPassword = await bcrypt.compare(
-      currentPassword,
-      user.passwordHash,
-    );
-
-    if (!validPassword) {
-      throw new Error("Current password is incorrect");
-    }
-
-    const newPasswordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-
-    await db
-      .update(users)
-      .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
-      .where(eq(users.id, userId));
-
-    // Revoke all refresh tokens when password changes
-    await this.revokeAllRefreshTokens(userId);
   }
 
   /**

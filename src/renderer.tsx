@@ -16,6 +16,16 @@ import { getTelemetryUserId, isTelemetryOptedIn } from "./hooks/useSettings";
 import { showError } from "./lib/toast";
 import { router } from "./router";
 
+// Capture tokens injected by Entra callback redirect before client init
+const _callbackParams = new URLSearchParams(window.location.search);
+const _callbackAccessToken = _callbackParams.get("accessToken");
+const _callbackRefreshToken = _callbackParams.get("refreshToken");
+if (_callbackAccessToken && _callbackRefreshToken) {
+  localStorage.setItem("accessToken", _callbackAccessToken);
+  localStorage.setItem("refreshToken", _callbackRefreshToken);
+  window.history.replaceState({}, "", window.location.pathname);
+}
+
 // Get Jotai's default store for use outside React
 const jotaiStore = getDefaultStore();
 

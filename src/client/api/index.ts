@@ -28,7 +28,6 @@ export { WebSocketClient } from "./websocket_client";
 // Types
 export type {
   ApiClientConfig,
-  AuthResponse,
   AuthTokens,
   WsMessage,
   ChatStreamRequest,
