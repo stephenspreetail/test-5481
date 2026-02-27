@@ -8,6 +8,7 @@ import {
   HelpCircle,
   LogOut,
   Sparkles,
+  Store,
   User,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -45,6 +46,11 @@ const items = [
     title: "Apps",
     to: "/",
     icon: Sparkles,
+  },
+  {
+    title: "Hub",
+    to: "/hub",
+    icon: Store,
   },
 ];
 
