@@ -18,6 +18,7 @@ min_version = "2024.12.0"
 [tools]
 bun      = "latest"       # JS/TS runtime and package manager (primary runtime)
 kubectl  = "latest"       # Kubernetes CLI
+helm     = "latest"       # Kubernetes package manager (app container orchestration)
 k3d      = "latest"       # Local Kubernetes via k3d (lightweight k3s-in-docker)
 "aws-cli" = "latest"      # AWS CLI for SSO authentication and Bedrock
 istioctl = "1.28"         # Istio service mesh — pinned to match EKS dev cluster
@@ -49,7 +50,7 @@ echo ""
 
 # ── Required CLI tools ──────────────────────────────────────────────────────
 echo "CLI Tools:"
-for cmd in bun kubectl k3d docker istioctl jq kubectx kubens aws az; do
+for cmd in bun kubectl helm k3d docker istioctl jq kubectx kubens aws az; do
   if command -v "$cmd" &>/dev/null; then
     ver=$("$cmd" --version 2>/dev/null | head -1 || echo "")
     ok "$cmd  ($ver)"

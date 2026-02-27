@@ -16,6 +16,7 @@ import {
   buildLlmProviderConfig,
 } from "./llm-provider.service.js";
 import { buildK8sEnvironmentConfig } from "./k8s-environment.service.js";
+import { shortId, appHostname } from "../utils/app-identifiers.js";
 // TODO: Re-enable when agent token validation is implemented in app-container
 // import { generateAgentToken } from "./agent-auth.service.js";
 
@@ -80,6 +81,8 @@ const DEFAULT_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
 export interface StartContainerConfig {
   appId: number;
+  appGuid: string;
+  appSlug?: string;
   userId: number;
   appPath: string;
 }
@@ -293,8 +296,8 @@ class AppContainerService {
   private async _startContainerImpl(
     cfg: StartContainerConfig,
   ): Promise<ContainerPorts> {
-    const { appId, userId, appPath } = cfg;
-    const containerName = `app-${appId}`;
+    const { appId, userId, appPath, appGuid, appSlug } = cfg;
+    const containerName = `app-${appId}`; // Display name for logs (K8s name computed by orchestrator)
 
     // Check if container is already running
     const existing = appContainers.get(appId);
@@ -384,7 +387,15 @@ class AppContainerService {
     const agentToken = "";
 
     // Build app-specific preview URL for Vite's allowedHosts
-    const appPreviewHost = `app-${appId}.${k8sEnv.previewDomain}`;
+    // For helm orchestrator, use shortId-based hostname; for kubectl, use legacy appId-based
+    const isHelmMode = config.ORCHESTRATOR_TYPE === "helm";
+    const appPreviewHost = isHelmMode
+      ? appHostname(
+          k8sEnv.previewUrlMode === "slug" && appSlug
+            ? { mode: "slug", slug: appSlug, domain: k8sEnv.previewDomain }
+            : { mode: "prefixed", shortId: shortId(appGuid), domain: k8sEnv.previewDomain },
+        )
+      : `app-${appId}.${k8sEnv.previewDomain}`;
 
     // Environment variables for the container
     const env = {
@@ -444,6 +455,8 @@ class AppContainerService {
       // Spawn container via orchestrator
       const containerInfo = await orchestrator.spawnContainer({
         appId,
+        appGuid,
+        appSlug,
         userId,
         appPath: fullAppPath,
         image: this.containerImage,

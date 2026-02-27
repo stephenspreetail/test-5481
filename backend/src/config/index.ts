@@ -92,6 +92,18 @@ const configSchema = z.object({
   ENTRA_CLIENT_SECRET: z.string().optional(),
   ENTRA_REDIRECT_URI: z.string().optional(),
 
+  // Multi-tenancy: unique identifier for this Kova deployment instance.
+  // Defaults to the machine hostname (sanitized) if not set.
+  // Used to prefix K8s resources and prevent collisions across deployments.
+  KOVA_INSTANCE_ID: z.string().optional(),
+
+  // Orchestrator selection: "kubectl" (legacy) or "helm" (multi-tenant, default)
+  ORCHESTRATOR_TYPE: z.enum(["kubectl", "helm"]).default("helm"),
+
+  // Preview URL mode: "prefixed" uses app-{shortId}.domain, "slug" uses {slug}.domain
+  // Use "prefixed" for dev/staging (multi-tenant), "slug" for prod (isolated)
+  PREVIEW_URL_MODE: z.enum(["prefixed", "slug"]).default("prefixed"),
+
   // GitLab token for private plugin marketplace (read_repository scope)
   GITLAB_TOKEN: z.string().min(1, "GITLAB_TOKEN is required"),
   // HTTPS git URL of the plugin marketplace repo (cloned at container startup)

@@ -35,6 +35,8 @@ export async function appExecutionRoutes(app: FastifyInstance) {
     try {
       const result = await appContainerService.startContainer({
         appId: appData.id,
+        appGuid: appData.guid,
+        appSlug: appData.slug ?? undefined,
         userId: user.userId,
         appPath: appData.path,
       });
@@ -111,6 +113,8 @@ export async function appExecutionRoutes(app: FastifyInstance) {
         // Start new container
         const result = await appContainerService.startContainer({
           appId: appData.id,
+          appGuid: appData.guid,
+          appSlug: appData.slug ?? undefined,
           userId: user.userId,
           appPath: appData.path,
         });

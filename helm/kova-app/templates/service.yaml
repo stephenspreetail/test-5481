@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kova-app.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kova-app.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.networking.hostNetwork }}
+  type: NodePort
+  {{- else }}
+  type: ClusterIP
+  {{- end }}
+  selector:
+    {{- include "kova-app.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: agent
+      port: {{ .Values.ports.agent }}
+      targetPort: agent
+      protocol: TCP
+      {{- if .Values.networking.hostNetwork }}
+      nodePort: {{ .Values.ports.agent }}
+      {{- end }}
+    - name: dev
+      port: {{ .Values.ports.dev }}
+      targetPort: dev
+      protocol: TCP
+      {{- if .Values.networking.hostNetwork }}
+      nodePort: {{ .Values.ports.dev }}
+      {{- end }}

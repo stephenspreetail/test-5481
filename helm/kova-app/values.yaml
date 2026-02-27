@@ -1,0 +1,43 @@
+# Identity
+instanceId: ""             # Kova deployment instance (e.g., "dev", "gabe-pc")
+appShortId: ""             # 8-char hex from app GUID (required)
+appGuid: ""                # Full UUID (for labels/annotations)
+appId: ""                  # Integer ID (for labels only)
+userId: ""                 # Owner user ID (for labels)
+
+# Container
+image:
+  repository: "kova-app-container"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Ports
+ports:
+  agent: 3100
+  dev: 3000
+
+# Resources
+resources:
+  requests:
+    memory: "4Gi"
+    cpu: "1"
+  limits:
+    memory: "4Gi"
+    cpu: "1"
+
+# Storage
+storage:
+  size: "5Gi"
+  storageClass: "ebs-sc"
+
+# Networking
+networking:
+  hostNetwork: false
+  previewDomain: "dev.toolkit.co"
+  gatewayName: "istio-system/kova-gateway"
+
+# Preview hostname (computed by orchestrator, passed as value)
+previewHostname: ""
+
+# Environment variables (passed as map)
+env: {}

@@ -8,13 +8,20 @@ vi.mock("../../config/index.js", () => ({
     K8S_NAMESPACE: undefined,
     PREVIEW_DOMAIN: undefined,
     PREVIEW_PORT: undefined,
+    CONTAINER_IMAGE: "kova-app-container:latest",
+    KOVA_INSTANCE_ID: undefined,
+    PREVIEW_URL_MODE: undefined,
   },
+}));
+
+// Mock app-identifiers to return a stable default instance ID
+vi.mock("../../utils/app-identifiers.js", () => ({
+  getDefaultInstanceId: () => "test-host",
 }));
 
 import {
   buildK8sEnvironmentConfig,
   detectK8sEnvironment,
-  type K8sEnvironmentConfig,
 } from "../k8s-environment.service.js";
 import { config } from "../../config/index.js";
 
@@ -29,6 +36,9 @@ describe("k8s-environment.service", () => {
     mockConfig.K8S_NAMESPACE = undefined;
     mockConfig.PREVIEW_DOMAIN = undefined;
     mockConfig.PREVIEW_PORT = undefined;
+    mockConfig.CONTAINER_IMAGE = "kova-app-container:latest";
+    mockConfig.KOVA_INSTANCE_ID = undefined;
+    mockConfig.PREVIEW_URL_MODE = undefined;
   });
 
   describe("detectK8sEnvironment", () => {
@@ -46,12 +56,16 @@ describe("k8s-environment.service", () => {
     it("should use local environment defaults", () => {
       const envConfig = buildK8sEnvironmentConfig();
 
-      expect(envConfig).toEqual({
+      expect(envConfig).toMatchObject({
         environment: "local",
         context: "k3d-kova-dev",
         namespace: "kova-apps",
         previewDomain: "dev.toolkit.co",
         previewPort: 8443,
+        isEKS: false,
+        storageClass: "local-path",
+        instanceId: "test-host",
+        previewUrlMode: "prefixed",
       });
     });
 
@@ -61,10 +75,11 @@ describe("k8s-environment.service", () => {
       const envConfig = buildK8sEnvironmentConfig();
 
       expect(envConfig.environment).toBe("eks-dev");
-      expect(envConfig.context).toContain("cluster/kova-dev");
+      expect(envConfig.context).toBe("dev01-eks-kova");
       expect(envConfig.namespace).toBe("kova-apps");
-      expect(envConfig.previewDomain).toBe("kova-apps.eks.dev01.tk.dev");
+      expect(envConfig.previewDomain).toBe("kova.eks.dev01.tk.dev");
       expect(envConfig.previewPort).toBe(443);
+      expect(envConfig.isEKS).toBe(true);
     });
 
     it("should allow overriding context", () => {
@@ -109,6 +124,27 @@ describe("k8s-environment.service", () => {
       expect(envConfig.namespace).toBe("custom-namespace");
       // Preview settings still use eks-dev defaults
       expect(envConfig.previewPort).toBe(443);
+    });
+
+    it("should use KOVA_INSTANCE_ID when set", () => {
+      mockConfig.KOVA_INSTANCE_ID = "my-instance";
+
+      const envConfig = buildK8sEnvironmentConfig();
+
+      expect(envConfig.instanceId).toBe("my-instance");
+    });
+
+    it("should default instanceId from getDefaultInstanceId", () => {
+      const envConfig = buildK8sEnvironmentConfig();
+      expect(envConfig.instanceId).toBe("test-host");
+    });
+
+    it("should use PREVIEW_URL_MODE when set", () => {
+      mockConfig.PREVIEW_URL_MODE = "slug";
+
+      const envConfig = buildK8sEnvironmentConfig();
+
+      expect(envConfig.previewUrlMode).toBe("slug");
     });
   });
 });

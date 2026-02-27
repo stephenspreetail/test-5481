@@ -1,0 +1,31 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ include "kova-app.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kova-app.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - {{ .Values.previewHostname | quote }}
+  gateways:
+    - {{ .Values.networking.gatewayName }}
+  http:
+    - match:
+        - uri:
+            prefix: "/agent/"
+      rewrite:
+        uri: "/"
+      route:
+        - destination:
+            host: {{ include "kova-app.name" . }}
+            port:
+              number: {{ .Values.ports.agent }}
+    - match:
+        - uri:
+            prefix: "/"
+      route:
+        - destination:
+            host: {{ include "kova-app.name" . }}
+            port:
+              number: {{ .Values.ports.dev }}

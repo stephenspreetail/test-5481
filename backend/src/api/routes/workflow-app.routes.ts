@@ -131,6 +131,8 @@ export async function workflowAppRoutes(app: FastifyInstance) {
         // 4. Start container for this app
         await appContainerService.startContainer({
           appId: newApp.id,
+          appGuid: newApp.guid,
+          appSlug: newApp.slug ?? undefined,
           userId: user.userId,
           appPath: finalPath,
         });

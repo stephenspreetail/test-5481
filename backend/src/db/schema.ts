@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   unique,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -92,6 +93,8 @@ export const userSecrets = pgTable(
 
 export const apps = pgTable("apps", {
   id: serial("id").primaryKey(),
+  guid: uuid("guid").notNull().defaultRandom().unique(),
+  slug: varchar("slug", { length: 100 }).unique(),
   userId: integer("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),

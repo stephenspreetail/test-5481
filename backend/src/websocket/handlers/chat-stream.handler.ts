@@ -323,6 +323,8 @@ export async function handleChatStream(
     );
     const containerPorts = await appContainerService.startContainer({
       appId: app.id,
+      appGuid: app.guid,
+      appSlug: app.slug ?? undefined,
       userId,
       appPath: app.path,
     });

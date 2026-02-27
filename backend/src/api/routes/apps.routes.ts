@@ -9,15 +9,18 @@ import { apps, chats, messages } from "../../db/schema.js";
 import { appContainerService } from "../../services/app-container.service.js";
 import { secretService } from "../../services/secret.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { slugify, validateSlug } from "../../utils/app-identifiers.js";
 
 const createAppSchema = z.object({
   name: z.string().min(1).max(255),
+  slug: z.string().min(3).max(100).optional(),
   installCommand: z.string().optional(),
   startCommand: z.string().optional(),
 });
 
 const updateAppSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  slug: z.string().min(3).max(100).optional().nullable(),
   installCommand: z.string().optional(),
   startCommand: z.string().optional(),
   isFavorite: z.boolean().optional(),
@@ -109,20 +112,55 @@ export async function appsRoutes(app: FastifyInstance) {
     const user = request.user!;
     const body = createAppSchema.parse(request.body);
 
+    // Validate slug if provided, otherwise auto-generate from name
+    let slug = body.slug ?? slugify(body.name);
+    if (slug) {
+      const validation = validateSlug(slug);
+      if (!validation.valid) {
+        reply.status(400).send({ error: validation.error });
+        return;
+      }
+    }
+
     const timestamp = Date.now();
     // Insert with temporary path first to get the app ID
     const tempPath = `${user.userId}/temp-${timestamp}`;
 
-    const appResult = await db
-      .insert(apps)
-      .values({
-        userId: user.userId,
-        name: body.name,
-        path: tempPath,
-        installCommand: body.installCommand,
-        startCommand: body.startCommand,
-      })
-      .returning();
+    // Attempt insert; if slug conflicts, append a short random suffix
+    let appResult;
+    try {
+      appResult = await db
+        .insert(apps)
+        .values({
+          userId: user.userId,
+          name: body.name,
+          slug: slug || null,
+          path: tempPath,
+          installCommand: body.installCommand,
+          startCommand: body.startCommand,
+        })
+        .returning();
+    } catch (error: any) {
+      // Handle unique constraint violation on slug
+      if (error.code === "23505" && error.constraint?.includes("slug")) {
+        // Auto-append random suffix to slug
+        const suffix = Math.random().toString(36).substring(2, 6);
+        slug = `${slug}-${suffix}`;
+        appResult = await db
+          .insert(apps)
+          .values({
+            userId: user.userId,
+            name: body.name,
+            slug,
+            path: tempPath,
+            installCommand: body.installCommand,
+            startCommand: body.startCommand,
+          })
+          .returning();
+      } else {
+        throw error;
+      }
+    }
 
     const insertedApp = appResult[0];
 
@@ -181,6 +219,15 @@ export async function appsRoutes(app: FastifyInstance) {
     const user = request.user!;
     const { id } = request.params as { id: string };
     const body = updateAppSchema.parse(request.body);
+
+    // Validate slug if provided
+    if (body.slug !== undefined && body.slug !== null) {
+      const validation = validateSlug(body.slug);
+      if (!validation.valid) {
+        reply.status(400).send({ error: validation.error });
+        return;
+      }
+    }
 
     const result = await db
       .update(apps)
@@ -260,6 +307,7 @@ export async function appsRoutes(app: FastifyInstance) {
 
       const originalApp = original[0];
       const newName = body.name || `${originalApp.name} (Copy)`;
+      const newSlug = slugify(newName);
       const timestamp = Date.now();
       // Insert with temporary path first to get the app ID
       const tempPath = `${user.userId}/temp-${timestamp}`;
@@ -270,6 +318,7 @@ export async function appsRoutes(app: FastifyInstance) {
         .values({
           userId: user.userId,
           name: newName,
+          slug: newSlug || null,
           path: tempPath,
           installCommand: originalApp.installCommand,
           startCommand: originalApp.startCommand,

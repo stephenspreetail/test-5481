@@ -11,6 +11,7 @@
  */
 
 import { config } from "../config/index.js";
+import { getDefaultInstanceId } from "../utils/app-identifiers.js";
 
 export type K8sEnvironment = "local" | "eks-app-admin" | "eks-dev" | "eks-prod";
 
@@ -29,6 +30,10 @@ export interface K8sEnvironmentConfig {
   containerImage: string;
   // StorageClass for PVCs (local uses local-path, EKS uses EBS)
   storageClass: string;
+  // Unique identifier for this Kova deployment instance (for multi-tenancy)
+  instanceId: string;
+  // Preview URL mode: "prefixed" uses app-{shortId}.domain, "slug" uses {slug}.domain
+  previewUrlMode: "prefixed" | "slug";
 }
 
 /**
@@ -133,5 +138,7 @@ export function buildK8sEnvironmentConfig(): K8sEnvironmentConfig {
       ? config.CONTAINER_IMAGE // Explicit override takes precedence
       : defaults.containerImage,
     storageClass: defaults.storageClass,
+    instanceId: config.KOVA_INSTANCE_ID || getDefaultInstanceId(),
+    previewUrlMode: config.PREVIEW_URL_MODE || "prefixed",
   };
 }

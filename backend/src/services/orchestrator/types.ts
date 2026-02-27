@@ -8,8 +8,12 @@
  * Configuration for spawning a new app container
  */
 export interface SpawnContainerConfig {
-  /** Unique app identifier */
+  /** Unique app identifier (integer, for backward compat) */
   appId: number;
+  /** Globally unique app identifier (UUID) — used for K8s resource naming */
+  appGuid: string;
+  /** User-defined slug (optional, used for preview URLs in slug mode) */
+  appSlug?: string;
   /** User who owns the app */
   userId: number;
   /** Path to app files on host (for volume mount) */

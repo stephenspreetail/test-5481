@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kova-app.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kova-app.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "kova-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kova-app.labels" . | nindent 8 }}
+    spec:
+      {{- if .Values.networking.hostNetwork }}
+      hostNetwork: true
+      {{- end }}
+      restartPolicy: Always
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: agent
+              containerPort: {{ .Values.ports.agent }}
+              protocol: TCP
+            - name: dev
+              containerPort: {{ .Values.ports.dev }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: {{ include "kova-app.name" . }}-workspace

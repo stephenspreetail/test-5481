@@ -75,6 +75,9 @@ COPY --from=build /app/backend/src/db/schema.ts ./backend/src/db/
 COPY --from=build /app/backend/drizzle.config.ts ./backend/
 COPY --from=build /app/backend/scripts/migrate-iam.ts ./backend/scripts/
 
+# Helm chart for per-app container orchestration (HelmOrchestrator)
+COPY --from=build /app/helm/kova-app ./helm/kova-app
+
 # ---------- Entrypoint -------------------------------------------------------
 
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh

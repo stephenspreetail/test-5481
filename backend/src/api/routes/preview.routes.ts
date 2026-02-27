@@ -113,7 +113,7 @@ export async function previewRoutes(app: FastifyInstance) {
 
       // Verify user owns the app
       const appResult = await db
-        .select({ id: apps.id, path: apps.path })
+        .select({ id: apps.id, guid: apps.guid, slug: apps.slug, path: apps.path })
         .from(apps)
         .where(and(eq(apps.id, parseInt(appId)), eq(apps.userId, user.userId)))
         .limit(1);
@@ -126,6 +126,8 @@ export async function previewRoutes(app: FastifyInstance) {
       try {
         const ports = await appContainerService.startContainer({
           appId: parseInt(appId),
+          appGuid: appResult[0].guid,
+          appSlug: appResult[0].slug ?? undefined,
           userId: user.userId,
           appPath: appResult[0].path,
         });
