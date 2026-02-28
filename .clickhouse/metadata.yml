@@ -1,0 +1,802 @@
+database: default
+service: Spreetail
+service_id: a0ce5243-830d-4139-996a-66336db9d97b
+source: Keepa API + application tables
+last_updated: "2026-02-19"
+
+tables:
+  # ─────────────────────────────────────────────────
+  # Seller Tables (normalized from Keepa API)
+  # ─────────────────────────────────────────────────
+
+  Sellers:
+    description: >
+      Master table of Amazon marketplace sellers sourced from Keepa.
+      Contains business details, ratings, Buy Box metrics, and storefront stats.
+    engine: ReplacingMergeTree
+    primary_key: [SellerId]
+    columns:
+      SellerId:
+        type: String
+        description: Unique Amazon seller identifier (e.g. "A1B2C3D4E5F6G7")
+        primary_key: true
+      SellerName:
+        type: Nullable(String)
+        description: Display name of the seller on Amazon
+      DomainId:
+        type: Int32
+        description: Keepa domain ID (1=com, 2=co.uk, 3=de, etc.)
+      TrackedSince:
+        type: Nullable(String)
+        description: Keepa time when tracking began
+      LastUpdate:
+        type: Nullable(String)
+        description: Keepa time of last data update
+      ShipsFromChina:
+        type: UInt8
+        description: Whether seller ships from China (0/1)
+      HasFBA:
+        type: UInt8
+        description: Whether seller uses Fulfillment by Amazon (0/1)
+      BusinessName:
+        type: Nullable(String)
+        description: Registered business/company name
+      BusinessType:
+        type: Nullable(String)
+        description: Type of business entity
+      Address:
+        type: Nullable(String)
+        description: Registered business address
+      CountryCode:
+        type: Nullable(String)
+        description: Two-letter country code of seller
+      PhoneNumber:
+        type: Nullable(String)
+        description: Contact phone number
+      Email:
+        type: Nullable(String)
+        description: Contact email address
+      VatId:
+        type: Nullable(String)
+        description: VAT identification number
+      TradeNumber:
+        type: Nullable(String)
+        description: Trade/commerce register number
+      Representative:
+        type: Nullable(String)
+        description: Legal representative name
+      ShareCapital:
+        type: Nullable(String)
+        description: Registered share capital
+      CurrentRating:
+        type: Nullable(Int32)
+        description: Current seller rating (percentage, 0-100)
+      CurrentRatingCount:
+        type: Nullable(Int32)
+        description: Total number of lifetime ratings
+      RatingsLast30Days:
+        type: Nullable(Int32)
+        description: Number of ratings received in last 30 days
+      PositiveRatings:
+        type: Nullable(String)
+        description: JSON array of positive rating counts by time period
+      NeutralRatings:
+        type: Nullable(String)
+        description: JSON array of neutral rating counts by time period
+      NegativeRatings:
+        type: Nullable(String)
+        description: JSON array of negative rating counts by time period
+      RatingCounts:
+        type: Nullable(String)
+        description: JSON array of total rating counts by time period
+      AvgBuyBoxCompetitors:
+        type: Nullable(Float64)
+        description: Average number of Buy Box competitors across products
+      BuyBoxNewOwnershipRate:
+        type: Nullable(Int32)
+        description: Percentage of time seller owns Buy Box for new items
+      BuyBoxUsedOwnershipRate:
+        type: Nullable(Int32)
+        description: Percentage of time seller owns Buy Box for used items
+      TotalStorefrontAsinCount:
+        type: Nullable(Int32)
+        description: Total number of ASINs in seller's storefront
+      FetchedAt:
+        type: Nullable(String)
+        description: ISO timestamp when this record was fetched from Keepa
+      StorefrontFetchedAt:
+        type: Nullable(String)
+        description: ISO timestamp when storefront data was last fetched
+      Source:
+        type: String
+        description: Data source identifier (e.g. "keepa")
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  SellerAsins:
+    description: >
+      Mapping of sellers to the ASINs they offer. Represents the seller's
+      storefront catalog with last-seen timestamps.
+    engine: ReplacingMergeTree
+    primary_key: [SellerId, Asin]
+    columns:
+      SellerId:
+        type: String
+        description: Amazon seller identifier (FK to Sellers)
+        primary_key: true
+      Asin:
+        type: String
+        description: Amazon Standard Identification Number
+        primary_key: true
+      LastSeen:
+        type: Nullable(String)
+        description: Keepa time when this ASIN was last seen in seller's storefront
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  SellerBrands:
+    description: >
+      Aggregated brand statistics per seller. Shows which brands a seller
+      carries and performance metrics for each.
+    engine: ReplacingMergeTree
+    primary_key: [SellerId, Brand]
+    columns:
+      SellerId:
+        type: String
+        description: Amazon seller identifier (FK to Sellers)
+        primary_key: true
+      Brand:
+        type: String
+        description: Brand name carried by the seller
+        primary_key: true
+      ProductCount:
+        type: Nullable(Int32)
+        description: Number of products the seller offers under this brand
+      Avg30SalesRank:
+        type: Nullable(Int32)
+        description: Average 30-day sales rank across the brand's products
+      ProductCountWithAmazonOffer:
+        type: Nullable(Int32)
+        description: Number of brand products where Amazon is also a seller
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  SellerCategories:
+    description: >
+      Aggregated category statistics per seller. Shows which Amazon categories
+      a seller operates in with performance metrics.
+    engine: ReplacingMergeTree
+    primary_key: [SellerId, CatId]
+    columns:
+      SellerId:
+        type: String
+        description: Amazon seller identifier (FK to Sellers)
+        primary_key: true
+      CatId:
+        type: Int32
+        description: Amazon category ID
+        primary_key: true
+      ProductCount:
+        type: Nullable(Int32)
+        description: Number of products the seller offers in this category
+      Avg30SalesRank:
+        type: Nullable(Int32)
+        description: Average 30-day sales rank across category products
+      ProductCountWithAmazonOffer:
+        type: Nullable(Int32)
+        description: Number of category products where Amazon is also a seller
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  SellerCompetitors:
+    description: >
+      Seller-to-seller competition relationships. Measures ASIN overlap
+      between sellers as a percentage.
+    engine: ReplacingMergeTree
+    primary_key: [SellerId, CompetitorSellerId]
+    columns:
+      SellerId:
+        type: String
+        description: Amazon seller identifier (FK to Sellers)
+        primary_key: true
+      CompetitorSellerId:
+        type: String
+        description: Competing seller's identifier (FK to Sellers)
+        primary_key: true
+      Percent:
+        type: Nullable(Int32)
+        description: Percentage of ASIN overlap with competitor
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  SellerDomains:
+    description: >
+      Maps sellers to their website domains. Tracks how the domain association
+      was discovered and whether it has been confirmed.
+    engine: ReplacingMergeTree
+    primary_key: [SellerId, Domain]
+    columns:
+      SellerId:
+        type: String
+        description: Amazon seller identifier (FK to Sellers)
+        primary_key: true
+      Domain:
+        type: String
+        description: Website domain associated with the seller
+        primary_key: true
+      Source:
+        type: String
+        description: How the domain was discovered (e.g. "keepa", "manual")
+      Confidence:
+        type: Int32
+        description: Confidence score of the domain-seller association
+      Confirmed:
+        type: Int32
+        description: Whether the association has been confirmed (0/1)
+      DiscoveredAt:
+        type: Nullable(String)
+        description: ISO timestamp when the association was first found
+      ConfirmedAt:
+        type: Nullable(String)
+        description: ISO timestamp when the association was confirmed
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  SellerFeedback:
+    description: >
+      Individual customer feedback entries for sellers. Contains the rating,
+      date, and optional text feedback.
+    engine: ReplacingMergeTree
+    primary_key: [SellerId, Rating, Date]
+    columns:
+      SellerId:
+        type: String
+        description: Amazon seller identifier (FK to Sellers)
+        primary_key: true
+      Rating:
+        type: Int32
+        description: Feedback rating value (1-5)
+        primary_key: true
+      Date:
+        type: String
+        description: Date of the feedback
+        primary_key: true
+      Feedback:
+        type: Nullable(String)
+        description: Customer feedback text
+      IsStriked:
+        type: UInt8
+        description: Whether the feedback has been struck through / removed (0/1)
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  # ─────────────────────────────────────────────────
+  # Product Tables (sourced from Keepa API)
+  # ─────────────────────────────────────────────────
+
+  Products:
+    description: >
+      Amazon product catalog with details from Keepa. Includes pricing,
+      reviews, sales rank, FBA fees, and Buy Box history.
+    engine: ReplacingMergeTree
+    primary_key: [Asin]
+    columns:
+      Asin:
+        type: String
+        description: Amazon Standard Identification Number
+        primary_key: true
+      DomainId:
+        type: Int32
+        description: Keepa domain ID (1=com, 2=co.uk, 3=de, etc.)
+      Title:
+        type: Nullable(String)
+        description: Product listing title
+      Brand:
+        type: Nullable(String)
+        description: Product brand name
+      BrandStoreName:
+        type: Nullable(String)
+        description: Brand store page name on Amazon
+      BrandStoreUrl:
+        type: Nullable(String)
+        description: URL to the brand store page
+      Description:
+        type: Nullable(String)
+        description: Full product description text
+      FeaturesJson:
+        type: Nullable(String)
+        description: JSON array of product bullet-point features
+      ImagesCSV:
+        type: Nullable(String)
+        description: Comma-separated list of product image URLs
+      Weight:
+        type: Nullable(Int32)
+        description: Product weight in grams
+      PackageWeight:
+        type: Nullable(Int32)
+        description: Package weight in grams
+      PackageDimension:
+        type: Nullable(String)
+        description: Package dimensions as string
+      ParentAsin:
+        type: Nullable(String)
+        description: Parent ASIN for product variations
+      VariationCSV:
+        type: Nullable(String)
+        description: CSV of variation ASINs
+      FrequentlyBoughtTogether:
+        type: Nullable(String)
+        description: ASINs frequently bought with this product
+      EanListJson:
+        type: Nullable(String)
+        description: JSON array of EAN barcodes
+      UpcListJson:
+        type: Nullable(String)
+        description: JSON array of UPC barcodes
+      CategoryTreeJson:
+        type: Nullable(String)
+        description: JSON array of the product's category hierarchy
+      NewPriceIsMAP:
+        type: UInt8
+        description: Whether the new price is a Minimum Advertised Price (0/1)
+      MonthlySold:
+        type: Nullable(Int32)
+        description: Estimated units sold per month
+      MonthlySoldHistoryJson:
+        type: Nullable(String)
+        description: JSON time series of monthly sold estimates
+      ReviewsCount:
+        type: Nullable(Int32)
+        description: Total number of customer reviews
+      Rating:
+        type: Nullable(Int32)
+        description: Average customer rating (scaled integer, divide by 10 for stars)
+      SalesRankCurrent:
+        type: Nullable(Int32)
+        description: Current sales rank in main category
+      SalesRankReference:
+        type: Nullable(Int32)
+        description: Reference sales rank for historical comparison
+      SalesRankRefHistoryJson:
+        type: Nullable(String)
+        description: JSON time series of reference sales rank history
+      FbaPickAndPack:
+        type: Nullable(Int32)
+        description: FBA pick and pack fee in cents
+      FbaWeight:
+        type: Nullable(Int32)
+        description: FBA weight handling fee in cents
+      FbaReferral:
+        type: Nullable(Int32)
+        description: FBA referral fee in cents
+      FbaOther:
+        type: Nullable(Int32)
+        description: Other FBA fees in cents
+      BuyBoxSellerIdHistoryJson:
+        type: Nullable(String)
+        description: JSON time series of Buy Box winning seller IDs
+      BuyBoxEligibleOfferCountsJson:
+        type: Nullable(String)
+        description: JSON of Buy Box eligible offer counts over time
+      LastKeepaUpdate:
+        type: Nullable(String)
+        description: Keepa timestamp of last product data update
+      FetchedAt:
+        type: Nullable(String)
+        description: ISO timestamp when this record was fetched
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  ProductOffers:
+    description: >
+      Current offers (listings) for products from various sellers.
+      Shows pricing, fulfillment type, and Buy Box status.
+    engine: ReplacingMergeTree
+    primary_key: [Asin, OfferId]
+    columns:
+      Asin:
+        type: String
+        description: Amazon Standard Identification Number (FK to Products)
+        primary_key: true
+      OfferId:
+        type: Int32
+        description: Unique offer identifier within the ASIN
+        primary_key: true
+      SellerId:
+        type: Nullable(String)
+        description: Seller offering this product (FK to Sellers)
+      SellerName:
+        type: Nullable(String)
+        description: Display name of the offering seller
+      Condition:
+        type: Nullable(Int32)
+        description: Product condition code (1=New, 2=Used, etc.)
+      Price:
+        type: Nullable(Int32)
+        description: Offer price in cents
+      ShippingPrice:
+        type: Nullable(Int32)
+        description: Shipping cost in cents
+      IsFBA:
+        type: UInt8
+        description: Whether fulfilled by Amazon (0/1)
+      IsSale:
+        type: UInt8
+        description: Whether this is a sale/discounted price (0/1)
+      IsPrime:
+        type: UInt8
+        description: Whether eligible for Prime shipping (0/1)
+      IsBuyBoxWinner:
+        type: UInt8
+        description: Whether this offer currently wins the Buy Box (0/1)
+      FetchedAt:
+        type: Nullable(String)
+        description: ISO timestamp when this offer was fetched
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  ProductPriceHistory:
+    description: >
+      Historical price time series for products. Each row contains a compressed
+      CSV of timestamp-value pairs for a specific price type.
+    engine: ReplacingMergeTree
+    primary_key: [Asin, CsvType]
+    columns:
+      Asin:
+        type: String
+        description: Amazon Standard Identification Number (FK to Products)
+        primary_key: true
+      CsvType:
+        type: Int32
+        description: >
+          Keepa CSV type index identifying the price series
+          (0=Amazon, 1=New, 2=Used, 3=Sales Rank, 7=New FBA, 10=Buy Box, etc.)
+        primary_key: true
+      Data:
+        type: String
+        description: Compressed CSV of Keepa-time,value pairs for the price series
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  ProductStats:
+    description: >
+      Aggregated statistics for product price series. Provides min/max/avg/current
+      values and dates for each CSV type.
+    engine: ReplacingMergeTree
+    primary_key: [Asin, CsvType]
+    columns:
+      Asin:
+        type: String
+        description: Amazon Standard Identification Number (FK to Products)
+        primary_key: true
+      CsvType:
+        type: Int32
+        description: Keepa CSV type index (matches ProductPriceHistory.CsvType)
+        primary_key: true
+      MinValue:
+        type: Nullable(Int32)
+        description: Minimum observed value in the series (cents or rank)
+      MaxValue:
+        type: Nullable(Int32)
+        description: Maximum observed value in the series
+      AvgValue:
+        type: Nullable(Float64)
+        description: Average value across the series
+      CurrentValue:
+        type: Nullable(Int32)
+        description: Most recent value in the series
+      MinDate:
+        type: Nullable(String)
+        description: Date when minimum value was observed
+      MaxDate:
+        type: Nullable(String)
+        description: Date when maximum value was observed
+      CurrentDate:
+        type: Nullable(String)
+        description: Date of the most recent value
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  # ─────────────────────────────────────────────────
+  # Domain Profiling
+  # ─────────────────────────────────────────────────
+
+  DomainProfiles:
+    description: >
+      Technology and e-commerce profiles for seller website domains.
+      Used to identify sellers with their own online stores.
+    engine: ReplacingMergeTree
+    primary_key: [Domain]
+    columns:
+      Domain:
+        type: String
+        description: Website domain (e.g. "example.com")
+        primary_key: true
+      HasEcommerce:
+        type: UInt8
+        description: Whether the domain has an e-commerce store (0/1)
+      EcommercePlatform:
+        type: Nullable(String)
+        description: Detected e-commerce platform (e.g. "Shopify", "WooCommerce")
+      TechSummaryJson:
+        type: Nullable(String)
+        description: JSON summary of detected web technologies
+      FetchedAt:
+        type: Nullable(String)
+        description: ISO timestamp when the domain was last profiled
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  # ─────────────────────────────────────────────────
+  # Raw Keepa Seller Data
+  # ─────────────────────────────────────────────────
+
+  keepa_sellers:
+    description: >
+      Raw Keepa API seller responses stored in their original schema.
+      Uses Keepa time format (minutes since epoch) and array types.
+      The normalized Sellers table is preferred for queries.
+    engine: MergeTree
+    primary_key: [sellerId]
+    sorting_key: [sellerId, lastUpdate]
+    columns:
+      sellerId:
+        type: String
+        description: Keepa seller identifier
+        primary_key: true
+      sellerName:
+        type: String
+        description: Seller display name
+      domainId:
+        type: UInt8
+        description: Keepa domain ID (1=com, 2=co.uk, 3=de, etc.)
+      trackedSince:
+        type: UInt64
+        description: Keepa time (minutes since epoch) when tracking started
+      lastUpdate:
+        type: UInt64
+        description: Keepa time of last data update
+        sorting_key: true
+      shipsFromChina:
+        type: UInt8
+        description: Whether seller ships from China (0/1)
+      hasFBA:
+        type: UInt8
+        description: Whether seller uses FBA (0/1)
+      businessName:
+        type: Nullable(String)
+        description: Registered business name
+      businessType:
+        type: Nullable(String)
+        description: Type of business entity
+      address:
+        type: Array(String)
+        description: Address lines as array
+      phoneNumber:
+        type: Nullable(String)
+        description: Contact phone number
+      email:
+        type: Nullable(String)
+        description: Contact email
+      vatID:
+        type: Nullable(String)
+        description: VAT identification number
+      tradeNumber:
+        type: Nullable(String)
+        description: Trade register number
+      representative:
+        type: Nullable(String)
+        description: Legal representative
+      shareCapital:
+        type: Nullable(String)
+        description: Registered share capital
+      currentRating:
+        type: Float32
+        description: Current rating as float (0.0-1.0 scale)
+      currentRatingCount:
+        type: UInt32
+        description: Total lifetime rating count
+      ratingsLast30Days:
+        type: Nullable(Int32)
+        description: Ratings received in last 30 days
+      positiveRating:
+        type: Array(UInt32)
+        description: Positive ratings by time period [30d, 90d, 365d, lifetime]
+      neutralRating:
+        type: Array(UInt32)
+        description: Neutral ratings by time period [30d, 90d, 365d, lifetime]
+      negativeRating:
+        type: Array(UInt32)
+        description: Negative ratings by time period [30d, 90d, 365d, lifetime]
+      ratingCount:
+        type: Array(UInt32)
+        description: Total ratings by time period [30d, 90d, 365d, lifetime]
+      avgBuyBoxCompetitors:
+        type: Float32
+        description: Average number of Buy Box competitors
+      buyBoxNewOwnershipRate:
+        type: Float32
+        description: Buy Box win rate for new items (0.0-1.0)
+      buyBoxUsedOwnershipRate:
+        type: Float32
+        description: Buy Box win rate for used items (0.0-1.0)
+      totalStorefrontAsins:
+        type: Array(UInt32)
+        description: Storefront ASIN count time series
+      asinList:
+        type: Array(String)
+        description: Array of ASINs in seller's storefront
+      asinListLastSeen:
+        type: Array(UInt64)
+        description: Keepa time each ASIN was last seen (parallel to asinList)
+      totalStorefrontAsinsCSV:
+        type: Array(UInt32)
+        description: CSV-format storefront ASIN count history
+      sellerBrandStatistics:
+        type: String
+        description: JSON of brand-level statistics for the seller
+      sellerCategoryStatistics:
+        type: String
+        description: JSON of category-level statistics for the seller
+      competitors:
+        type: String
+        description: JSON of competitor seller data
+      recentFeedback:
+        type: String
+        description: JSON of recent customer feedback entries
+      insertedAt:
+        type: DateTime
+        description: Timestamp when row was inserted into ClickHouse
+
+  # ─────────────────────────────────────────────────
+  # Application Tables
+  # ─────────────────────────────────────────────────
+
+  Users:
+    description: >
+      Application user accounts for the seller intelligence platform.
+    engine: ReplacingMergeTree
+    primary_key: [UserId]
+    columns:
+      UserId:
+        type: String
+        description: Unique user identifier (UUID)
+        primary_key: true
+      Email:
+        type: String
+        description: User email address
+      PasswordHash:
+        type: String
+        description: Bcrypt-hashed password
+      DisplayName:
+        type: String
+        description: User's display name in the UI
+      Role:
+        type: String
+        description: User role (e.g. "admin", "user")
+      CreatedAt:
+        type: DateTime64(3)
+        description: Account creation timestamp
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  ShareLinks:
+    description: >
+      Shareable links for seller/brand benchmark reports.
+      Allows external users to view specific reports without authentication.
+    engine: ReplacingMergeTree
+    primary_key: [Code]
+    columns:
+      Code:
+        type: String
+        description: Unique share code used in the URL
+        primary_key: true
+      SellerId:
+        type: String
+        description: Seller being shared (FK to Sellers)
+      SellerName:
+        type: String
+        description: Display name of the seller
+      Brand:
+        type: String
+        description: Brand context for the shared report
+      CreatedBy:
+        type: String
+        description: User who created the share link
+      ExpiresAt:
+        type: DateTime64(3)
+        description: When the share link expires
+      Label:
+        type: String
+        description: Human-readable label for the link
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
+
+  BenchmarkSettings:
+    description: >
+      Configuration for seller benchmark metrics. Defines which metrics
+      are active, how they are calculated, and scoring rules.
+    engine: ReplacingMergeTree
+    primary_key: [MetricKey]
+    columns:
+      MetricKey:
+        type: String
+        description: Unique metric identifier (e.g. "buy_box_rate", "rating_score")
+        primary_key: true
+      DisplayName:
+        type: String
+        description: Human-readable metric name for the UI
+      Description:
+        type: Nullable(String)
+        description: Detailed explanation of what the metric measures
+      SqlQuery:
+        type: Nullable(String)
+        description: ClickHouse SQL query used to compute the metric
+      ScoreRules:
+        type: Nullable(String)
+        description: JSON rules for converting raw values to scores
+      IsActive:
+        type: UInt8
+        description: Whether this metric is currently active (0/1)
+      _version:
+        type: UInt64
+        description: Row version for ReplacingMergeTree deduplication
+      _deleted:
+        type: UInt8
+        description: Soft-delete flag (0=active, 1=deleted)
