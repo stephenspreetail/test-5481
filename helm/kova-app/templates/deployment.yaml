@@ -17,14 +17,25 @@ spec:
       labels:
         {{- include "kova-app.labels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "kova-app.serviceAccountName" . }}
       {{- if .Values.networking.hostNetwork }}
       hostNetwork: true
       {{- end }}
       restartPolicy: Always
+      # Pod-level: fsGroup ensures the PVC is writable by the kova group.
+      # runAsNonRoot is NOT set because the entrypoint uses the gosu pattern:
+      # starts as root to fix volume permissions, then drops to kova (UID 1001).
+      securityContext:
+        fsGroup: 1001
       containers:
         - name: app
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # The entrypoint uses the gosu pattern (root → kova UID 1001).
+          # TODO: Migrate to a non-root container image (no gosu) so we can
+          # set runAsNonRoot: true and drop ALL capabilities.
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - name: agent
               containerPort: {{ .Values.ports.agent }}
@@ -37,12 +48,46 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- range $key, $_ := .Values.secretEnv }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kova-app.name" $ }}-env
+                  key: {{ $key }}
+            {{- end }}
+          {{- if .Values.probes.startup.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.probes.startup.path }}
+              port: agent
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: agent
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+          {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: agent
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
           volumeMounts:
             - name: workspace
               mountPath: /workspace
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: workspace
           persistentVolumeClaim:
             claimName: {{ include "kova-app.name" . }}-workspace
+        - name: tmp
+          emptyDir: {}

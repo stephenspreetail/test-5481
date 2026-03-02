@@ -8,6 +8,10 @@ metadata:
 spec:
   {{- if .Values.networking.hostNetwork }}
   type: NodePort
+  # hostNetwork + NodePort + health probes require this: kube-proxy intercepts
+  # all NodePort traffic and routes only to "ready" endpoints. Without this,
+  # probes can never reach the pod (chicken-and-egg).
+  publishNotReadyAddresses: true
   {{- else }}
   type: ClusterIP
   {{- end }}
