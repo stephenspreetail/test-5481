@@ -62,6 +62,7 @@ import { showExtraFilesToast } from "@/lib/toast";
 import { generateCuteAppName } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { ChatInputControls } from "../ChatInputControls";
+import { AgentStatusIndicator } from "./AgentStatusIndicator";
 import { AttachmentsList } from "./AttachmentsList";
 import { ChatErrorBox } from "./ChatErrorBox";
 import { DragDropOverlay } from "./DragDropOverlay";
@@ -522,7 +523,8 @@ export function ChatInput({ chatId }: { chatId?: number }) {
             )}
           </div>
           <div className="pl-5 pr-3 pb-3 flex items-center justify-between">
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <AgentStatusIndicator appId={appId} />
               <ChatInputControls showContextFilesPicker={true} />
               {/* File attachment dropdown */}
               <FileAttachmentDropdown

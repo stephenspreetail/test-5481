@@ -14,6 +14,7 @@ import {
   generateChatTitle,
   isRandomAppName,
 } from "../../services/title-generator.service.js";
+import { broadcastAgentStatus, setWorkingState } from "./agent-status.handler.js";
 
 export interface ChatStreamMessage {
   type: "chat:stream";
@@ -255,6 +256,8 @@ export async function handleChatStream(
     activeStreams.delete(streamKey);
   }
 
+  let resolvedAppId: number | undefined;
+
   try {
     // Verify user owns the chat and get app info
     const chatResult = await db
@@ -273,6 +276,7 @@ export async function handleChatStream(
     }
 
     const { chat, app } = chatResult[0];
+    resolvedAppId = app.id;
 
     // Create abort controller for this stream
     const abortController = new AbortController();
@@ -318,6 +322,7 @@ export async function handleChatStream(
     }
 
     // Start or get existing container for this app
+    broadcastAgentStatus(app.id, "scheduling");
     console.log(
       `[CHAT] Starting container for app ${app.id} at path ${app.path}`,
     );
@@ -338,10 +343,12 @@ export async function handleChatStream(
     appContainerService.recordActivity(app.id, "agent");
 
     // Wait for container to be ready
+    broadcastAgentStatus(app.id, "starting");
     console.log(
       `[CHAT] Waiting for container ready at ${containerPorts.agentUrl}`,
     );
     await waitForContainerReady(containerPorts.agentUrl);
+    broadcastAgentStatus(app.id, "ready");
     console.log(`[CHAT] Container ready for app ${app.id}`);
 
     // Get previous session ID if resuming
@@ -436,6 +443,8 @@ export async function handleChatStream(
     const decoder = new TextDecoder();
     let buffer = "";
 
+    setWorkingState(app.id, true);
+    broadcastAgentStatus(app.id, "working");
     logContentBlock(app.id, chatId, "stream_start", undefined, undefined, { prompt: prompt.substring(0, 200) });
 
     while (true) {
@@ -564,6 +573,9 @@ export async function handleChatStream(
       chatSessions.set(chatId, newSessionId);
     }
 
+    setWorkingState(app.id, false);
+    broadcastAgentStatus(app.id, "ready");
+
     // Note: Dev server restart is handled by the container itself
     // The container's server.ts calls checkAndRestartIfContentAvailable() after the agent query completes
     // This avoids duplicate restart triggers and race conditions
@@ -583,6 +595,12 @@ export async function handleChatStream(
   } catch (error: any) {
     console.error("[CHAT] Stream error for", chatId + ":", error.message);
     console.error("[CHAT] Full error:", error);
+
+    if (resolvedAppId) {
+      setWorkingState(resolvedAppId, false);
+      broadcastAgentStatus(resolvedAppId, "error");
+    }
+
     sendError(ws, chatId, error.message || "An error occurred");
     activeStreams.delete(streamKey);
   }

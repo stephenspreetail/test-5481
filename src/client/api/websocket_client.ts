@@ -1,6 +1,7 @@
 import type { ContentBlock } from "@/types/content-blocks";
 import type { Message } from "@/types";
 import type {
+  AgentStatusMessage,
   AppNameUpdate,
   AppOutputMessage,
   AppStatusMessage,
@@ -57,6 +58,10 @@ export class WebSocketClient {
     new Set();
   private appNameUpdateCallbacks: Set<(appId: number, name: string) => void> =
     new Set();
+  private agentStatusCallbacks: Map<
+    number,
+    Set<(status: AgentStatusMessage["status"], message: string) => void>
+  > = new Map();
   private onConnected?: () => void;
   private onDisconnected?: () => void;
 
@@ -332,6 +337,17 @@ export class WebSocketClient {
           break;
         }
 
+        case "app:agent:status": {
+          const agentStatus = message as AgentStatusMessage;
+          const cbs = this.agentStatusCallbacks.get(agentStatus.appId);
+          if (cbs) {
+            for (const cb of cbs) {
+              cb(agentStatus.status, agentStatus.message);
+            }
+          }
+          break;
+        }
+
         case "connected":
           console.log("WebSocket: Connection confirmed by server");
           break;
@@ -422,6 +438,7 @@ export class WebSocketClient {
     this.chatStreams.clear();
     this.appOutputCallbacks.clear();
     this.streamingContent.clear();
+    this.agentStatusCallbacks.clear();
   }
 
   // Chat streaming
@@ -497,6 +514,32 @@ export class WebSocketClient {
     // Return unsubscribe function
     return () => {
       this.appNameUpdateCallbacks.delete(callback);
+    };
+  }
+
+  // Agent status subscription
+  subscribeToAgentStatus(
+    appId: number,
+    callback: (status: AgentStatusMessage["status"], message: string) => void,
+  ): () => void {
+    if (!this.agentStatusCallbacks.has(appId)) {
+      this.agentStatusCallbacks.set(appId, new Set());
+    }
+    this.agentStatusCallbacks.get(appId)!.add(callback);
+
+    // Send subscribe message to backend
+    this.send({ type: "subscribe:agent-status", appId });
+
+    // Return unsubscribe function
+    return () => {
+      const callbacks = this.agentStatusCallbacks.get(appId);
+      if (callbacks) {
+        callbacks.delete(callback);
+        if (callbacks.size === 0) {
+          this.agentStatusCallbacks.delete(appId);
+          this.send({ type: "unsubscribe:agent-status", appId });
+        }
+      }
     };
   }
 }

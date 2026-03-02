@@ -115,3 +115,19 @@ export interface AppStatusMessage {
   url?: string;
   error?: string;
 }
+
+export type AgentStatus =
+  | "offline"
+  | "scheduling"
+  | "starting"
+  | "ready"
+  | "working"
+  | "error";
+
+export interface AgentStatusMessage {
+  type: "app:agent:status";
+  appId: number;
+  status: AgentStatus;
+  message: string;
+  timestamp: number;
+}

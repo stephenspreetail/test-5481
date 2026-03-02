@@ -17,6 +17,17 @@ import {
 } from "./llm-provider.service.js";
 import { buildK8sEnvironmentConfig } from "./k8s-environment.service.js";
 import { shortId, appHostname } from "../utils/app-identifiers.js";
+import {
+  ensureWatching as ensurePodWatcher,
+  stopAllWatchers,
+  clearAppWatchState,
+  queryPodStatus,
+} from "./k8s-pod-watcher.service.js";
+import {
+  broadcastAgentStatus,
+  clearAgentStatus,
+  registerStatusResolver,
+} from "../websocket/handlers/agent-status.handler.js";
 // TODO: Re-enable when agent token validation is implemented in app-container
 // import { generateAgentToken } from "./agent-auth.service.js";
 
@@ -131,6 +142,13 @@ class AppContainerService {
     // Initialize orchestrator
     await orchestrator.initialize();
 
+    // Register the status resolver: on subscribe, query K8s directly for
+    // real pod state instead of relying on cached/stale data.
+    registerStatusResolver((appId) => queryPodStatus(appId));
+
+    // Start namespace-wide pod watcher for real-time push updates
+    ensurePodWatcher();
+
     if (idleCheckInterval) {
       clearInterval(idleCheckInterval);
     }
@@ -192,6 +210,11 @@ class AppContainerService {
           lastActivityAt: containerInfo.lastActivityAt,
         });
 
+        // Seed agent status cache for running containers
+        if (containerInfo.state === "running") {
+          broadcastAgentStatus(appId, "ready");
+        }
+
         console.log(
           `[${new Date().toLocaleString()}] [AppContainerService] discovered container ${containerInfo.containerName} (appId: ${appId})`,
         );
@@ -211,6 +234,9 @@ class AppContainerService {
             `[${new Date().toLocaleString()}] [AppContainerService] Removing stale container entry: app-${appId} (state: ${info.state})`,
           );
           appContainers.delete(appId);
+          clearAgentStatus(appId);
+          clearAppWatchState(appId);
+          broadcastAgentStatus(appId, "offline");
         }
       }
 
@@ -233,7 +259,7 @@ class AppContainerService {
       clearInterval(idleCheckInterval);
       idleCheckInterval = null;
     }
-
+    stopAllWatchers();
     await this.stopAllContainers();
     await orchestrator.shutdown();
     console.log("[AppContainerService] Shutdown complete");
@@ -603,6 +629,10 @@ class AppContainerService {
     );
     containerInfo.state = "stopping";
 
+    // Broadcast offline and clear watcher tracking for this app
+    broadcastAgentStatus(appId, "offline");
+    clearAppWatchState(appId);
+
     try {
       if (containerInfo.containerId) {
         console.log(
@@ -641,6 +671,7 @@ class AppContainerService {
 
     // Cleanup
     appContainers.delete(appId);
+    clearAgentStatus(appId);
   }
 
   /**

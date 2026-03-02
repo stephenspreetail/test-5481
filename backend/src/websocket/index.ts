@@ -8,6 +8,11 @@ import {
   unsubscribeFromAppOutput,
 } from "./handlers/app-output.handler.js";
 import {
+  subscribeToAgentStatus,
+  unsubscribeFromAgentStatus,
+  unsubscribeFromAllAgentStatus,
+} from "./handlers/agent-status.handler.js";
+import {
   ChatCancelMessage,
   ChatStreamMessage,
   handleChatCancel,
@@ -31,6 +36,16 @@ interface SubscribeMessage {
 
 interface UnsubscribeMessage {
   type: "unsubscribe:app";
+  appId: number;
+}
+
+interface SubscribeAgentStatusMessage {
+  type: "subscribe:agent-status";
+  appId: number;
+}
+
+interface UnsubscribeAgentStatusMessage {
+  type: "unsubscribe:agent-status";
   appId: number;
 }
 
@@ -94,6 +109,18 @@ export async function setupWebSocket(app: FastifyInstance) {
             unsubscribeFromAppOutput(unsubMsg.appId, ws);
             break;
 
+          case "subscribe:agent-status": {
+            const agentSubMsg = message as SubscribeAgentStatusMessage;
+            subscribeToAgentStatus(agentSubMsg.appId, ws);
+            break;
+          }
+
+          case "unsubscribe:agent-status": {
+            const agentUnsubMsg = message as UnsubscribeAgentStatusMessage;
+            unsubscribeFromAgentStatus(agentUnsubMsg.appId, ws);
+            break;
+          }
+
           case "ping":
             ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
             break;
@@ -121,6 +148,7 @@ export async function setupWebSocket(app: FastifyInstance) {
     ws.on("close", () => {
       console.log(`WebSocket disconnected: user ${ws.userId}`);
       unsubscribeFromAllApps(ws);
+      unsubscribeFromAllAgentStatus(ws);
     });
 
     // Handle errors
