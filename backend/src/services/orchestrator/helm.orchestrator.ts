@@ -119,18 +119,7 @@ export class HelmOrchestrator implements ContainerOrchestrator {
       `[HelmOrchestrator] Spawning ${releaseName} (appId=${config.appId}, shortId=${sid})`,
     );
 
-    // Check if release already exists
-    const releaseExists = await this.helmReleaseExists(releaseName);
-
-    if (releaseExists) {
-      console.log(
-        `[HelmOrchestrator] Release ${releaseName} exists, upgrading...`,
-      );
-    } else {
-      console.log(
-        `[HelmOrchestrator] Creating new release ${releaseName}...`,
-      );
-    }
+    // helm upgrade --install handles both create and upgrade idempotently
 
     // Build helm values
     const agentPort = parseInt(config.env.AGENT_PORT || "3100");
@@ -148,6 +137,7 @@ export class HelmOrchestrator implements ContainerOrchestrator {
       appShortId: sid,
       appGuid: config.appGuid,
       appId: config.appId.toString(),
+      appSlug: config.appSlug || "",
       userId: config.userId.toString(),
       "image.repository": imageRepo,
       "image.tag": imageTag,
@@ -192,6 +182,7 @@ export class HelmOrchestrator implements ContainerOrchestrator {
       previewUrl,
       state: "running",
       lastActivityAt: Date.now(),
+      appId: config.appId,
     };
 
     this.containerCache.set(config.appId, containerInfo);
@@ -262,8 +253,10 @@ export class HelmOrchestrator implements ContainerOrchestrator {
       }
 
       const pod = podList.items[0];
-      const instanceLabel = pod.metadata?.labels?.["kova.dev/instance"] || "";
-      const guidLabel = pod.metadata?.labels?.["kova.dev/app-guid"] || "";
+      const labels = pod.metadata?.labels || {};
+      const instanceLabel = labels["kova.dev/instance"] || "";
+      const guidLabel = labels["kova.dev/app-guid"] || "";
+      const slugLabel = labels["kova.dev/app-slug"] || "";
       const sid = guidLabel ? shortId(guidLabel) : "";
 
       // Derive deployment name from labels
@@ -271,7 +264,7 @@ export class HelmOrchestrator implements ContainerOrchestrator {
         instanceLabel && sid ? `${instanceLabel}-${sid}` : "";
       if (!deploymentName) return null;
 
-      const previewHost = this.buildPreviewHostname(sid);
+      const previewHost = this.buildPreviewHostname(sid, slugLabel || undefined);
       const { agentUrl, previewUrl } = this.buildContainerUrls(previewHost);
 
       const containerInfo: ContainerInfo = {
@@ -293,31 +286,18 @@ export class HelmOrchestrator implements ContainerOrchestrator {
 
   async healthCheck(containerId: string): Promise<HealthCheckResult> {
     const [namespace, deploymentName] = containerId.split("/");
+    const ns = namespace || this.options.namespace;
 
     try {
-      // Find the appId label from the deployment
-      const output = await this.kubectl(
-        "get",
-        "deployment",
-        deploymentName,
-        "-n",
-        namespace || this.options.namespace,
-        "-o",
-        "jsonpath={.spec.selector.matchLabels.kova\\.dev/app-guid}",
-      );
-
-      const guid = output.trim();
-      if (!guid) {
-        return { healthy: false, message: "No app-guid label found" };
-      }
-
+      // Query pods directly using the deployment name as the instance label.
+      // This avoids an extra kubectl call to fetch the guid from the deployment.
       const podOutput = await this.kubectl(
         "get",
         "pods",
         "-l",
-        `kova.dev/app-guid=${guid}`,
+        `app.kubernetes.io/instance=${deploymentName}`,
         "-n",
-        namespace || this.options.namespace,
+        ns,
         "-o",
         "jsonpath={.items[0].status.phase},{.items[0].status.containerStatuses[0].ready}",
       );
@@ -354,14 +334,16 @@ export class HelmOrchestrator implements ContainerOrchestrator {
         const instanceLabel = labels["kova.dev/instance"] || "";
         const guidLabel = labels["kova.dev/app-guid"] || "";
         const appIdLabel = labels["kova.dev/app-id"] || "";
+        const slugLabel = labels["kova.dev/app-slug"] || "";
         const sid = guidLabel ? shortId(guidLabel) : "";
 
         if (!instanceLabel || !sid) continue;
 
         const deploymentName = `${instanceLabel}-${sid}`;
-        const previewHost = this.buildPreviewHostname(sid);
+        const previewHost = this.buildPreviewHostname(sid, slugLabel || undefined);
         const { agentUrl, previewUrl } = this.buildContainerUrls(previewHost);
 
+        const appId = parseInt(appIdLabel, 10);
         const containerInfo: ContainerInfo = {
           containerId: `${this.options.namespace}/${deploymentName}`,
           containerName: deploymentName,
@@ -369,12 +351,12 @@ export class HelmOrchestrator implements ContainerOrchestrator {
           previewUrl,
           state: this.mapPodState(pod),
           lastActivityAt: Date.now(),
+          appId: !isNaN(appId) ? appId : undefined,
         };
 
         containers.push(containerInfo);
 
         // Update cache
-        const appId = parseInt(appIdLabel, 10);
         if (!isNaN(appId)) {
           this.containerCache.set(appId, containerInfo);
         }
@@ -575,24 +557,6 @@ export class HelmOrchestrator implements ContainerOrchestrator {
       return output.trim() || null;
     } catch {
       return null;
-    }
-  }
-
-  private async helmReleaseExists(releaseName: string): Promise<boolean> {
-    try {
-      const args = [
-        "status",
-        releaseName,
-        "--namespace",
-        this.options.namespace,
-      ];
-      if (this.options.context) {
-        args.push("--kube-context", this.options.context);
-      }
-      await execFileAsync("helm", args);
-      return true;
-    } catch {
-      return false;
     }
   }
 

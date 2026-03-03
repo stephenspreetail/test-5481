@@ -1,5 +1,5 @@
 {
-  "id": "6b9afa2c-2abb-4282-82db-5b759e0d7361",
+  "id": "9581718a-9e70-429e-bbde-9a7dedb83b87",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -100,6 +100,19 @@
           "primaryKey": true,
           "notNull": true
         },
+        "guid": {
+          "name": "guid",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "slug": {
+          "name": "slug",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "user_id": {
           "name": "user_id",
           "type": "integer",
@@ -146,18 +159,6 @@
         },
         "github_branch": {
           "name": "github_branch",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "supabase_project_id": {
-          "name": "supabase_project_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "supabase_parent_project_id": {
-          "name": "supabase_parent_project_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
@@ -216,6 +217,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "k8s_cluster": {
+          "name": "k8s_cluster",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agent_token": {
+          "name": "agent_token",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "chat_context": {
           "name": "chat_context",
           "type": "jsonb",
@@ -247,7 +260,22 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "apps_guid_unique": {
+          "name": "apps_guid_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "guid"
+          ]
+        },
+        "apps_slug_unique": {
+          "name": "apps_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -748,77 +776,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.prompts": {
-      "name": "prompts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "prompts_user_id_users_id_fk": {
-          "name": "prompts_user_id_users_id_fk",
-          "tableFrom": "prompts",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.refresh_tokens": {
       "name": "refresh_tokens",
       "schema": "",
@@ -878,6 +835,92 @@
           "nullsNotDistinct": false,
           "columns": [
             "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_identities": {
+      "name": "user_identities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_email": {
+          "name": "provider_email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_identities_user_id_users_id_fk": {
+          "name": "user_identities_user_id_users_id_fk",
+          "tableFrom": "user_identities",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_identities_provider_uid_unique": {
+          "name": "user_identities_provider_uid_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "provider",
+            "provider_user_id"
           ]
         }
       },
@@ -1059,7 +1102,14 @@
           "name": "password_hash",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Business'"
         },
         "created_at": {
           "name": "created_at",

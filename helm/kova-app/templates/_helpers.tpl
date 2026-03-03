@@ -19,6 +19,9 @@ app.kubernetes.io/managed-by: kova-helm
 kova.dev/instance: {{ .Values.instanceId }}
 kova.dev/app-guid: {{ .Values.appGuid }}
 kova.dev/app-id: {{ .Values.appId | quote }}
+{{- if .Values.appSlug }}
+kova.dev/app-slug: {{ .Values.appSlug }}
+{{- end }}
 kova.dev/user-id: {{ .Values.userId | quote }}
 {{- end }}
 

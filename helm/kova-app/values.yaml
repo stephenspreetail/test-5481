@@ -3,6 +3,7 @@ instanceId: ""             # Kova deployment instance (e.g., "dev", "gabe-pc")
 appShortId: ""             # 8-char hex from app GUID (required)
 appGuid: ""                # Full UUID (for labels/annotations)
 appId: ""                  # Integer ID (for labels only)
+appSlug: ""                # User-defined slug (optional, for preview URLs in slug mode)
 userId: ""                 # Owner user ID (for labels)
 
 # Container

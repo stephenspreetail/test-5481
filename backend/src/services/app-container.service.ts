@@ -119,7 +119,7 @@ class AppContainerService {
       `[${timestamp}] [AppContainerService] config: container image: ${this.containerImage}`,
     );
     console.log(
-      `[${timestamp}] [AppContainerService] config: orchestrator type: kubectl (Kubernetes)`,
+      `[${timestamp}] [AppContainerService] config: orchestrator type: ${config.ORCHESTRATOR_TYPE} (Kubernetes)`,
     );
     console.log(
       `[${timestamp}] [AppContainerService] config: container scan interval: ${this.containerScanIntervalMs}ms`,
@@ -163,11 +163,17 @@ class AppContainerService {
       const runningAppIds = new Set<number>();
 
       for (const containerInfo of containers) {
-        // Extract appId from container name (app-{id})
-        const match = containerInfo.containerName.match(/^app-(\d+)$/);
-        if (!match) continue;
-
-        const appId = parseInt(match[1], 10);
+        // Extract appId from ContainerInfo.
+        // Helm orchestrator: appId comes from kova.dev/app-id label
+        // Kubectl orchestrator: appId parsed from container name "app-{intId}"
+        let appId: number;
+        if (containerInfo.appId != null) {
+          appId = containerInfo.appId;
+        } else {
+          const match = containerInfo.containerName.match(/^app-(\d+)$/);
+          if (!match) continue;
+          appId = parseInt(match[1], 10);
+        }
         runningAppIds.add(appId);
 
         // Skip if we already know about this container

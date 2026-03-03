@@ -40,6 +40,8 @@ export interface ContainerInfo {
   state: ContainerState;
   /** Timestamp of last activity */
   lastActivityAt: number;
+  /** App ID (integer) — populated from K8s labels when available */
+  appId?: number;
 }
 
 /**
