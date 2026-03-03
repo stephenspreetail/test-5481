@@ -70,14 +70,14 @@ export function WorkingStepBlock({
   const header = (
     <div className="flex items-center gap-2">
       <StepIcon status={status} />
-      <span className={`text-xs font-medium ${textClass}`}>{label}</span>
+      <span className={`text-sm font-medium ${textClass}`}>{label}</span>
       {status === 'completed' && summaryLabel && (
-        <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+        <Badge variant="secondary" className="px-1.5 py-0 text-xs">
           {summaryLabel}
         </Badge>
       )}
       {status === 'running' && (
-        <span className="text-[10px] text-muted-foreground">In progress...</span>
+        <span className="text-xs text-muted-foreground">In progress...</span>
       )}
     </div>
   )
@@ -98,13 +98,13 @@ export function WorkingStepBlock({
         <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between transition-colors hover:text-foreground">
           {header}
           {isOpen ? (
-            <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           )}
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-2 space-y-1 border-l border-border/50 pl-3">
+          <div className="mt-2 space-y-1.5 border-l border-border/50 pl-3">
             {logEntries.map((entry, i) => (
               <LogEntryRow key={`${agent}-${i}`} entry={entry} />
             ))}

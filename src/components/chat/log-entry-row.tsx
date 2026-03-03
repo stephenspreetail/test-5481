@@ -16,20 +16,20 @@ export function LogEntryRow({ entry }: { entry: PipelineLogEntry }) {
 
   const levelIcon =
     entry.level === 'success' ? (
-      <CheckCircle2 className="h-3 w-3 shrink-0 text-green-500" />
+      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
     ) : entry.level === 'error' ? (
-      <AlertCircle className="h-3 w-3 shrink-0 text-red-500" />
+      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
     ) : (
-      <Info className="h-3 w-3 shrink-0 text-muted-foreground" />
+      <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
     )
 
   if (!hasDetail) {
     return (
       <div className="flex items-center gap-2">
         {levelIcon}
-        <span className="text-xs">{entry.message}</span>
+        <span className="text-sm">{entry.message}</span>
         {entry.durationMs != null && (
-          <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+          <Badge variant="secondary" className="px-1.5 py-0 text-xs">
             {formatDuration(entry.durationMs)}
           </Badge>
         )}
@@ -42,24 +42,24 @@ export function LogEntryRow({ entry }: { entry: PipelineLogEntry }) {
       <CollapsibleTrigger className="flex cursor-pointer items-center gap-2 transition-colors hover:text-foreground">
         {levelIcon}
         {detailOpen ? (
-          <ChevronDown className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+          <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
         )}
-        <span className="text-xs">{entry.message}</span>
+        <span className="text-sm">{entry.message}</span>
         {entry.durationMs != null && (
-          <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+          <Badge variant="secondary" className="px-1.5 py-0 text-xs">
             {formatDuration(entry.durationMs)}
           </Badge>
         )}
       </CollapsibleTrigger>
       <CollapsibleContent>
         {entry.detail && isSql(entry.detail) ? (
-          <div className="ml-5 mt-1">
+          <div className="ml-6 mt-1">
             <SqlDisplay query={entry.detail} />
           </div>
         ) : (
-          <pre className="ml-5 mt-0.5 whitespace-pre-wrap text-[10px] text-muted-foreground">
+          <pre className="ml-6 mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
             {entry.detail}
           </pre>
         )}

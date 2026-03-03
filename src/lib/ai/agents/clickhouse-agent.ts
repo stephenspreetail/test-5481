@@ -15,7 +15,8 @@ export async function executeDataQueries(
   analysisPlan: AnalysisPlan,
   mode: ChatMode,
   schemaContext?: string,
-  logs?: PipelineLogCollector
+  logs?: PipelineLogCollector,
+  onQueryProgress?: () => void
 ): Promise<DataQueryResult> {
   const tools = getToolsForMode(mode)
   logs?.log('clickhouse', 'info', 'Starting query execution', {
@@ -64,6 +65,8 @@ export async function executeDataQueries(
             detail: r.query,
           })
         }
+        // Send progress to client after each query result
+        onQueryProgress?.()
       }
     }
   }

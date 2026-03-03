@@ -9,6 +9,7 @@ import {
   buildSummaryLabel,
 } from '@/lib/utils/pipeline-display'
 import { WorkingStepBlock } from './working-step-block'
+import { AnalysisPlanBlock } from './analysis-plan-block'
 import { ResponseBlock } from './response-block'
 
 interface AssistantMessageBlocksProps {
@@ -73,6 +74,7 @@ export function AssistantMessageBlocks({
   const text = getMessageText(message)
   const metadata = (message as UIMessage & { metadata?: MessageMetadata }).metadata
   const pipelineLogs = metadata?.pipelineLogs
+  const analysisPlan = metadata?.analysisPlan
 
   // Parse structured sections only after streaming finishes
   const parsed = useMemo(
@@ -96,28 +98,30 @@ export function AssistantMessageBlocks({
   // Determine which working steps to show
   const hasAnySteps = (agentSteps && agentSteps.length > 0) || !!pipelineLogs
 
+  // Show analysis plan block after analyzer completes (has plan data)
+  const analyzerStatus = resolveStepStatus('analyzer', agentSteps, pipelineLogs, isStreaming)
+  const showAnalysisPlan = analysisPlan && analyzerStatus === 'completed'
+
   // Build response block visibility
   const showResponse = isStreaming
-    ? // During streaming: show once analysis agent is running and text exists
-      (agentSteps?.find((s) => s.agent === 'analysis')?.status === 'running' ||
+    ? (agentSteps?.find((s) => s.agent === 'analysis')?.status === 'running' ||
         agentSteps?.find((s) => s.agent === 'analysis')?.status === 'completed') &&
       streamingMarkdown.length > 0
-    : // After streaming: show if there's text content
-      text.length > 0
+    : text.length > 0
 
   const showFollowUps =
     isLastMessage && !isStreaming && (parsed?.followUpQuestions?.length ?? 0) > 0
 
   return (
-    <div className="flex flex-col items-start gap-1">
-      <span className="mb-1 px-1 text-xs text-muted-foreground">Assistant</span>
+    <div className="flex flex-col items-start gap-1.5">
+      <span className="mb-0.5 px-1 text-xs text-muted-foreground">Assistant</span>
 
-      {/* Working step blocks */}
+      {/* Working step blocks + analysis plan interleaved */}
       {hasAnySteps &&
         AGENTS.map((agent) => {
           const status = resolveStepStatus(agent, agentSteps, pipelineLogs, isStreaming)
 
-          // Hide pending steps (they haven't started yet)
+          // Hide pending steps
           if (status === 'pending') return null
 
           const agentLogs = logsByAgent[agent]
@@ -127,15 +131,20 @@ export function AssistantMessageBlocks({
             : undefined
 
           return (
-            <WorkingStepBlock
-              key={agent}
-              agent={agent}
-              status={status}
-              label={AGENT_LABELS[agent]}
-              summaryLabel={summary}
-              logEntries={agentLogs}
-              defaultExpanded={status === 'running' || status === 'error'}
-            />
+            <div key={agent} className="flex w-full flex-col gap-1.5">
+              <WorkingStepBlock
+                agent={agent}
+                status={status}
+                label={AGENT_LABELS[agent]}
+                summaryLabel={summary}
+                logEntries={agentLogs}
+                defaultExpanded={status === 'running' || status === 'error'}
+              />
+              {/* Show analysis plan after the analyzer step completes */}
+              {agent === 'analyzer' && showAnalysisPlan && (
+                <AnalysisPlanBlock plan={analysisPlan} />
+              )}
+            </div>
           )
         })}
 

@@ -1,4 +1,3 @@
-import { ScrollArea } from '@spreetail/spreeform'
 import { useEffect, useRef } from 'react'
 import type { UIMessage } from 'ai'
 import type { AgentStep } from '../../types'
@@ -28,10 +27,12 @@ export function ChatMessages({
   agentSteps,
   onSuggestedQuestion,
 }: ChatMessagesProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
   }, [messages, isStreaming, agentSteps])
 
   if (messages.length === 0) {
@@ -43,15 +44,8 @@ export function ChatMessages({
       m.role === 'user' || m.role === 'assistant'
   )
 
-  // During streaming, check if the last message is already an assistant message.
-  // If not, we need standalone working step blocks.
-  const lastMessage = filteredMessages[filteredMessages.length - 1]
-  const hasStreamingAssistant = isStreaming && lastMessage?.role === 'assistant'
-  const needsStandaloneSteps =
-    isStreaming && !hasStreamingAssistant && agentSteps && agentSteps.length > 0
-
   return (
-    <ScrollArea className="flex-1">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto">
       <div className="flex flex-col gap-4 p-4">
         {filteredMessages.map((message, index) => {
           if (message.role === 'user') {
@@ -77,26 +71,27 @@ export function ChatMessages({
           )
         })}
 
-        {/* Standalone working steps before assistant message appears (submitted phase) */}
-        {needsStandaloneSteps && (
-          <div className="flex flex-col items-start gap-1">
-            <span className="mb-1 px-1 text-xs text-muted-foreground">Assistant</span>
-            {agentSteps
-              .filter((s) => s.status !== 'pending')
-              .map((step) => (
-                <WorkingStepBlock
-                  key={step.agent}
-                  agent={step.agent}
-                  status={step.status}
-                  label={AGENT_LABELS[step.agent]}
-                  defaultExpanded={step.status === 'running'}
-                />
-              ))}
-          </div>
-        )}
-
-        <div ref={bottomRef} />
+        {/* Working steps before assistant message exists (submitted phase) */}
+        {isStreaming &&
+          agentSteps &&
+          agentSteps.length > 0 &&
+          filteredMessages[filteredMessages.length - 1]?.role !== 'assistant' && (
+            <div className="flex flex-col items-start gap-1.5">
+              <span className="mb-0.5 px-1 text-xs text-muted-foreground">Assistant</span>
+              {agentSteps
+                .filter((s) => s.status !== 'pending')
+                .map((step) => (
+                  <WorkingStepBlock
+                    key={step.agent}
+                    agent={step.agent}
+                    status={step.status}
+                    label={AGENT_LABELS[step.agent]}
+                    defaultExpanded={step.status === 'running'}
+                  />
+                ))}
+            </div>
+          )}
       </div>
-    </ScrollArea>
+    </div>
   )
 }

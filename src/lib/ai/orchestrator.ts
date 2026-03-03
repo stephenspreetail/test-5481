@@ -2,6 +2,10 @@
  * Multi-agent orchestrator.
  * Runs 3 agents in sequence: Question Analyzer -> ClickHouse Agent -> Analysis Agent
  * Returns a streaming Response compatible with the AI SDK useChat hook.
+ *
+ * Sends incremental message-metadata chunks as each agent completes and after
+ * each query, so the client sees real-time progress. Uses manual text chunk
+ * writes (not writer.merge) to keep everything on a single message.
  */
 import {
   type UIMessage,
@@ -67,10 +71,21 @@ export async function runAgentPipeline(params: {
   console.log('[orchestrator] Mode:', mode)
   console.log('[orchestrator] Schema context loaded:', !!schemaContext)
 
-  // Create UI message stream: run agents 1 & 2, then stream agent 3
+  // Create UI message stream with manual chunk writing (no writer.merge)
+  // to keep all metadata + text on a single assistant message.
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       const logs = new PipelineLogCollector()
+      let analysisPlanData: Record<string, unknown> | undefined
+
+      // Helper: send current pipeline state to client
+      const sendMetadata = () => {
+        const metadata: Record<string, unknown> = { pipelineLogs: logs.toJSON() }
+        if (analysisPlanData) {
+          metadata.analysisPlan = analysisPlanData
+        }
+        writer.write({ type: 'message-metadata', messageMetadata: metadata })
+      }
 
       try {
         // Agent 1: Analyze the question
@@ -82,24 +97,37 @@ export async function runAgentPipeline(params: {
           detail: `Intent: ${analysisPlan.intent}`,
         })
 
-        // Send incremental metadata so client sees Agent 1 details immediately
-        writer.write({ type: 'message-metadata', messageMetadata: { pipelineLogs: logs.toJSON() } })
+        analysisPlanData = {
+          intent: analysisPlan.intent,
+          suggested_approach: analysisPlan.suggested_approach,
+          business_context: analysisPlan.business_context,
+          relevant_tables: analysisPlan.relevant_tables,
+        }
 
-        // Agent 2: Execute ClickHouse queries
+        // Send metadata: client now sees analyzer completed with details
+        sendMetadata()
+
+        // Agent 2: Execute ClickHouse queries (with per-query progress)
         logs.log('orchestrator', 'info', 'Starting data queries')
         const startAgent2 = Date.now()
         const { results: queryResults, sqlQueries } = await executeDataQueries(
           analysisPlan,
           mode,
           schemaContext,
-          logs
+          logs,
+          sendMetadata // callback: sends metadata after each query
         )
         logs.log('orchestrator', 'success', `Executed ${sqlQueries.length} queries, got ${queryResults.length} results`, {
           durationMs: Date.now() - startAgent2,
         })
 
+        // Send metadata: client now sees clickhouse completed with all query details
+        sendMetadata()
+
         // Agent 3: Stream the analysis response
         logs.log('orchestrator', 'info', 'Starting analysis stream')
+        sendMetadata()
+
         const analysisResult = streamAnalysis(
           question,
           analysisPlan,
@@ -107,11 +135,14 @@ export async function runAgentPipeline(params: {
           logs
         )
 
-        // Write message-metadata with pipeline logs before merging the stream
-        writer.write({ type: 'message-metadata', messageMetadata: { pipelineLogs: logs.toJSON() } })
-
-        // Merge the analysis agent's UI message stream into the writer
-        writer.merge(analysisResult.toUIMessageStream())
+        // Manually stream text chunks (instead of writer.merge) to stay on same message
+        const textId = 'analysis-text'
+        writer.write({ type: 'text-start', id: textId })
+        for await (const delta of analysisResult.textStream) {
+          writer.write({ type: 'text-delta', id: textId, delta })
+        }
+        writer.write({ type: 'text-end', id: textId })
+        writer.write({ type: 'finish' })
       } catch (err) {
         logs.log('orchestrator', 'error', 'Pipeline error', {
           detail: err instanceof Error ? err.message : String(err),

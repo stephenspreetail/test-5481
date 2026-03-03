@@ -144,19 +144,17 @@ function HomePage() {
     setInput('')
   }, [input, isLoading, activeConversationId, createConversation, mode, sendMessage])
 
-  // Step progression: advance stepper based on incremental pipeline logs from server.
-  // No heuristic timer — only advance when real metadata arrives.
+  // Step progression: driven entirely by real pipeline logs from the server.
+  // The orchestrator sends incremental metadata as each agent/query completes.
   useEffect(() => {
     if (!isLoading) return
 
-    // Check the latest assistant message for pipelineLogs metadata
     const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')
     const logs = lastAssistant
       ? (lastAssistant as UIMessage & { metadata?: MessageMetadata }).metadata?.pipelineLogs
       : undefined
 
     if (logs) {
-      // Incremental pipelineLogs: check which agents are actually in the logs
       const agentsInLogs = new Set(logs.entries.map((e) => e.agent))
       const analyzerDone = agentsInLogs.has('analyzer')
       const clickhouseDone = agentsInLogs.has('clickhouse')
@@ -179,7 +177,7 @@ function HomePage() {
         },
       ])
     } else if (status === 'streaming') {
-      // Streaming has started (Agent 3 is producing text) but no logs yet
+      // Text streaming started but no metadata yet (edge case)
       setAgentSteps((prev) => {
         const analysisStep = prev.find((s) => s.agent === 'analysis')
         if (analysisStep?.status === 'running') return prev

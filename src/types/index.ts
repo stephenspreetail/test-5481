@@ -20,8 +20,16 @@ export interface PipelineLogs {
   hasErrors: boolean
 }
 
+export interface AnalysisPlanSummary {
+  intent: string
+  suggested_approach: string
+  business_context: string
+  relevant_tables: string[]
+}
+
 export interface MessageMetadata {
   pipelineLogs?: PipelineLogs
+  analysisPlan?: AnalysisPlanSummary
 }
 
 export interface QueryResult {
