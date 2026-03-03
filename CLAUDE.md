@@ -64,7 +64,7 @@ kubectl apply -f manifests/kova/namespace-kova-apps.yaml
 bun run container:rebuild
 
 # 4. Set up database and seed dev user
-bun run db:push
+bun run db:migrate
 bun run dev:backend &             # seed script needs the REST API running
 sleep 3 && bun run --cwd backend seed:dev-user
 kill %1 2>/dev/null
@@ -90,7 +90,7 @@ bun install
 kubectl apply -f manifests/kova/
 
 # Run database migrations
-bun run db:push
+bun run db:migrate
 
 # Create dev user account
 bun run --cwd backend seed:dev-user
@@ -122,8 +122,9 @@ bun run test:watch      # Run tests in watch mode
 bun run test:ui         # Run tests with UI
 
 # Database
-bun run db:push         # Apply schema changes
-bun run db:generate     # Generate migration files
+bun run db:push         # Apply schema.ts to local DB (dev only, interactive)
+bun run db:generate     # Generate SQL migration file from schema.ts diff
+bun run db:migrate      # Run committed migration files (what prod uses)
 bun run db:studio       # Open Drizzle Studio GUI
 ```
 
@@ -268,3 +269,44 @@ vi.mock("isomorphic-git", () => ({
   default: { add: vi.fn().mockResolvedValue(undefined) },
 }));
 ```
+
+## Database Schema Changes
+
+Kova uses **Drizzle ORM** with two migration modes:
+
+- **`db:push`** — Dev only. Diffs `schema.ts` against the live DB and applies changes interactively. Fast iteration, no migration files. **Does not work in non-interactive environments (CI/K8s).**
+- **`db:migrate`** — Production. Runs committed SQL files from `backend/drizzle/` tracked in a `drizzle.__drizzle_migrations` table. Deterministic and idempotent.
+
+### Making a Schema Change
+
+```bash
+# 1. Edit the schema
+#    backend/src/db/schema.ts
+
+# 2. Apply to local DB for testing
+bun run db:push
+
+# 3. Generate a migration file (commit this!)
+bun run db:generate
+#    Creates backend/drizzle/NNNN_*.sql
+
+# 4. Test the migration locally
+bun run db:migrate
+
+# 5. Commit the migration file alongside the schema change
+git add backend/src/db/schema.ts backend/drizzle/
+```
+
+### How Production Migrations Work
+
+- Helm pre-upgrade hook runs `backend/scripts/migrate-iam.ts` as a K8s Job
+- Uses the `kova-migrate` ServiceAccount (Pod Identity → `kova_admin` IAM role)
+- Runs `drizzle-kit migrate` against committed SQL files
+- Grants SELECT/INSERT/UPDATE/DELETE to `kova_svc` after each migration
+- Migration Job logs are visible for 1 hour via `kubectl logs job/kova-migrate-{revision} -n devops`
+
+### Important Notes
+
+- **Always commit migration files.** `db:push` does NOT generate them — run `db:generate` separately.
+- **Never use `db:push` in CI/prod.** The `--force` flag silently skips DDL in non-TTY environments.
+- The baseline migration (`0000`) is idempotent (`CREATE TABLE IF NOT EXISTS`) so it's safe on both fresh and existing databases.

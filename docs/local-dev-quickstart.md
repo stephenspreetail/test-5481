@@ -118,10 +118,10 @@ bun run container:rebuild
 
 Builds the Docker image and imports it into k3d so pods can pull it locally.
 
-### 7. Push database schema
+### 7. Run database migrations
 
 ```bash
-bun run db:push
+bun run db:migrate
 ```
 
 ### 8. Seed the dev user
@@ -233,7 +233,9 @@ bun install
 
 **Schema out of date?**
 ```bash
-bun run db:push
+bun run db:migrate      # Apply committed migration files
+# Or for quick local iteration:
+bun run db:push         # Sync schema.ts directly (dev only)
 ```
 
 **App container image not found by k3d?**

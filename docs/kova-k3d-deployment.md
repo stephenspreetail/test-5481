@@ -147,7 +147,7 @@ The cluster-up script only sets up the infrastructure. You still need:
 
 | Step | Command | What it does |
 |------|---------|-------------|
-| Push DB schema | `bun run db:push` | Creates the database tables (users, apps, chats, etc.) |
+| Run DB migrations | `bun run db:migrate` | Creates the database tables (users, apps, chats, etc.) |
 | Build app container | `bun run container:rebuild` | Builds the Docker image that the AI agent runs inside |
 | Seed dev user | `bun run --cwd backend seed:dev-user` | Creates a test account (`dev@kova.local` / `devpassword123`) |
 | Start the app | `bun run dev:full` | Launches the frontend (port 5174) and backend (port 3002) |

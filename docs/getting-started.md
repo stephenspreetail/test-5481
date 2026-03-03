@@ -97,7 +97,7 @@ docker compose up postgres traefik -d
 ## 4. Initialize Database
 
 ```bash
-bun run db:push
+bun run db:migrate
 ```
 
 ## 5. Start Development

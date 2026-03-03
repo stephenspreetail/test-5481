@@ -55,7 +55,7 @@ cp .env.example .env
 docker compose up postgres traefik -d
 
 # 4. Run database migrations
-bun run db:push
+bun run db:migrate
 
 # 5. Start development
 bun run dev:full        # Full platform (backend + frontend)
@@ -146,7 +146,9 @@ bun run dev:backend      # Backend only
 bun run dev:web          # Frontend only
 
 # Database
-bun run db:push          # Apply migrations
+bun run db:push          # Apply schema.ts to local DB (dev only)
+bun run db:generate      # Generate migration file from schema diff
+bun run db:migrate       # Run committed migration files (prod-safe)
 bun run db:studio        # Open Drizzle Studio
 
 # Quality
