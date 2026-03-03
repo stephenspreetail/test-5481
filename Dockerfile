@@ -70,8 +70,8 @@ COPY --from=build /app/dist/web ./dist/web
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/backend/node_modules ./backend/node_modules
 
-# Migration tooling for Helm pre-upgrade hook (drizzle-kit push)
-COPY --from=build /app/backend/src/db/schema.ts ./backend/src/db/
+# Migration tooling for Helm pre-upgrade hook (drizzle-kit migrate)
+COPY --from=build /app/backend/drizzle ./backend/drizzle
 COPY --from=build /app/backend/drizzle.config.ts ./backend/
 COPY --from=build /app/backend/scripts/migrate-iam.ts ./backend/scripts/
 
