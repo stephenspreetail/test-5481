@@ -3,9 +3,13 @@
  * IAM-authenticated database migration script.
  *
  * Generates an RDS IAM auth token, builds a DATABASE_URL, then execs
- * `bunx drizzle-kit push` so Drizzle can apply schema changes against the
+ * `drizzle-kit migrate` to apply committed SQL migration files against the
  * RDS instance. Designed to run as a Helm pre-upgrade hook inside EKS
  * where Pod Identity provides AWS credentials.
+ *
+ * NOTE: We use `drizzle-kit migrate` (file-based) instead of `drizzle-kit push`
+ * (schema-diff) because `push --force` silently skips DDL in non-interactive
+ * environments (no TTY). `migrate` runs committed SQL files deterministically.
  *
  * Required env vars: DB_HOST, DB_NAME, DB_USER
  * Optional env vars: DB_PORT (5432), DB_REGION (us-east-1),
@@ -43,9 +47,65 @@ const encodedToken = encodeURIComponent(token);
 const sslParams = `sslmode=require&sslrootcert=${encodeURIComponent(DB_SSL_CA_PATH)}`;
 const databaseUrl = `postgresql://${DB_USER}:${encodedToken}@${DB_HOST}:${DB_PORT}/${DB_NAME}?${sslParams}`;
 
-console.log("Running drizzle-kit push...");
+// Baseline: if this is an existing DB that was managed by `drizzle-kit push`,
+// the __drizzle_migrations tracking table won't exist. We need to create it
+// and mark the initial 0000 migration as already applied so `migrate` doesn't
+// try to CREATE TABLE on tables that already exist.
+console.log("Checking migration baseline...");
+const { Client: PgClient } = await import("pg");
+const baselineClient = new PgClient({ connectionString: databaseUrl });
+await baselineClient.connect();
 
-const proc = Bun.spawn(["bun", "run", "drizzle-kit", "push", "--force"], {
+const { rows: trackingTable } = await baselineClient.query(
+  `SELECT 1 FROM information_schema.tables WHERE table_name = '__drizzle_migrations'`,
+);
+if (trackingTable.length === 0) {
+  // Check if the DB already has our tables (i.e., was set up via push)
+  const { rows: existingTables } = await baselineClient.query(
+    `SELECT 1 FROM information_schema.tables WHERE table_name = 'apps'`,
+  );
+  if (existingTables.length > 0) {
+    console.log("Existing DB detected — seeding baseline migration record...");
+    // Create the tracking table that drizzle-kit migrate expects
+    await baselineClient.query(`
+      CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+        id serial PRIMARY KEY,
+        hash text NOT NULL,
+        created_at bigint
+      )
+    `);
+    // Read the journal to get the 0000 migration hash
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const journalPath = path.join(import.meta.dir, "..", "drizzle", "meta", "_journal.json");
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    const baseline = journal.entries[0];
+    if (baseline) {
+      // Check if already seeded (idempotent)
+      const { rows: existing } = await baselineClient.query(
+        `SELECT 1 FROM "__drizzle_migrations" WHERE hash = $1`, [baseline.tag],
+      );
+      if (existing.length === 0) {
+        await baselineClient.query(
+          `INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2)`,
+          [baseline.tag, baseline.when],
+        );
+        console.log(`Seeded baseline: ${baseline.tag}`);
+      } else {
+        console.log(`Baseline already seeded: ${baseline.tag}`);
+      }
+    }
+  } else {
+    console.log("Fresh DB — migrate will apply all migrations from scratch");
+  }
+} else {
+  console.log("Migration tracking table exists — continuing normally");
+}
+await baselineClient.end();
+
+console.log("Running drizzle-kit migrate...");
+
+const proc = Bun.spawn(["bun", "run", "drizzle-kit", "migrate"], {
   cwd: `${import.meta.dir}/..`,
   env: { ...process.env, DATABASE_URL: databaseUrl },
   stdout: "inherit",
@@ -54,16 +114,16 @@ const proc = Bun.spawn(["bun", "run", "drizzle-kit", "push", "--force"], {
 
 const exitCode = await proc.exited;
 if (exitCode !== 0) {
-  console.error(`drizzle-kit push failed with exit code ${exitCode}`);
+  console.error(`drizzle-kit migrate failed with exit code ${exitCode}`);
   process.exit(exitCode);
 }
 
 console.log("Migration completed successfully");
 
 // Grant privileges on all tables to the app service user (kova_svc).
-// drizzle-kit push runs as kova_admin, so newly created tables are not
-// automatically accessible to kova_svc. This runs after every push to
-// ensure any new tables are covered.
+// Migrations run as kova_admin, so newly created tables are not
+// automatically accessible to kova_svc. This runs after every migration
+// to ensure any new tables are covered.
 const APP_USER = "kova_svc";
 console.log(`Granting privileges to ${APP_USER}...`);
 const { Client } = await import("pg");
