@@ -1,4 +1,7 @@
-CREATE TABLE "app_env_vars" (
+-- Baseline migration: idempotent so it's safe on both fresh and existing DBs.
+-- Hand-edited from drizzle-kit generate output to add IF NOT EXISTS.
+
+CREATE TABLE IF NOT EXISTS "app_env_vars" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"app_id" integer NOT NULL,
 	"key" varchar(255) NOT NULL,
@@ -10,7 +13,7 @@ CREATE TABLE "app_env_vars" (
 	CONSTRAINT "app_env_vars_app_key_unique" UNIQUE("app_id","key")
 );
 --> statement-breakpoint
-CREATE TABLE "apps" (
+CREATE TABLE IF NOT EXISTS "apps" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"guid" uuid DEFAULT gen_random_uuid() NOT NULL,
 	"slug" varchar(100),
@@ -39,7 +42,7 @@ CREATE TABLE "apps" (
 	CONSTRAINT "apps_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "chats" (
+CREATE TABLE IF NOT EXISTS "chats" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"app_id" integer NOT NULL,
 	"title" varchar(255),
@@ -48,7 +51,7 @@ CREATE TABLE "chats" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "language_model_providers" (
+CREATE TABLE IF NOT EXISTS "language_model_providers" (
 	"id" varchar(100) PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -58,7 +61,7 @@ CREATE TABLE "language_model_providers" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "language_models" (
+CREATE TABLE IF NOT EXISTS "language_models" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"display_name" varchar(255) NOT NULL,
@@ -72,7 +75,7 @@ CREATE TABLE "language_models" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mcp_servers" (
+CREATE TABLE IF NOT EXISTS "mcp_servers" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -86,7 +89,7 @@ CREATE TABLE "mcp_servers" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mcp_tool_consents" (
+CREATE TABLE IF NOT EXISTS "mcp_tool_consents" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"server_id" integer NOT NULL,
 	"tool_name" varchar(255) NOT NULL,
@@ -95,7 +98,7 @@ CREATE TABLE "mcp_tool_consents" (
 	CONSTRAINT "mcp_tool_consents_server_tool_unique" UNIQUE("server_id","tool_name")
 );
 --> statement-breakpoint
-CREATE TABLE "messages" (
+CREATE TABLE IF NOT EXISTS "messages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"chat_id" integer NOT NULL,
 	"role" varchar(20) NOT NULL,
@@ -108,7 +111,7 @@ CREATE TABLE "messages" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "refresh_tokens" (
+CREATE TABLE IF NOT EXISTS "refresh_tokens" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"token" varchar(500) NOT NULL,
@@ -117,7 +120,7 @@ CREATE TABLE "refresh_tokens" (
 	CONSTRAINT "refresh_tokens_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
-CREATE TABLE "user_identities" (
+CREATE TABLE IF NOT EXISTS "user_identities" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"provider" varchar(50) NOT NULL,
@@ -129,7 +132,7 @@ CREATE TABLE "user_identities" (
 	CONSTRAINT "user_identities_provider_uid_unique" UNIQUE("provider","provider_user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "user_secrets" (
+CREATE TABLE IF NOT EXISTS "user_secrets" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"key" varchar(255) NOT NULL,
@@ -141,7 +144,7 @@ CREATE TABLE "user_secrets" (
 	CONSTRAINT "user_secrets_user_key_unique" UNIQUE("user_id","key")
 );
 --> statement-breakpoint
-CREATE TABLE "user_settings" (
+CREATE TABLE IF NOT EXISTS "user_settings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
 	"settings" jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -150,7 +153,7 @@ CREATE TABLE "user_settings" (
 	CONSTRAINT "user_settings_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"email" varchar(255) NOT NULL,
 	"password_hash" varchar(255),
@@ -160,7 +163,7 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "versions" (
+CREATE TABLE IF NOT EXISTS "versions" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"app_id" integer NOT NULL,
 	"commit_hash" varchar(40) NOT NULL,
@@ -170,17 +173,73 @@ CREATE TABLE "versions" (
 	CONSTRAINT "versions_app_commit_unique" UNIQUE("app_id","commit_hash")
 );
 --> statement-breakpoint
-ALTER TABLE "app_env_vars" ADD CONSTRAINT "app_env_vars_app_id_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "apps" ADD CONSTRAINT "apps_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "chats" ADD CONSTRAINT "chats_app_id_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "language_model_providers" ADD CONSTRAINT "language_model_providers_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "language_models" ADD CONSTRAINT "language_models_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "language_models" ADD CONSTRAINT "language_models_custom_provider_id_language_model_providers_id_fk" FOREIGN KEY ("custom_provider_id") REFERENCES "public"."language_model_providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mcp_servers" ADD CONSTRAINT "mcp_servers_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mcp_tool_consents" ADD CONSTRAINT "mcp_tool_consents_server_id_mcp_servers_id_fk" FOREIGN KEY ("server_id") REFERENCES "public"."mcp_servers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "messages" ADD CONSTRAINT "messages_chat_id_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."chats"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_identities" ADD CONSTRAINT "user_identities_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_secrets" ADD CONSTRAINT "user_secrets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "versions" ADD CONSTRAINT "versions_app_id_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE cascade ON UPDATE no action;
+DO $$ BEGIN
+  ALTER TABLE "app_env_vars" ADD CONSTRAINT "app_env_vars_app_id_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "apps" ADD CONSTRAINT "apps_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "chats" ADD CONSTRAINT "chats_app_id_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "language_model_providers" ADD CONSTRAINT "language_model_providers_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "language_models" ADD CONSTRAINT "language_models_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "language_models" ADD CONSTRAINT "language_models_custom_provider_id_language_model_providers_id_fk" FOREIGN KEY ("custom_provider_id") REFERENCES "public"."language_model_providers"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "mcp_servers" ADD CONSTRAINT "mcp_servers_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "mcp_tool_consents" ADD CONSTRAINT "mcp_tool_consents_server_id_mcp_servers_id_fk" FOREIGN KEY ("server_id") REFERENCES "public"."mcp_servers"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "messages" ADD CONSTRAINT "messages_chat_id_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."chats"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "user_identities" ADD CONSTRAINT "user_identities_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "user_secrets" ADD CONSTRAINT "user_secrets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "versions" ADD CONSTRAINT "versions_app_id_apps_id_fk" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+-- Backfill: add guid/slug columns to existing apps tables that predate this migration.
+-- IF NOT EXISTS on CREATE TABLE handles fresh DBs; these ALTERs handle existing DBs
+-- where the apps table exists but lacks guid/slug.
+DO $$ BEGIN
+  ALTER TABLE "apps" ADD COLUMN "guid" uuid DEFAULT gen_random_uuid() NOT NULL;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "apps" ADD COLUMN "slug" varchar(100);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "apps_guid_unique" ON "apps" ("guid");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "apps_slug_unique" ON "apps" ("slug");
