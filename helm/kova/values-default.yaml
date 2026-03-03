@@ -68,4 +68,4 @@ migration:
       cpu: 500m
       memory: 512Mi
   backoffLimit: 3
-  ttlSecondsAfterFinished: 300
+  ttlSecondsAfterFinished: 3600
