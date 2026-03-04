@@ -495,18 +495,23 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0">
-                {appUrl ? (
-                  <a
-                    href={appUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="truncate flex-1 mr-2 min-w-0 hover:underline"
-                    title={appUrl}
-                  >
-                    {appUrl}
-                  </a>
-                ) : (
+                {appUrl ? (() => {
+                  const currentNav = navigationHistory[currentHistoryPosition];
+                  const pathname = currentNav ? new URL(currentNav).pathname : "/";
+                  const displayUrl = new URL(appUrl).origin + pathname;
+                  return (
+                    <a
+                      href={displayUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="truncate flex-1 mr-2 min-w-0 hover:underline"
+                      title={displayUrl}
+                    >
+                      {displayUrl}
+                    </a>
+                  );
+                })() : (
                   <span className="truncate flex-1 mr-2 min-w-0 text-gray-400">
                     Waiting for preview...
                   </span>
