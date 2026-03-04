@@ -42,17 +42,11 @@ export default function AppDetailsPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/app-details" as const });
   const { apps: appsList, refreshApps } = useLoadApps();
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
-  const [isRenameConfirmDialogOpen, setIsRenameConfirmDialogOpen] =
-    useState(false);
   const [newAppName, setNewAppName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
-  const [isRenameFolderDialogOpen, setIsRenameFolderDialogOpen] =
-    useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [isRenamingFolder, setIsRenamingFolder] = useState(false);
   const appBasePath = useAtomValue(appBasePathAtom);
 
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
@@ -121,20 +115,20 @@ export default function AppDetailsPage() {
     navigate({ to: "/chat", search: { id: chatId } });
   };
 
-  const handleDeleteApp = async () => {
+  const handleArchiveApp = async () => {
     if (!appId) return;
 
     try {
-      setIsDeleting(true);
+      setIsArchiving(true);
       await getClient().deleteApp(appId);
-      setIsDeleteDialogOpen(false);
+      setIsArchiveDialogOpen(false);
       await refreshApps();
       navigate({ to: "/", search: {} });
     } catch (error) {
-      setIsDeleteDialogOpen(false);
+      setIsArchiveDialogOpen(false);
       showError(error);
     } finally {
-      setIsDeleting(false);
+      setIsArchiving(false);
     }
   };
 
@@ -145,63 +139,19 @@ export default function AppDetailsPage() {
     }
   };
 
-  const handleOpenRenameFolderDialog = () => {
-    if (selectedApp) {
-      setNewFolderName(selectedApp.path.split("/").pop() || selectedApp.path);
-      setIsRenameFolderDialogOpen(true);
-    }
-  };
-
-  const handleRenameApp = async (renameFolder: boolean) => {
-    if (!appId || !selectedApp || !newAppName.trim()) return;
+  const handleRenameApp = async () => {
+    if (!appId || !newAppName.trim()) return;
 
     try {
       setIsRenaming(true);
-
-      // Determine the new path based on user's choice
-      const appPath = renameFolder ? newAppName : selectedApp.path;
-
-      await getClient().renameApp({
-        appId,
-        appName: newAppName,
-        appPath,
-      });
-
+      await getClient().renameApp({ appId, appName: newAppName });
       setIsRenameDialogOpen(false);
-      setIsRenameConfirmDialogOpen(false);
       await refreshApps();
     } catch (error) {
       console.error("Failed to rename app:", error);
-      const errorMessage = (
-        error instanceof Error ? error.message : String(error)
-      ).replace(/^Error invoking remote method 'rename-app': Error: /, "");
-      showError(errorMessage);
+      showError(error);
     } finally {
       setIsRenaming(false);
-    }
-  };
-
-  const handleRenameFolderOnly = async () => {
-    if (!appId || !selectedApp || !newFolderName.trim()) return;
-
-    try {
-      setIsRenamingFolder(true);
-      await getClient().renameApp({
-        appId,
-        appName: selectedApp.name, // Keep the app name the same
-        appPath: newFolderName, // Change only the folder path
-      });
-
-      setIsRenameFolderDialogOpen(false);
-      await refreshApps();
-    } catch (error) {
-      console.error("Failed to rename folder:", error);
-      const errorMessage = (
-        error instanceof Error ? error.message : String(error)
-      ).replace(/^Error invoking remote method 'rename-app': Error: /, "");
-      showError(errorMessage);
-    } finally {
-      setIsRenamingFolder(false);
     }
   };
 
@@ -291,14 +241,6 @@ export default function AppDetailsPage() {
             <PopoverContent className="w-40 p-2" align="end">
               <div className="flex flex-col space-y-0.5">
                 <Button
-                  onClick={handleOpenRenameFolderDialog}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 justify-start text-xs"
-                >
-                  Rename folder
-                </Button>
-                <Button
                   onClick={handleOpenCopyDialog}
                   variant="ghost"
                   size="sm"
@@ -307,12 +249,12 @@ export default function AppDetailsPage() {
                   Copy app
                 </Button>
                 <Button
-                  onClick={() => setIsDeleteDialogOpen(true)}
+                  onClick={() => setIsArchiveDialogOpen(true)}
                   variant="ghost"
                   size="sm"
                   className="h-8 justify-start text-xs"
                 >
-                  Delete
+                  Archive
                 </Button>
               </div>
             </PopoverContent>
@@ -463,139 +405,12 @@ export default function AppDetailsPage() {
             </Button>
             <Button
               onClick={() => {
-                setIsRenameDialogOpen(false);
-                setIsRenameConfirmDialogOpen(true);
+                handleRenameApp();
               }}
               disabled={isRenaming || !newAppName.trim()}
               size="sm"
             >
-              Continue
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rename Folder Dialog */}
-      <Dialog
-        open={isRenameFolderDialogOpen}
-        onOpenChange={setIsRenameFolderDialogOpen}
-      >
-        <DialogContent className="max-w-sm p-4">
-          <DialogHeader className="pb-2">
-            <DialogTitle>Rename app folder</DialogTitle>
-            <DialogDescription className="text-xs">
-              This will change only the folder name, not the app name.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="Enter new folder name"
-            className="my-2"
-            autoFocus
-          />
-          <DialogFooter className="pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsRenameFolderDialogOpen(false)}
-              disabled={isRenamingFolder}
-              size="sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRenameFolderOnly}
-              disabled={isRenamingFolder || !newFolderName.trim()}
-              size="sm"
-            >
-              {isRenamingFolder ? (
-                <>
-                  <svg
-                    className="animate-spin h-3 w-3 mr-1"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Renaming...
-                </>
-              ) : (
-                "Rename Folder"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rename Confirmation Dialog */}
-      <Dialog
-        open={isRenameConfirmDialogOpen}
-        onOpenChange={setIsRenameConfirmDialogOpen}
-      >
-        <DialogContent className="max-w-sm p-4">
-          <DialogHeader className="pb-2">
-            <DialogTitle className="text-base">
-              How would you like to rename "{selectedApp.name}"?
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Choose an option:
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 my-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start p-2 h-auto relative text-sm"
-              onClick={() => handleRenameApp(true)}
-              disabled={isRenaming}
-            >
-              <div className="absolute top-1 right-1">
-                <span className="bg-teal-100 text-teal-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-teal-900 dark:text-teal-300 text-[10px]">
-                  Recommended
-                </span>
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-xs">Rename app and folder</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Renames the folder to match the new app name.
-                </p>
-              </div>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full justify-start p-2 h-auto text-sm"
-              onClick={() => handleRenameApp(false)}
-              disabled={isRenaming}
-            >
-              <div className="text-left">
-                <p className="font-medium text-xs">Rename app only</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  The folder name will remain the same.
-                </p>
-              </div>
-            </Button>
-          </div>
-          <DialogFooter className="pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsRenameConfirmDialogOpen(false)}
-              disabled={isRenaming}
-              size="sm"
-            >
-              Cancel
+              Rename
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -710,33 +525,33 @@ export default function AppDetailsPage() {
         </Dialog>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* Archive Confirmation Dialog */}
+      <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
-            <DialogTitle>Delete "{selectedApp.name}"?</DialogTitle>
+            <DialogTitle>Archive "{selectedApp.name}"?</DialogTitle>
             <DialogDescription className="text-xs">
-              This action is irreversible. All app files and chat history will
-              be permanently deleted.
+              The app will be hidden and its container resources will be cleaned
+              up.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex justify-end gap-2 pt-2">
             <Button
               variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              disabled={isDeleting}
+              onClick={() => setIsArchiveDialogOpen(false)}
+              disabled={isArchiving}
               size="sm"
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteApp}
-              disabled={isDeleting}
+              onClick={handleArchiveApp}
+              disabled={isArchiving}
               className="flex items-center gap-1"
               size="sm"
             >
-              {isDeleting ? (
+              {isArchiving ? (
                 <>
                   <svg
                     className="animate-spin h-3 w-3 text-white"
@@ -758,10 +573,10 @@ export default function AppDetailsPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Deleting...
+                  Archiving...
                 </>
               ) : (
-                "Delete App"
+                "Archive App"
               )}
             </Button>
           </DialogFooter>

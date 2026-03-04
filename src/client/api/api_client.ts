@@ -228,11 +228,10 @@ export class ApiClient {
   async renameApp(params: {
     appId: number;
     appName: string;
-    appPath: string;
   }): Promise<void> {
     await this.request(`/api/apps/${params.appId}`, {
       method: "PUT",
-      body: JSON.stringify({ name: params.appName, path: params.appPath }),
+      body: JSON.stringify({ name: params.appName }),
     });
   }
 

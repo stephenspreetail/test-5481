@@ -1,0 +1,1 @@
+ALTER TABLE "apps" ADD COLUMN "archived_at" timestamp;

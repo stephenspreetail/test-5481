@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { and, count, desc, eq, ilike, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { config } from "../../config/index.js";
@@ -46,8 +46,8 @@ export async function appsRoutes(app: FastifyInstance) {
 
     // Build base query with search filter (case-insensitive)
     const whereClause = query.search
-      ? and(eq(apps.userId, user.userId), ilike(apps.name, `%${query.search}%`))
-      : eq(apps.userId, user.userId);
+      ? and(eq(apps.userId, user.userId), ilike(apps.name, `%${query.search}%`), isNull(apps.archivedAt))
+      : and(eq(apps.userId, user.userId), isNull(apps.archivedAt));
 
     // Get all apps
     const appsResult = await db
@@ -200,7 +200,7 @@ export async function appsRoutes(app: FastifyInstance) {
     const result = await db
       .select()
       .from(apps)
-      .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId)))
+      .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId), isNull(apps.archivedAt)))
       .limit(1);
 
     if (result.length === 0) {
@@ -248,7 +248,7 @@ export async function appsRoutes(app: FastifyInstance) {
 
   /**
    * DELETE /api/apps/:id
-   * Delete an app
+   * Archive an app (soft delete) and clean up container resources
    */
   app.delete("/:id", async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
@@ -256,8 +256,9 @@ export async function appsRoutes(app: FastifyInstance) {
 
     const appId = parseInt(id);
     const result = await db
-      .delete(apps)
-      .where(and(eq(apps.id, appId), eq(apps.userId, user.userId)))
+      .update(apps)
+      .set({ archivedAt: new Date() })
+      .where(and(eq(apps.id, appId), eq(apps.userId, user.userId), isNull(apps.archivedAt)))
       .returning();
 
     if (result.length === 0) {
@@ -268,12 +269,12 @@ export async function appsRoutes(app: FastifyInstance) {
     // Stop container and clean up resources (including PVC)
     try {
       await appContainerService.stopContainer(appId, {
-        reason: "app deleted",
+        reason: "app archived",
         deletePersistentStorage: true,
       });
     } catch (error) {
       console.error(`[DELETE /api/apps/${id}] Failed to stop container:`, error);
-      // Continue anyway - app is already deleted from DB
+      // Continue anyway - app is already archived in DB
     }
 
     return { success: true };

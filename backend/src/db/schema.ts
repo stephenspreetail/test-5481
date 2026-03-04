@@ -128,6 +128,7 @@ export const apps = pgTable("apps", {
   // Context
   chatContext: jsonb("chat_context"),
   isFavorite: boolean("is_favorite").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
 });
 
 // =====================

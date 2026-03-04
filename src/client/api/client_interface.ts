@@ -101,7 +101,6 @@ export interface IApiClient {
   renameApp(params: {
     appId: number;
     appName: string;
-    appPath: string;
   }): Promise<void>;
   copyApp(params: { appId: number; newName?: string }): Promise<{ app: App }>;
   addAppToFavorite(appId: number): Promise<{ isFavorite: boolean }>;
