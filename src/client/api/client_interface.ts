@@ -102,6 +102,7 @@ export interface IApiClient {
     appId: number;
     appName: string;
   }): Promise<void>;
+  getPreviewUrl(appId: number): Promise<{ previewUrl: string }>;
   copyApp(params: { appId: number; newName?: string }): Promise<{ app: App }>;
   addAppToFavorite(appId: number): Promise<{ isFavorite: boolean }>;
   searchApps(query: string): Promise<App[]>;

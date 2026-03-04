@@ -1,4 +1,4 @@
-import { appBasePathAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { getClient } from "@/client/api/client_factory";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,10 +22,10 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { showError } from "@/lib/toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import {
   ArrowLeft,
   Copy,
@@ -47,8 +47,6 @@ export default function AppDetailsPage() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newAppName, setNewAppName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
-  const appBasePath = useAtomValue(appBasePathAtom);
-
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [newCopyAppName, setNewCopyAppName] = useState("");
 
@@ -71,6 +69,14 @@ export default function AppDetailsPage() {
       setSelectedAppId(appId);
     }
   }, [appId, setSelectedAppId]);
+
+  const { data: previewUrlData } = useQuery({
+    queryKey: ["preview-url", appId],
+    queryFn: () => getClient().getPreviewUrl(appId!),
+    enabled: !!appId,
+    staleTime: Infinity,
+  });
+  const previewUrl = previewUrlData?.previewUrl;
 
   // Chats for this app
   const { chats, loading: chatsLoading, refreshChats } = useChats(appId);
@@ -201,7 +207,6 @@ export default function AppDetailsPage() {
     );
   }
 
-  const fullAppPath = appBasePath.replace("$APP_BASE_PATH", selectedApp.path);
 
   return (
     <div
@@ -278,27 +283,42 @@ export default function AppDetailsPage() {
               {selectedApp.updatedAt.toString()}
             </span>
           </div>
-          <div className="col-span-2">
-            <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
-              Path
-            </span>
-            <div className="flex items-center gap-1">
-              <span className="text-sm break-all text-gray-900 dark:text-gray-200">
-                {fullAppPath}
+          {selectedApp.slug && (
+            <div>
+              <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
+                Slug
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-0.5 h-auto cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText(fullAppPath);
-                }}
-                title="Copy path to clipboard"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
+              <span className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                {selectedApp.slug}
+              </span>
             </div>
-          </div>
+          )}
+          {previewUrl && (
+            <div className={selectedApp.slug ? "" : "col-span-2"}>
+              <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
+                Preview URL
+              </span>
+              <div className="flex items-center gap-1">
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm break-all text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {previewUrl}
+                </a>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-0.5 h-auto cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shrink-0"
+                  onClick={() => navigator.clipboard.writeText(previewUrl)}
+                  title="Copy URL to clipboard"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <Button

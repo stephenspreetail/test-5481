@@ -235,6 +235,10 @@ export class ApiClient {
     });
   }
 
+  async getPreviewUrl(appId: number): Promise<{ previewUrl: string }> {
+    return this.request<{ previewUrl: string }>(`/api/apps/${appId}/preview-url`);
+  }
+
   async copyApp(params: {
     appId: number;
     newAppName?: string;

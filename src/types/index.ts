@@ -119,6 +119,7 @@ export interface AppRecentChat {
 export interface App {
   id: number;
   name: string;
+  slug: string | null;
   path: string;
   files: string[];
   createdAt: Date;

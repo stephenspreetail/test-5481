@@ -9,7 +9,8 @@ import { apps, chats, messages } from "../../db/schema.js";
 import { appContainerService } from "../../services/app-container.service.js";
 import { secretService } from "../../services/secret.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
-import { slugify, validateSlug } from "../../utils/app-identifiers.js";
+import { slugify, validateSlug, shortId, appHostname } from "../../utils/app-identifiers.js";
+import { buildK8sEnvironmentConfig } from "../../services/k8s-environment.service.js";
 
 const createAppSchema = z.object({
   name: z.string().min(1).max(255),
@@ -212,6 +213,45 @@ export async function appsRoutes(app: FastifyInstance) {
   });
 
   /**
+   * GET /api/apps/:id/preview-url
+   * Compute the preview URL for an app (independent of container state)
+   */
+  app.get(
+    "/:id/preview-url",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const user = request.user!;
+      const { id } = request.params as { id: string };
+
+      const result = await db
+        .select({ guid: apps.guid, slug: apps.slug })
+        .from(apps)
+        .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId), isNull(apps.archivedAt)))
+        .limit(1);
+
+      if (result.length === 0) {
+        reply.status(404).send({ error: "App not found" });
+        return;
+      }
+
+      const { guid, slug } = result[0];
+      const k8sEnv = buildK8sEnvironmentConfig();
+      const hostname = appHostname(
+        k8sEnv.previewUrlMode === "slug" && slug
+          ? { mode: "slug", slug, domain: k8sEnv.previewDomain }
+          : { mode: "prefixed", shortId: shortId(guid), domain: k8sEnv.previewDomain },
+      );
+      const isHttps = k8sEnv.previewPort === 443 || k8sEnv.previewPort === 8443;
+      const protocol = isHttps ? "https" : "http";
+      const portSuffix =
+        k8sEnv.previewPort === 443 || k8sEnv.previewPort === 80
+          ? ""
+          : `:${k8sEnv.previewPort}`;
+
+      return { previewUrl: `${protocol}://${hostname}${portSuffix}` };
+    },
+  );
+
+  /**
    * PUT /api/apps/:id
    * Update an app
    */
@@ -219,6 +259,11 @@ export async function appsRoutes(app: FastifyInstance) {
     const user = request.user!;
     const { id } = request.params as { id: string };
     const body = updateAppSchema.parse(request.body);
+
+    // When renaming, auto-derive slug from the new name (keeps them in sync)
+    if (body.name && body.slug === undefined) {
+      body.slug = slugify(body.name) || undefined;
+    }
 
     // Validate slug if provided
     if (body.slug !== undefined && body.slug !== null) {
@@ -229,14 +274,28 @@ export async function appsRoutes(app: FastifyInstance) {
       }
     }
 
-    const result = await db
-      .update(apps)
-      .set({
-        ...body,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId)))
-      .returning();
+    const appId = parseInt(id);
+    let result;
+    try {
+      result = await db
+        .update(apps)
+        .set({ ...body, updatedAt: new Date() })
+        .where(and(eq(apps.id, appId), eq(apps.userId, user.userId)))
+        .returning();
+    } catch (error: any) {
+      // Slug conflict — retry with a random suffix
+      if (error.code === "23505" && error.constraint?.includes("slug") && body.slug) {
+        const suffix = Math.random().toString(36).substring(2, 6);
+        body.slug = `${body.slug}-${suffix}`;
+        result = await db
+          .update(apps)
+          .set({ ...body, updatedAt: new Date() })
+          .where(and(eq(apps.id, appId), eq(apps.userId, user.userId)))
+          .returning();
+      } else {
+        throw error;
+      }
+    }
 
     if (result.length === 0) {
       reply.status(404).send({ error: "App not found" });
