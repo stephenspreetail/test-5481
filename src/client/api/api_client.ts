@@ -265,6 +265,7 @@ export class ApiClient {
   async runApp(
     appId: number,
     onOutput: (output: AppOutput) => void,
+    onPreviewReady?: (preview: { previewUrl: string; originalUrl: string }) => void,
   ): Promise<void> {
     // Subscribe to app output via WebSocket
     this.appOutputCallbacks.set(appId, onOutput);
@@ -289,6 +290,7 @@ export class ApiClient {
           });
         }
       },
+      onPreviewReady,
     });
 
     // Start the app
@@ -305,6 +307,7 @@ export class ApiClient {
     appId: number,
     onOutput: (output: AppOutput) => void,
     removeNodeModules?: boolean,
+    onPreviewReady?: (preview: { previewUrl: string; originalUrl: string }) => void,
   ): Promise<{ success: boolean }> {
     // Update callback
     this.appOutputCallbacks.set(appId, onOutput);
@@ -330,6 +333,7 @@ export class ApiClient {
           });
         }
       },
+      onPreviewReady,
     });
 
     await this.request(`/api/apps/${appId}/restart`, {

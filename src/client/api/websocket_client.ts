@@ -4,6 +4,7 @@ import type {
   AgentStatusMessage,
   AppNameUpdate,
   AppOutputMessage,
+  AppPreviewReadyMessage,
   AppStatusMessage,
   ChatStreamChunk,
   ChatStreamDelta,
@@ -30,6 +31,10 @@ export interface AppOutputCallbacks {
     status: "starting" | "running" | "stopped" | "error";
     url?: string;
     error?: string;
+  }) => void;
+  onPreviewReady?: (preview: {
+    previewUrl: string;
+    originalUrl: string;
   }) => void;
 }
 
@@ -316,6 +321,18 @@ export class WebSocketClient {
               status: status.status,
               url: status.url,
               error: status.error,
+            });
+          }
+          break;
+        }
+
+        case "app:preview-ready": {
+          const preview = message as AppPreviewReadyMessage;
+          const callbacks = this.appOutputCallbacks.get(preview.appId);
+          if (callbacks?.onPreviewReady) {
+            callbacks.onPreviewReady({
+              previewUrl: preview.previewUrl,
+              originalUrl: preview.originalUrl,
             });
           }
           break;

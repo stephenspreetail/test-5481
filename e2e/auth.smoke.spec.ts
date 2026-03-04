@@ -81,7 +81,7 @@ test.describe("Entra SSO smoke tests", () => {
     await page.getByRole("button", { name: /^sign in$/i }).click();
 
     // Should redirect to home after successful login
-    await expect(page).toHaveURL(/^\http:\/\/localhost:5174\/?(\?.*)?$/, { timeout: 5000 });
+    await expect(page).toHaveURL(/^http:\/\/localhost:5174\/?(\?.*)?$/, { timeout: 5000 });
     // Verify we're actually authenticated — home content should be visible, not login
     await expect(page.getByRole("button", { name: /sign in/i })).not.toBeVisible();
   });

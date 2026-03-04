@@ -24,28 +24,17 @@ export function useRunApp() {
   const appId = useAtomValue(selectedAppIdAtom);
   const setPreviewErrorMessage = useSetAtom(previewErrorMessageAtom);
 
-  const processProxyServerOutput = (output: AppOutput) => {
-    const matchesProxyServerStart = output.message.includes(
-      "[kova-proxy-server]started=[",
-    );
-    if (matchesProxyServerStart) {
-      // Extract both proxy URL and original URL using regex
-      const proxyUrlMatch = output.message.match(
-        /\[kova-proxy-server\]started=\[(.*?)\]/,
-      );
-      const originalUrlMatch = output.message.match(/original=\[(.*?)\]/);
-
-      if (proxyUrlMatch && proxyUrlMatch[1]) {
-        const proxyUrl = proxyUrlMatch[1];
-        const originalUrl = originalUrlMatch && originalUrlMatch[1];
+  const handlePreviewReady = useCallback(
+    (appId: number) =>
+      (preview: { previewUrl: string; originalUrl: string }) => {
         setAppUrlObj({
-          appUrl: proxyUrl,
-          appId: output.appId,
-          originalUrl: originalUrl!,
+          appUrl: preview.previewUrl,
+          appId,
+          originalUrl: preview.originalUrl,
         });
-      }
-    }
-  };
+      },
+    [setAppUrlObj],
+  );
 
   const processAppOutput = useCallback(
     (output: AppOutput) => {
@@ -67,9 +56,6 @@ export function useRunApp() {
 
       // Add to regular app output
       setAppOutput((prev) => [...prev, output]);
-
-      // Process proxy server output
-      processProxyServerOutput(output);
     },
     [setAppOutput],
   );
@@ -99,7 +85,7 @@ export function useRunApp() {
         ]);
         const app = await client.getApp(appId);
         setApp(app);
-        await client.runApp(appId, processAppOutput);
+        await client.runApp(appId, processAppOutput, handlePreviewReady(appId));
         setPreviewErrorMessage(undefined);
       } catch (error) {
         console.error(`Error running app ${appId}:`, error);
@@ -115,7 +101,7 @@ export function useRunApp() {
         setLoading(false);
       }
     },
-    [processAppOutput],
+    [processAppOutput, handlePreviewReady],
   );
 
   const stopApp = useCallback(async (appId: number) => {
@@ -192,6 +178,7 @@ export function useRunApp() {
             processAppOutput(output);
           },
           removeNodeModules,
+          handlePreviewReady(appId),
         );
       } catch (error) {
         console.error(`Error restarting app ${appId}:`, error);
@@ -216,6 +203,7 @@ export function useRunApp() {
       setPreviewPanelKey,
       processAppOutput,
       onHotModuleReload,
+      handlePreviewReady,
     ],
   );
 

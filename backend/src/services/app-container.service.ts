@@ -8,7 +8,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config/index.js";
-import { broadcastAppOutput } from "../websocket/handlers/app-output.handler.js";
+import { broadcastPreviewReady } from "../websocket/handlers/app-output.handler.js";
 import { createOrchestrator } from "./orchestrator/index.js";
 import type { ContainerInfo, ContainerState } from "./orchestrator/types.js";
 import {
@@ -303,6 +303,7 @@ class AppContainerService {
           `[AppContainerService] Container app-${appId} is now running (after lock wait), reusing`,
         );
         this.recordActivity(appId, "agent");
+        broadcastPreviewReady(appId, containerInfo.previewUrl);
         return {
           agentUrl: containerInfo.agentUrl,
           previewUrl: containerInfo.previewUrl,
@@ -356,6 +357,7 @@ class AppContainerService {
         console.log(
           `[AppContainerService] Reusing existing container ${containerName}`,
         );
+        broadcastPreviewReady(appId, containerInfo.previewUrl);
         return {
           agentUrl: containerInfo.agentUrl,
           previewUrl: containerInfo.previewUrl,
@@ -538,12 +540,8 @@ class AppContainerService {
     console.log(
       `[AppContainerService] K8s log streaming not yet implemented for app ${appId}`,
     );
-    // For now, just broadcast a startup message
-    broadcastAppOutput(
-      appId,
-      "info",
-      `[kova-proxy-server]started=[${containerInfo.previewUrl}]original=[http://localhost:3000]`,
-    );
+    // Notify subscribers that the preview is ready
+    broadcastPreviewReady(appId, containerInfo.previewUrl);
   }
 
   /**

@@ -116,6 +116,14 @@ export interface AppStatusMessage {
   error?: string;
 }
 
+export interface AppPreviewReadyMessage {
+  type: "app:preview-ready";
+  appId: number;
+  previewUrl: string;
+  originalUrl: string;
+  timestamp: number;
+}
+
 export type AgentStatus =
   | "offline"
   | "scheduling"

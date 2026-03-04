@@ -114,12 +114,17 @@ export interface IApiClient {
   // =====================
   // App Execution
   // =====================
-  runApp(appId: number, onOutput: (output: AppOutput) => void): Promise<void>;
+  runApp(
+    appId: number,
+    onOutput: (output: AppOutput) => void,
+    onPreviewReady?: (preview: { previewUrl: string; originalUrl: string }) => void,
+  ): Promise<void>;
   stopApp(appId: number): Promise<void>;
   restartApp(
     appId: number,
     onOutput: (output: AppOutput) => void,
     removeNodeModules?: boolean,
+    onPreviewReady?: (preview: { previewUrl: string; originalUrl: string }) => void,
   ): Promise<{ success: boolean }>;
   restartDevServer(appId: number): Promise<{ ok: boolean }>;
   respondToAppInput(params: RespondToAppInputParams): Promise<void>;

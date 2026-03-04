@@ -35,5 +35,6 @@ export type {
   ChatStreamEnd,
   ChatStreamError,
   AppOutputMessage,
+  AppPreviewReadyMessage,
   AppStatusMessage,
 } from "./types";

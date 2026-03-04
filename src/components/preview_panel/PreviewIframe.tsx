@@ -151,7 +151,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
 // Preview iframe component
 export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
-  const { appUrl, originalUrl } = useAtomValue(appUrlAtom);
+  const { appUrl } = useAtomValue(appUrlAtom);
 
   const setAppOutput = useSetAtom(appOutputAtom);
   // State to trigger iframe reload
@@ -495,12 +495,22 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0">
-                <span className="truncate flex-1 mr-2 min-w-0">
-                  {navigationHistory[currentHistoryPosition]
-                    ? new URL(navigationHistory[currentHistoryPosition])
-                        .pathname
-                    : "/"}
-                </span>
+                {appUrl ? (
+                  <a
+                    href={appUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="truncate flex-1 mr-2 min-w-0 hover:underline"
+                    title={appUrl}
+                  >
+                    {appUrl}
+                  </a>
+                ) : (
+                  <span className="truncate flex-1 mr-2 min-w-0 text-gray-400">
+                    Waiting for preview...
+                  </span>
+                )}
                 <ChevronDown size={14} className="flex-shrink-0" />
               </div>
             </DropdownMenuTrigger>
@@ -538,11 +548,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           <button
             data-testid="preview-open-browser-button"
             onClick={() => {
-              if (originalUrl) {
-                getClient().openExternalUrl(originalUrl);
+              if (appUrl) {
+                window.open(appUrl, "_blank", "noopener,noreferrer");
               }
             }}
+            disabled={!appUrl}
             className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+            title={appUrl || "Preview not ready"}
           >
             <ExternalLink size={16} />
           </button>

@@ -19,6 +19,14 @@ export interface AppStatusMessage {
   error?: string;
 }
 
+export interface AppPreviewReadyMessage {
+  type: "app:preview-ready";
+  appId: number;
+  previewUrl: string;
+  originalUrl: string;
+  timestamp: number;
+}
+
 export interface AppInputMessage {
   type: "app:input";
   appId: number;
@@ -35,7 +43,7 @@ const runningApps = new Map<
     containerId?: string;
     status: "starting" | "running" | "stopped" | "error";
     url?: string;
-    proxyUrl?: string; // The kova-proxy-server URL
+    previewUrl?: string;
     originalUrl?: string;
   }
 >();
@@ -51,17 +59,16 @@ export function subscribeToAppOutput(appId: number, ws: WebSocket) {
   if (appState) {
     sendStatus(ws, appId, appState.status, appState.url);
 
-    // If we have a proxy URL, send it to the new subscriber
-    if (appState.proxyUrl) {
-      const proxyMessage = `[kova-proxy-server]started=[${appState.proxyUrl}]original=[${appState.originalUrl || "http://localhost:3000"}]`;
-      const output: AppOutputMessage = {
-        type: "app:output",
+    // Replay preview URL to the new subscriber
+    if (appState.previewUrl) {
+      const msg: AppPreviewReadyMessage = {
+        type: "app:preview-ready",
         appId,
-        outputType: "info",
-        message: proxyMessage,
+        previewUrl: appState.previewUrl,
+        originalUrl: appState.originalUrl || "http://localhost:3000",
         timestamp: Date.now(),
       };
-      ws.send(JSON.stringify(output));
+      ws.send(JSON.stringify(msg));
     }
   }
 }
@@ -115,21 +122,6 @@ export function broadcastAppOutput(
   outputType: AppOutputMessage["outputType"],
   message: string,
 ) {
-  // Check if this is a proxy server started message and store the URLs
-  if (message.includes("[kova-proxy-server]started=")) {
-    const proxyUrlMatch = message.match(/\[kova-proxy-server\]started=\[(.*?)\]/);
-    const originalUrlMatch = message.match(/original=\[(.*?)\]/);
-
-    if (proxyUrlMatch && proxyUrlMatch[1]) {
-      // Update or create the app state with proxy URL
-      const appState = runningApps.get(appId) || { status: "running" as const };
-      appState.proxyUrl = proxyUrlMatch[1];
-      appState.originalUrl = originalUrlMatch?.[1] || "http://localhost:3000";
-      appState.status = "running";
-      runningApps.set(appId, appState);
-    }
-  }
-
   const subscribers = appSubscriptions.get(appId);
   if (!subscribers || subscribers.size === 0) {
     return;
@@ -144,6 +136,40 @@ export function broadcastAppOutput(
   };
 
   const payload = JSON.stringify(output);
+  for (const ws of subscribers) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+    }
+  }
+}
+
+// Notify all subscribers that the preview is ready at a given URL
+export function broadcastPreviewReady(
+  appId: number,
+  previewUrl: string,
+  originalUrl = "http://localhost:3000",
+) {
+  // Cache for late-joining subscribers
+  const appState = runningApps.get(appId) || { status: "running" as const };
+  appState.previewUrl = previewUrl;
+  appState.originalUrl = originalUrl;
+  appState.status = "running";
+  runningApps.set(appId, appState);
+
+  const subscribers = appSubscriptions.get(appId);
+  if (!subscribers || subscribers.size === 0) {
+    return;
+  }
+
+  const msg: AppPreviewReadyMessage = {
+    type: "app:preview-ready",
+    appId,
+    previewUrl,
+    originalUrl,
+    timestamp: Date.now(),
+  };
+
+  const payload = JSON.stringify(msg);
   for (const ws of subscribers) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(payload);
