@@ -9,3 +9,4 @@ app:
       K8S_NAMESPACE: "kova-apps"
       PREVIEW_DOMAIN: "kova.eks.dev01.tk.dev"
       CORS_ORIGIN: "https://kova.dev01.tk.dev"
+      KOVA_INSTANCE_ID: "dev01"
