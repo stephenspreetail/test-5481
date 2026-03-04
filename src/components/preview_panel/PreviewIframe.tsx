@@ -11,7 +11,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   ArrowLeft,
   ArrowRight,
-  ChevronDown,
   ChevronRight,
   ExternalLink,
   Lightbulb,
@@ -29,12 +28,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { previewIframeRefAtom } from "@/atoms/previewAtoms";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -46,7 +39,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useParseRouter } from "@/hooks/useParseRouter";
 import { useRunApp } from "@/hooks/useRunApp";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { cn } from "@/lib/utils";
@@ -159,7 +151,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const [errorMessage, setErrorMessage] = useAtom(previewErrorMessageAtom);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const { streamMessage } = useStreamChat();
-  const { routes: availableRoutes } = useParseRouter(selectedAppId);
   const { restartApp } = useRunApp();
 
   // State for URL readiness check (prevents 502 Bad Gateway on initial load)
@@ -405,28 +396,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     console.debug("Reloading iframe preview for app", selectedAppId);
   };
 
-  // Function to navigate to a specific route
-  const navigateToRoute = (path: string) => {
-    if (iframeRef.current?.contentWindow && appUrl) {
-      // Create the full URL by combining the base URL with the path
-      const baseUrl = new URL(appUrl).origin;
-      const newUrl = `${baseUrl}${path}`;
-
-      // Navigate to the URL
-      iframeRef.current.contentWindow.location.href = newUrl;
-
-      // Update navigation history
-      const newHistory = [
-        ...navigationHistory.slice(0, currentHistoryPosition + 1),
-        newUrl,
-      ];
-      setNavigationHistory(newHistory);
-      setCurrentHistoryPosition(newHistory.length - 1);
-      setCanGoBack(true);
-      setCanGoForward(false);
-    }
-  };
-
   // Display loading state
   if (loading) {
     return (
@@ -490,54 +459,28 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           </button>
         </div>
 
-        {/* Address Bar with Routes Dropdown - using shadcn/ui dropdown-menu */}
-        <div className="relative flex-grow min-w-20">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0">
-                {appUrl ? (() => {
-                  const currentNav = navigationHistory[currentHistoryPosition];
-                  const pathname = currentNav ? new URL(currentNav).pathname : "/";
-                  const displayUrl = new URL(appUrl).origin + pathname;
-                  return (
-                    <a
-                      href={displayUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="truncate flex-1 mr-2 min-w-0 hover:underline"
-                      title={displayUrl}
-                    >
-                      {displayUrl}
-                    </a>
-                  );
-                })() : (
-                  <span className="truncate flex-1 mr-2 min-w-0 text-gray-400">
-                    Waiting for preview...
-                  </span>
-                )}
-                <ChevronDown size={14} className="flex-shrink-0" />
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-full">
-              {availableRoutes.length > 0 ? (
-                availableRoutes.map((route) => (
-                  <DropdownMenuItem
-                    key={route.path}
-                    onClick={() => navigateToRoute(route.path)}
-                    className="flex justify-between"
-                  >
-                    <span>{route.label}</span>
-                    <span className="text-gray-500 dark:text-gray-400 text-xs">
-                      {route.path}
-                    </span>
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem disabled>Loading routes...</DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Address Bar */}
+        <div className="flex-grow min-w-20 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 min-w-0 truncate">
+          {appUrl ? (() => {
+            const currentNav = navigationHistory[currentHistoryPosition];
+            const pathname = currentNav ? new URL(currentNav).pathname : "/";
+            const displayUrl = new URL(appUrl).origin + pathname;
+            return (
+              <a
+                href={displayUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+                title={displayUrl}
+              >
+                {displayUrl}
+              </a>
+            );
+          })() : (
+            <span className="text-gray-400">
+              Waiting for preview...
+            </span>
+          )}
         </div>
 
         {/* Action Buttons */}
