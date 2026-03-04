@@ -260,11 +260,6 @@ export async function appsRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const body = updateAppSchema.parse(request.body);
 
-    // When renaming, auto-derive slug from the new name (keeps them in sync)
-    if (body.name && body.slug === undefined) {
-      body.slug = slugify(body.name) || undefined;
-    }
-
     // Validate slug if provided
     if (body.slug !== undefined && body.slug !== null) {
       const validation = validateSlug(body.slug);
