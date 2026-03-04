@@ -304,6 +304,7 @@ class AppContainerService {
         );
         this.recordActivity(appId, "agent");
         broadcastPreviewReady(appId, containerInfo.previewUrl);
+        broadcastAgentStatus(appId, "ready");
         return {
           agentUrl: containerInfo.agentUrl,
           previewUrl: containerInfo.previewUrl,
@@ -358,6 +359,7 @@ class AppContainerService {
           `[AppContainerService] Reusing existing container ${containerName}`,
         );
         broadcastPreviewReady(appId, containerInfo.previewUrl);
+        broadcastAgentStatus(appId, "ready");
         return {
           agentUrl: containerInfo.agentUrl,
           previewUrl: containerInfo.previewUrl,
@@ -474,6 +476,7 @@ class AppContainerService {
       state: "starting",
       lastActivityAt: Date.now(),
     });
+    broadcastAgentStatus(appId, "scheduling");
 
     try {
       console.log(`\n========== START CONTAINER DEBUG ==========`);
@@ -508,6 +511,7 @@ class AppContainerService {
 
       // Start log streaming (platform-specific)
       this.startLogStreaming(appId, containerInfo);
+      broadcastAgentStatus(appId, "ready");
 
       console.log(
         `[AppContainerService] Container started: ${containerName} (preview: ${containerInfo.previewUrl})`,
@@ -520,6 +524,7 @@ class AppContainerService {
     } catch (error: any) {
       // Cleanup on error
       appContainers.delete(appId);
+      broadcastAgentStatus(appId, "error");
       console.error(
         `[AppContainerService] Failed to start container for app ${appId}:`,
         error,
