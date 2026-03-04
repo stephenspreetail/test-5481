@@ -213,6 +213,7 @@ class AppContainerService {
         // Seed agent status cache for running containers
         if (containerInfo.state === "running") {
           broadcastAgentStatus(appId, "ready");
+          broadcastPreviewReady(appId, containerInfo.previewUrl);
         }
 
         console.log(

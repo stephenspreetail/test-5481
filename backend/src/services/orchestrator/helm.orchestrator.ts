@@ -146,10 +146,16 @@ export class HelmOrchestrator implements ContainerOrchestrator {
       "ports.dev": devPort.toString(),
       "storage.size": "5Gi",
       "storage.storageClass": this.options.storageClass,
-      "networking.hostNetwork": (!this.options.isEKS).toString(),
       "networking.previewDomain": this.options.previewDomain,
       "networking.gatewayName": "istio-system/kova-gateway",
       previewHostname: previewHost,
+    };
+
+    // Boolean values must use --set (not --set-string) so Helm receives proper
+    // YAML booleans. In Go templates, the string "false" is truthy (non-empty),
+    // which would incorrectly enable NodePort mode on EKS.
+    const boolValues: Record<string, boolean> = {
+      "networking.hostNetwork": !this.options.isEKS,
     };
 
     // Flatten env map into helm --set values
@@ -157,7 +163,7 @@ export class HelmOrchestrator implements ContainerOrchestrator {
       values[`env.${key}`] = value;
     }
 
-    await this.helmUpgradeInstall(releaseName, values);
+    await this.helmUpgradeInstall(releaseName, values, boolValues);
 
     // Wait for rollout
     const readyTimeoutSec = this.options.isEKS ? 180 : 60;
@@ -563,6 +569,7 @@ export class HelmOrchestrator implements ContainerOrchestrator {
   private async helmUpgradeInstall(
     releaseName: string,
     values: Record<string, string>,
+    boolValues: Record<string, boolean> = {},
   ): Promise<void> {
     const args = [
       "upgrade",
@@ -582,6 +589,12 @@ export class HelmOrchestrator implements ContainerOrchestrator {
 
     for (const [key, value] of Object.entries(values)) {
       args.push("--set-string", `${key}=${value}`);
+    }
+
+    // Boolean values use --set so Helm receives proper YAML booleans.
+    // --set-string would coerce them to strings, making "false" truthy in templates.
+    for (const [key, value] of Object.entries(boolValues)) {
+      args.push("--set", `${key}=${value}`);
     }
 
     console.log(
