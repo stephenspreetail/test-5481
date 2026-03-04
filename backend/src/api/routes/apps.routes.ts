@@ -335,69 +335,6 @@ export async function appsRoutes(app: FastifyInstance) {
   });
 
   /**
-   * POST /api/apps/:id/copy
-   * Copy an app
-   * Path format: {userId}/{appId}-{timestamp}
-   */
-  app.post(
-    "/:id/copy",
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const user = request.user!;
-      const { id } = request.params as { id: string };
-      const body = z
-        .object({ name: z.string().optional() })
-        .parse(request.body);
-
-      // Get original app
-      const original = await db
-        .select()
-        .from(apps)
-        .where(and(eq(apps.id, parseInt(id)), eq(apps.userId, user.userId)))
-        .limit(1);
-
-      if (original.length === 0) {
-        reply.status(404).send({ error: "App not found" });
-        return;
-      }
-
-      const originalApp = original[0];
-      const newName = body.name || `${originalApp.name} (Copy)`;
-      const newSlug = slugify(newName);
-      const timestamp = Date.now();
-      // Insert with temporary path first to get the app ID
-      const tempPath = `${user.userId}/temp-${timestamp}`;
-
-      // Create new app with temporary path
-      const insertResult = await db
-        .insert(apps)
-        .values({
-          userId: user.userId,
-          name: newName,
-          slug: newSlug || null,
-          path: tempPath,
-          installCommand: originalApp.installCommand,
-          startCommand: originalApp.startCommand,
-          chatContext: originalApp.chatContext,
-        })
-        .returning();
-
-      const insertedApp = insertResult[0];
-
-      // Update path to use the actual app ID: {userId}/{appId}-{timestamp}
-      const finalPath = `${user.userId}/${insertedApp.id}-${timestamp}`;
-      const result = await db
-        .update(apps)
-        .set({ path: finalPath })
-        .where(eq(apps.id, insertedApp.id))
-        .returning();
-
-      // TODO: Also copy app files
-
-      reply.status(201).send(result[0]);
-    },
-  );
-
-  /**
    * POST /api/apps/:id/favorite
    * Toggle favorite status
    */

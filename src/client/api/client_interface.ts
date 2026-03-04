@@ -104,7 +104,6 @@ export interface IApiClient {
   }): Promise<void>;
   getPreviewUrl(appId: number): Promise<{ previewUrl: string }>;
   updateAppSlug(appId: number, slug: string): Promise<void>;
-  copyApp(params: { appId: number; newName?: string }): Promise<{ app: App }>;
   addAppToFavorite(appId: number): Promise<{ isFavorite: boolean }>;
   searchApps(query: string): Promise<App[]>;
   importApp(params: ImportAppParams): Promise<ImportAppResult>;

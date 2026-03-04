@@ -246,20 +246,6 @@ export class ApiClient {
     return this.request<{ previewUrl: string }>(`/api/apps/${appId}/preview-url`);
   }
 
-  async copyApp(params: {
-    appId: number;
-    newAppName?: string;
-    withHistory?: boolean;
-  }): Promise<{ app: App }> {
-    const app = await this.request<App>(`/api/apps/${params.appId}/copy`, {
-      method: "POST",
-      body: JSON.stringify({
-        name: params.newAppName,
-        withHistory: params.withHistory,
-      }),
-    });
-    return { app };
-  }
 
   async addAppToFavorite(appId: number): Promise<{ isFavorite: boolean }> {
     const app = await this.request<App>(`/api/apps/${appId}/favorite`, {
