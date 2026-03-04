@@ -1,5 +1,6 @@
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
+import { getClient } from "@/client/api/client_factory";
 import { useChats } from "@/hooks/useChats";
 import { cn } from "@/lib/utils";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -22,6 +23,20 @@ export default function ChatPage() {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const { chats, loading } = useChats(selectedAppId);
+
+  // When navigating directly to /chat?id=N, resolve the app from the chat
+  useEffect(() => {
+    if (chatId && !selectedAppId) {
+      getClient()
+        .getChat(chatId)
+        .then((chat) => {
+          if (chat?.appId) {
+            setSelectedAppId(chat.appId);
+          }
+        })
+        .catch((err) => console.error("Failed to resolve app from chat:", err));
+    }
+  }, [chatId, selectedAppId, setSelectedAppId]);
 
   useEffect(() => {
     if (!chatId && chats.length && !loading) {

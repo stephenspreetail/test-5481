@@ -103,6 +103,7 @@ export interface Message {
 
 export interface Chat {
   id: number;
+  appId: number;
   title: string;
   messages: Message[];
   initialCommitHash?: string | null;
