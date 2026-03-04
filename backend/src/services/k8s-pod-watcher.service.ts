@@ -274,6 +274,17 @@ function startWatcher(): void {
   proc.on("error", (err) => {
     console.error(`[PodWatcher] spawn error:`, err.message);
     watcherProcess = null;
+
+    // Schedule restart (the close event may not fire after a spawn error)
+    consecutiveFailures++;
+    const backoff = Math.min(1000 * Math.pow(2, consecutiveFailures - 1), MAX_BACKOFF_MS);
+    console.warn(
+      `[PodWatcher] scheduling restart in ${backoff}ms (attempt ${consecutiveFailures})`,
+    );
+    restartTimer = setTimeout(() => {
+      restartTimer = null;
+      startWatcher();
+    }, backoff);
   });
 }
 

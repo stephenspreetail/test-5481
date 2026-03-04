@@ -158,10 +158,10 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const [urlCheckAttempts, setUrlCheckAttempts] = useState(0);
 
   // Navigation state
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [canGoForward, setCanGoForward] = useState(false);
   const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
   const [currentHistoryPosition, setCurrentHistoryPosition] = useState(0);
+  const canGoBack = currentHistoryPosition > 0;
+  const canGoForward = currentHistoryPosition < navigationHistory.length - 1;
   const setPreviewIframeRef = useSetAtom(previewIframeRefAtom);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -274,19 +274,11 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     setErrorMessage,
   ]);
 
-  useEffect(() => {
-    // Update navigation buttons state
-    setCanGoBack(currentHistoryPosition > 0);
-    setCanGoForward(currentHistoryPosition < navigationHistory.length - 1);
-  }, [navigationHistory, currentHistoryPosition]);
-
   // Initialize navigation history when iframe loads
   useEffect(() => {
     if (appUrl) {
       setNavigationHistory([appUrl]);
       setCurrentHistoryPosition(0);
-      setCanGoBack(false);
-      setCanGoForward(false);
     }
   }, [appUrl]);
 
@@ -351,41 +343,23 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     };
   }, [appUrl, selectedAppId]);
 
-  // Function to navigate back
   const handleNavigateBack = () => {
     if (canGoBack && iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        {
-          type: "navigate",
-          payload: { direction: "backward" },
-        },
+        { type: "navigate", payload: { direction: "backward" } },
         "*",
       );
-
-      // Update our local state
       setCurrentHistoryPosition((prev) => prev - 1);
-      setCanGoBack(currentHistoryPosition - 1 > 0);
-      setCanGoForward(true);
     }
   };
 
-  // Function to navigate forward
   const handleNavigateForward = () => {
     if (canGoForward && iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        {
-          type: "navigate",
-          payload: { direction: "forward" },
-        },
+        { type: "navigate", payload: { direction: "forward" } },
         "*",
       );
-
-      // Update our local state
       setCurrentHistoryPosition((prev) => prev + 1);
-      setCanGoBack(true);
-      setCanGoForward(
-        currentHistoryPosition + 1 < navigationHistory.length - 1,
-      );
     }
   };
 

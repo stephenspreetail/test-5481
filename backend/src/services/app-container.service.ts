@@ -509,8 +509,8 @@ class AppContainerService {
         appInfo.state = containerInfo.state;
       }
 
-      // Start log streaming (platform-specific)
-      this.startLogStreaming(appId, containerInfo);
+      // Notify subscribers that the preview is ready
+      broadcastPreviewReady(appId, containerInfo.previewUrl);
       broadcastAgentStatus(appId, "ready");
 
       console.log(
@@ -531,22 +531,6 @@ class AppContainerService {
       );
       throw error;
     }
-  }
-
-  /**
-   * Start log streaming for a container
-   * Platform-specific implementation (Docker logs API vs kubectl logs)
-   */
-  private async startLogStreaming(
-    appId: number,
-    containerInfo: ContainerInfo,
-  ): Promise<void> {
-    // TODO: Implement log streaming using kubectl logs -f or Kubernetes API watch
-    console.log(
-      `[AppContainerService] K8s log streaming not yet implemented for app ${appId}`,
-    );
-    // Notify subscribers that the preview is ready
-    broadcastPreviewReady(appId, containerInfo.previewUrl);
   }
 
   /**

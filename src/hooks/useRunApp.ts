@@ -54,8 +54,11 @@ export function useRunApp() {
         return; // Don't add to regular output
       }
 
-      // Add to regular app output
-      setAppOutput((prev) => [...prev, output]);
+      // Add to regular app output (cap at 500 entries to bound memory)
+      setAppOutput((prev) => {
+        const next = [...prev, output];
+        return next.length > 500 ? next.slice(-500) : next;
+      });
     },
     [setAppOutput],
   );

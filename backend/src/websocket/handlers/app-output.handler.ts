@@ -11,14 +11,6 @@ export interface AppOutputMessage {
   timestamp: number;
 }
 
-export interface AppStatusMessage {
-  type: "app:status";
-  appId: number;
-  status: "starting" | "running" | "stopped" | "error";
-  url?: string;
-  error?: string;
-}
-
 export interface AppPreviewReadyMessage {
   type: "app:preview-ready";
   appId: number;
@@ -36,16 +28,10 @@ export interface AppInputMessage {
 // Track which WebSocket connections are subscribed to which app outputs
 const appSubscriptions = new Map<number, Set<WebSocket>>();
 
-// Track running apps and their output handlers
-const runningApps = new Map<
+// Cache preview URLs for late-joining subscribers
+const previewUrls = new Map<
   number,
-  {
-    containerId?: string;
-    status: "starting" | "running" | "stopped" | "error";
-    url?: string;
-    previewUrl?: string;
-    originalUrl?: string;
-  }
+  { previewUrl: string; originalUrl: string }
 >();
 
 export function subscribeToAppOutput(appId: number, ws: WebSocket) {
@@ -54,22 +40,17 @@ export function subscribeToAppOutput(appId: number, ws: WebSocket) {
   }
   appSubscriptions.get(appId)!.add(ws);
 
-  // Send current status if app is running
-  const appState = runningApps.get(appId);
-  if (appState) {
-    sendStatus(ws, appId, appState.status, appState.url);
-
-    // Replay preview URL to the new subscriber
-    if (appState.previewUrl) {
-      const msg: AppPreviewReadyMessage = {
-        type: "app:preview-ready",
-        appId,
-        previewUrl: appState.previewUrl,
-        originalUrl: appState.originalUrl || "http://localhost:3000",
-        timestamp: Date.now(),
-      };
-      ws.send(JSON.stringify(msg));
-    }
+  // Replay preview URL to the new subscriber
+  const cached = previewUrls.get(appId);
+  if (cached) {
+    const msg: AppPreviewReadyMessage = {
+      type: "app:preview-ready",
+      appId,
+      previewUrl: cached.previewUrl,
+      originalUrl: cached.originalUrl,
+      timestamp: Date.now(),
+    };
+    ws.send(JSON.stringify(msg));
   }
 }
 
@@ -111,8 +92,7 @@ export async function handleAppInput(
     return;
   }
 
-  // TODO: Send input to the Docker container's stdin
-  // This will be implemented when Docker service is added
+  // TODO: Implement stdin forwarding to app container
   console.log(`App ${appId} received input: ${response}`);
 }
 
@@ -150,11 +130,7 @@ export function broadcastPreviewReady(
   originalUrl = "http://localhost:3000",
 ) {
   // Cache for late-joining subscribers
-  const appState = runningApps.get(appId) || { status: "running" as const };
-  appState.previewUrl = previewUrl;
-  appState.originalUrl = originalUrl;
-  appState.status = "running";
-  runningApps.set(appId, appState);
+  previewUrls.set(appId, { previewUrl, originalUrl });
 
   const subscribers = appSubscriptions.get(appId);
   if (!subscribers || subscribers.size === 0) {
@@ -177,64 +153,7 @@ export function broadcastPreviewReady(
   }
 }
 
-// Broadcast status change to all subscribers
-export function broadcastAppStatus(
-  appId: number,
-  status: AppStatusMessage["status"],
-  url?: string,
-  error?: string,
-) {
-  // Update running apps state
-  if (status === "stopped") {
-    runningApps.delete(appId);
-  } else {
-    // Preserve proxyUrl and originalUrl if they exist
-    const existing = runningApps.get(appId);
-    runningApps.set(appId, {
-      ...existing,
-      status,
-      url,
-    });
-  }
-
-  const subscribers = appSubscriptions.get(appId);
-  if (!subscribers || subscribers.size === 0) {
-    return;
-  }
-
-  const statusMsg: AppStatusMessage = {
-    type: "app:status",
-    appId,
-    status,
-    url,
-    error,
-  };
-
-  const payload = JSON.stringify(statusMsg);
-  for (const ws of subscribers) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(payload);
-    }
-  }
-}
-
-function sendStatus(
-  ws: WebSocket,
-  appId: number,
-  status: AppStatusMessage["status"],
-  url?: string,
-) {
-  const statusMsg: AppStatusMessage = {
-    type: "app:status",
-    appId,
-    status,
-    url,
-  };
-  ws.send(JSON.stringify(statusMsg));
-}
-
-// Get current status of an app
-export function getAppStatus(appId: number): AppStatusMessage["status"] | null {
-  const state = runningApps.get(appId);
-  return state?.status || null;
+// Clear cached preview URL (e.g. on container stop)
+export function clearPreviewUrl(appId: number): void {
+  previewUrls.delete(appId);
 }

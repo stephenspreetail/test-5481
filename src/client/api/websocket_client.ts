@@ -107,6 +107,9 @@ export class WebSocketClient {
           if (this.connectionState === "connected") {
             clearInterval(checkConnection);
             resolve();
+          } else if (this.connectionState === "disconnected") {
+            clearInterval(checkConnection);
+            reject(new Error("Connection failed while waiting"));
           }
         }, 100);
         return;
