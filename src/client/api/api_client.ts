@@ -235,6 +235,13 @@ export class ApiClient {
     });
   }
 
+  async updateAppSlug(appId: number, slug: string): Promise<void> {
+    await this.request(`/api/apps/${appId}`, {
+      method: "PUT",
+      body: JSON.stringify({ slug }),
+    });
+  }
+
   async getPreviewUrl(appId: number): Promise<{ previewUrl: string }> {
     return this.request<{ previewUrl: string }>(`/api/apps/${appId}/preview-url`);
   }

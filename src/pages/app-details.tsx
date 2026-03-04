@@ -28,12 +28,14 @@ import { formatDistanceToNow } from "date-fns";
 import { useSetAtom } from "jotai";
 import {
   ArrowLeft,
+  Check,
   Copy,
   MessageCircle,
   MoreVertical,
   Pencil,
   PlusCircle,
   Search,
+  X,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -47,6 +49,10 @@ export default function AppDetailsPage() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newAppName, setNewAppName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
+  const [isEditingSlug, setIsEditingSlug] = useState(false);
+  const [editingSlugValue, setEditingSlugValue] = useState("");
+  const [slugError, setSlugError] = useState("");
+  const [isSavingSlug, setIsSavingSlug] = useState(false);
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [newCopyAppName, setNewCopyAppName] = useState("");
 
@@ -158,6 +164,39 @@ export default function AppDetailsPage() {
       showError(error);
     } finally {
       setIsRenaming(false);
+    }
+  };
+
+  const validateSlug = (value: string): string => {
+    if (value.length < 3) return "Must be at least 3 characters";
+    if (value.length > 60) return "Must be at most 60 characters";
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value))
+      return "Lowercase letters, numbers, and hyphens only; must start and end with a letter or number";
+    if (/--/.test(value)) return "No consecutive hyphens";
+    return "";
+  };
+
+  const handleSlugChange = (value: string) => {
+    setEditingSlugValue(value);
+    setSlugError(validateSlug(value));
+  };
+
+  const handleSaveSlug = async () => {
+    if (!appId) return;
+    const error = validateSlug(editingSlugValue);
+    if (error) { setSlugError(error); return; }
+
+    try {
+      setIsSavingSlug(true);
+      await getClient().updateAppSlug(appId, editingSlugValue);
+      setIsEditingSlug(false);
+      await refreshApps();
+      // Preview URL depends on slug — refetch it
+      queryClient.invalidateQueries({ queryKey: ["preview-url", appId] });
+    } catch (err: any) {
+      setSlugError(err?.message?.includes("unique") ? "Slug already taken" : "Failed to save");
+    } finally {
+      setIsSavingSlug(false);
     }
   };
 
@@ -283,18 +322,69 @@ export default function AppDetailsPage() {
               {selectedApp.updatedAt.toString()}
             </span>
           </div>
-          {selectedApp.slug && (
-            <div>
-              <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
-                Slug
-              </span>
-              <span className="text-sm text-gray-900 dark:text-gray-200 font-mono">
-                {selectedApp.slug}
-              </span>
-            </div>
-          )}
+          <div>
+            <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
+              Slug
+            </span>
+            {isEditingSlug ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={editingSlugValue}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveSlug();
+                      if (e.key === "Escape") setIsEditingSlug(false);
+                    }}
+                    className="h-7 text-xs font-mono px-2"
+                    autoFocus
+                    disabled={isSavingSlug}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-0.5 h-auto"
+                    onClick={handleSaveSlug}
+                    disabled={isSavingSlug || !!slugError}
+                  >
+                    <Check className="h-3.5 w-3.5 text-green-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-0.5 h-auto"
+                    onClick={() => setIsEditingSlug(false)}
+                    disabled={isSavingSlug}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {slugError && (
+                  <p className="text-xs text-red-500">{slugError}</p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                  {selectedApp.slug ?? <span className="text-gray-400 italic">none</span>}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-0.5 h-auto"
+                  onClick={() => {
+                    setEditingSlugValue(selectedApp.slug ?? "");
+                    setSlugError("");
+                    setIsEditingSlug(true);
+                  }}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </div>
           {previewUrl && (
-            <div className={selectedApp.slug ? "" : "col-span-2"}>
+            <div>
               <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
                 Preview URL
               </span>
