@@ -25,11 +25,11 @@ const configSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z
     .string()
     .regex(/^\d+[smhd]$/, "JWT_ACCESS_EXPIRES_IN must be in time format (e.g., 60s, 15m, 2h, 7d)")
-    .default("15m"),
+    .default("12h"),
   JWT_REFRESH_EXPIRES_IN: z
     .string()
     .regex(/^\d+[smhd]$/, "JWT_REFRESH_EXPIRES_IN must be in time format (e.g., 60s, 15m, 2h, 7d)")
-    .default("7d"),
+    .default("30d"),
   ENCRYPTION_KEY: z
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, "ENCRYPTION_KEY must be 64 hex characters (32 bytes)"),

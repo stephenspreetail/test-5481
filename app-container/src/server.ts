@@ -23,7 +23,9 @@ const APP_ID = process.env.APP_ID || "unknown";
 
 // Default system prompt: Claude Code preset + container-specific instructions
 const DEFAULT_SYSTEM_PROMPT_CONFIG = extendPrompt(
-  `The dev server is managed automatically - do NOT run "bun dev", "bun run dev", or start any dev server manually. The app preview updates automatically when you save files.`
+  `The dev server is managed automatically - do NOT run "bun dev", "bun run dev", or start any dev server manually. The app preview updates automatically when you save files.
+
+curl and Playwright (with Chromium) are pre-installed — use them proactively to validate the running app at http://localhost:${DEV_SERVER_PORT}. TanStack Start uses SSR, so runtime errors often manifest as blank pages during hydration and are only visible in a real browser, not in source files or server logs.`
 );
 
 // Initialize Fastify

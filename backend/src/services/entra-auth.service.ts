@@ -32,8 +32,9 @@ class EntraAuthService {
   /**
    * Build the Microsoft OAuth authorization URL.
    * stateJwt is a short-lived signed JWT used for CSRF protection.
+   * Pass prompt: "none" for silent re-authentication (uses existing Entra session).
    */
-  getAuthorizationUrl(stateJwt: string): string {
+  getAuthorizationUrl(stateJwt: string, options?: { prompt?: string }): string {
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
@@ -41,6 +42,9 @@ class EntraAuthService {
       scope: "openid profile email User.Read",
       state: stateJwt,
     });
+    if (options?.prompt) {
+      params.set("prompt", options.prompt);
+    }
     return `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/authorize?${params}`;
   }
 

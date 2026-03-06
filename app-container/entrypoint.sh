@@ -35,11 +35,14 @@ set -e
 # but we need it owned by kova (UID 1001) inside the container
 chown kova:kova /workspace 2>/dev/null || true
 
-# Hide lost+found directory (created by ext4 on EBS volumes)
-# Vite and other tools fail when scanning workspace and hitting permission errors on lost+found
-# Note: This will be unnecessary when we migrate to EFS (NFS-based, no lost+found)
+# Remove lost+found directory (created by ext4 on EBS volumes at filesystem creation time).
+# Vite crashes with EACCES when its file watcher tries to open the directory because
+# fsGroup processing sets its permissions to 2000 (setgid, no rwx), and chmod 000
+# silently fails to clear the setgid bit in this context. Deleting it is safe — it is
+# always empty on a fresh PVC, and won't be recreated on subsequent pod starts.
+# Note: This will be unnecessary when we migrate to EFS (NFS-based, no lost+found).
 if [ -d /workspace/lost+found ]; then
-  chmod 000 /workspace/lost+found 2>/dev/null || true
+  rm -rf /workspace/lost+found 2>/dev/null || true
 fi
 
 # Ensure the named volume mount point exists and has correct ownership

@@ -112,17 +112,25 @@ export async function authRoutes(app: FastifyInstance) {
     /**
      * GET /api/auth/entra/login
      * Initiates Entra ID OAuth flow.
+     * Pass ?silent=true to use prompt=none for silent re-authentication
+     * (re-uses existing Entra session without showing a login page).
      */
     app.get(
       "/entra/login",
-      async (_request: FastifyRequest, reply: FastifyReply) => {
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        const { silent } = request.query as Record<string, string>;
+        const isSilent = silent === "true";
+
         const nonce = crypto.randomBytes(16).toString("hex");
-        const stateJwt = await new SignJWT({ nonce })
+        const stateJwt = await new SignJWT({ nonce, silent: isSilent })
           .setProtectedHeader({ alg: "HS256" })
           .setExpirationTime("5m")
           .sign(jwtSecretBytes);
 
-        const authUrl = entraAuthService.getAuthorizationUrl(stateJwt);
+        const authUrl = entraAuthService.getAuthorizationUrl(
+          stateJwt,
+          isSilent ? { prompt: "none" } : undefined,
+        );
         reply.redirect(authUrl);
       },
     );
@@ -137,6 +145,18 @@ export async function authRoutes(app: FastifyInstance) {
         const { code, state, error } = request.query as Record<string, string>;
 
         if (error) {
+          // For silent auth (prompt=none), fall back to interactive login rather than
+          // returning an error. This handles interaction_required / login_required.
+          try {
+            const { payload } = await jwtVerify(state || "", jwtSecretBytes);
+            if (payload.silent) {
+              const frontendUrl = config.CORS_ORIGIN || "http://localhost:5174";
+              reply.redirect(`${frontendUrl}/login`);
+              return;
+            }
+          } catch {
+            // State JWT invalid or missing — fall through to error response
+          }
           reply.status(400).send({ error: `Entra auth error: ${error}` });
           return;
         }

@@ -26,6 +26,15 @@ if (_callbackAccessToken && _callbackRefreshToken) {
   window.history.replaceState({}, "", window.location.pathname);
 }
 
+// Cache entraEnabled so onUnauthorized can trigger silent re-auth without a login page
+fetch("/api/auth/config")
+  .then((r) => r.json())
+  .then((cfg: { entraEnabled: boolean }) => {
+    if (cfg.entraEnabled) localStorage.setItem("entraEnabled", "true");
+    else localStorage.removeItem("entraEnabled");
+  })
+  .catch(() => {});
+
 // Get Jotai's default store for use outside React
 const jotaiStore = getDefaultStore();
 
@@ -34,9 +43,15 @@ initializeClient({
   baseUrl: (import.meta as any).env?.VITE_API_URL || window.location.origin,
   getAccessToken: () => localStorage.getItem("accessToken"),
   onUnauthorized: () => {
-    // Clear tokens and set auth state to unauthenticated
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+    // If Entra SSO is configured, attempt silent re-auth using the existing
+    // Entra session (prompt=none). If the Entra session has also expired,
+    // the callback redirects to /login for interactive sign-in.
+    if (localStorage.getItem("entraEnabled") === "true") {
+      window.location.href = "/api/auth/entra/login?silent=true";
+      return;
+    }
     jotaiStore.set(authStateAtom, "unauthenticated");
     jotaiStore.set(currentUserAtom, null);
   },

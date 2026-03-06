@@ -7,11 +7,12 @@ ARG SDK_BASE=oven/bun:1-debian
 
 FROM ${SDK_BASE}
 
-# Install git (required by Claude Agent SDK), Python, LibreOffice, and gosu for entrypoint
+# Install git (required by Claude Agent SDK), Python, LibreOffice, curl, and gosu for entrypoint
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     bash \
     gosu \
+    curl \
     python3 \
     python3-pip \
     python3-venv \
@@ -32,6 +33,17 @@ WORKDIR /app
 # Copy package files and install dependencies
 COPY app-container/package.json ./
 RUN bun install
+
+# Install Playwright Chromium browser + system dependencies.
+# PLAYWRIGHT_BROWSERS_PATH controls where browsers are stored (shared, world-readable).
+# NODE_PATH makes `import { chromium } from 'playwright'` work from any directory,
+# including /tmp scripts the agent writes for runtime validation.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV NODE_PATH=/app/node_modules
+RUN /app/node_modules/.bin/playwright install --with-deps chromium \
+    && chmod -R a+rx /ms-playwright \
+    # Symlink playwright CLI so `playwright` is available on PATH
+    && ln -sf /app/node_modules/.bin/playwright /usr/local/bin/playwright
 
 # Copy source files
 COPY app-container/ ./
