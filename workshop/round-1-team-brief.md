@@ -2,32 +2,38 @@
 
 ## Your Mission
 
-Build a revenue projection app. A merchant gives you their product details and ad spend. Your app tells them how much money they will make over the next 12 months.
+Use **Kova** to build a revenue projection app. Describe what you want in the chat interface — Kova will build it for you. Your job is to give Kova clear enough instructions that the app comes out correct.
 
 ---
 
-## Inputs Your App Must Accept
+## What to Build
+
+A merchant enters their product details and ad spend. The app shows them how much money they will make over the next 12 months.
+
+---
+
+## Inputs the App Must Accept
 
 | Field | Description | Example |
 |---|---|---|
-| `price` | Selling price per unit | `89.99` |
-| `base_units` | Units sold per month before any advertising | `850` |
-| `growth_rate` | Monthly growth rate as a percentage | `12` |
-| `ad_budget` | Total advertising budget (spent evenly each month) | `15000` |
+| Price | Selling price per unit | `89.99` |
+| Base units | Units sold per month before any advertising | `850` |
+| Growth rate | Monthly growth rate as a percentage | `12` |
+| Ad budget | Total advertising budget (spent evenly each month) | `15000` |
 
 ---
 
-## What Your App Must Output
+## What the App Must Show
 
-| Field | Description |
-|---|---|
-| `monthly_revenue` | A table showing revenue for each of the 12 months |
-| `total_revenue` | Cumulative revenue at the end of month 12 |
-| `breakeven_month` | The first month where cumulative revenue exceeds $1,210,000 |
+- A table of revenue for each of the 12 months
+- A cumulative total at the end of month 12
+- The first month where cumulative revenue exceeds $1,210,000
 
 ---
 
 ## The Formula
+
+Give this formula to Kova exactly as written. It must not be changed.
 
 **Units sold in month N:**
 ```
@@ -46,15 +52,23 @@ cumulative(N) = sum of monthly_revenue(1) through monthly_revenue(N)
 
 ---
 
+## Tips for Prompting Kova
+
+- Describe the inputs and outputs in plain language first, then paste the formula
+- Ask Kova to show all 12 months in a table, not just the final total
+- If the output looks wrong, describe what is wrong and ask Kova to fix it — do not start over
+- Both team members should take turns suggesting what to ask Kova next
+
+---
+
 ## Rules
 
-- Build anything — web app, spreadsheet, script, command-line tool. Whatever your team is fastest with.
-- The formula above is fixed. Do not change it.
-- Your output must show all 12 months, not just the final total.
-- You have **25 minutes**.
+- Use Kova's chat interface to build the app — no manual coding
+- The formula above is fixed. If Kova changes it, correct it
+- You have **25 minutes**
 
 ---
 
 ## Scoring Scenario (revealed at time's up)
 
-You will be given one set of inputs. Enter them into your app and submit your output. Scoring is based on accuracy versus the pre-calculated correct answer.
+You will be given one set of inputs. Enter them into your Kova-built app and submit the output.

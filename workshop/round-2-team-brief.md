@@ -2,82 +2,92 @@
 
 ## Your Mission
 
-Doc needs precision. The flux capacitor requires hitting **exactly $1,210,000 at exactly 22:04** on the target date. Upgrade your app to account for seasonal demand and output an exact date and time — not just a month number.
+Doc needs precision. The flux capacitor requires hitting **exactly $1,210,000 at exactly 22:04** on the target date. Use Kova to upgrade your existing app to handle seasonal demand and output an exact date and time — not just a month number.
+
+**Do not start a new app. Describe the upgrade to Kova and let it modify what you already built.**
 
 ---
 
-## New Inputs (add these to your existing app)
+## New Inputs to Add
+
+Tell Kova the app needs two new inputs:
 
 | Field | Description | Example |
 |---|---|---|
-| `campaign_start_date` | The date the merchant launches | `1955-03-01` |
-| `seasonality` | A multiplier for each calendar month (12 values) | `Jan=0.8, Feb=0.8, ... Dec=1.5` |
+| Campaign start date | The date the merchant launches | `1955-03-01` |
+| Seasonality (12 values) | A demand multiplier for each calendar month, January through December | `Jan=0.8, Feb=0.8 ... Dec=1.5` |
 
-Seasonality multipliers reflect demand changes by month. `1.0` means normal demand. `1.5` means 50% higher than normal. `0.8` means 20% lower than normal.
+Seasonality reflects how demand changes by time of year. `1.0` = normal. `1.5` = 50% higher than normal. `0.8` = 20% lower.
 
 ---
 
-## Updated Formula (replaces your Round 1 formula)
+## Updated Formula
 
-**Units sold in month N:**
+Tell Kova to update the revenue formula. Only the revenue line changes — the units formula stays the same.
+
+**Units sold in month N (unchanged from Round 1):**
 ```
 monthly_units(N) = base_units × (1 + growth_rate / 100)^N + (ad_budget / 25)
 ```
 
-**Revenue in month N** (now includes seasonality):
+**Revenue in month N (updated — now includes seasonality):**
 ```
 monthly_revenue(N) = monthly_units(N) × price × seasonality[calendar_month_of_N]
 ```
 
-Where `calendar_month_of_N` is the actual calendar month (Jan–Dec) that month N falls in, based on `campaign_start_date`.
+Where `calendar_month_of_N` is the actual calendar month (Jan–Dec) that month N falls in, based on the campaign start date.
 
-**Cumulative revenue after month N:**
+**Cumulative revenue (unchanged):**
 ```
 cumulative(N) = sum of monthly_revenue(1) through monthly_revenue(N)
 ```
 
 ---
 
-## What Your App Must Output
+## New Output Fields to Add
 
-Keep your Round 1 output. Add these three new fields:
+Keep the Round 1 table. Ask Kova to also show:
 
 | Field | Description | Example |
 |---|---|---|
-| `projected_revenue` | Cumulative total at the point of crossing $1,210,000 | `$1,214,320` |
-| `achievement_date` | The exact calendar date of crossing | `1955-11-05` |
+| `achievement_date` | The exact calendar date when cumulative revenue crosses $1,210,000 | `1955-11-05` |
 | `achievement_time` | The exact time of day of crossing | `22:04` |
 
 ---
 
-## How to Calculate the Exact Date and Time
+## How to Explain the Date and Time Calculation to Kova
 
-Once you find the month N where cumulative first exceeds $1,210,000:
+Describe it step by step in your prompt:
 
-```
-1. revenue_entering_month  = cumulative(N-1)
-2. revenue_needed          = 1,210,000 - revenue_entering_month
-3. days_in_month           = actual number of days in that calendar month
-4. day_of_crossing         = revenue_needed / (monthly_revenue(N) / days_in_month)
-5. achievement_date        = campaign_start_date + (N-1) months + day_of_crossing days
-6. achievement_time        = fractional part of day_of_crossing × 24 hours → format as HH:MM
-```
+> Once you find the month where cumulative revenue first exceeds $1,210,000:
+> 1. Calculate how much revenue was accumulated at the end of the previous month
+> 2. Calculate how much additional revenue is needed to reach $1,210,000
+> 3. Divide that by the daily revenue rate for the crossing month (monthly revenue ÷ days in that month)
+> 4. That gives you the day of the month when crossing happens, including a decimal fraction
+> 5. The date is: campaign start date + (N-1) full months + that many days
+> 6. The time is: the decimal fraction of the day × 24 hours, formatted as HH:MM
 
-**Example:** If `day_of_crossing = 5.918`, then:
-- Date = the 5th of that month (plus campaign start offset)
-- Time = 0.918 × 24 = 22.04 hours = **22:04**
+**Example to give Kova:** If the crossing happens 5.918 days into a month, the date is the 5th of that month and the time is 0.918 × 24 = 22.04 hours = **22:04**.
+
+---
+
+## Tips for Prompting Kova
+
+- Start by telling Kova: "I want to upgrade the existing app, not replace it"
+- Give Kova the seasonality explanation and the date/time algorithm in one clear message
+- Test seasonality first: set all 12 values to 1.0 — revenue should be close to Round 1 output
+- Test the time calculation separately: ask Kova what time it shows if the crossing day is 5.918
 
 ---
 
 ## Rules
 
-- Keep everything from Round 1. This is an upgrade, not a replacement.
-- Seasonality multipliers are per calendar month, not per month-of-campaign.
-- Use actual calendar days per month (e.g. November has 30 days, not 31).
-- You have **25 minutes**.
+- Upgrade the existing Kova app — do not start over
+- The formula must use actual calendar days per month (November = 30, August = 31, etc.)
+- You have **25 minutes**
 
 ---
 
 ## Scoring Scenarios (revealed at time's up)
 
-You will be given three sets of inputs. Run each through your app and submit all three outputs. Each scenario is scored independently.
+You will be given three sets of inputs including seasonality values. Run each through your app and submit all three outputs.

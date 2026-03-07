@@ -5,15 +5,23 @@
 | | |
 |---|---|
 | **Duration** | 25 min build + 5 min scoring |
-| **Goal** | Teams add seasonality and date/time interpolation to their Round 1 app |
-| **Complexity** | Medium — two new concepts: seasonality mapping + fractional day calculation |
-| **Watch for** | Teams rebuilding from scratch (redirect them); time arithmetic bugs |
+| **Goal** | Teams upgrade their Kova app to add seasonality and exact date/time output |
+| **The skill being tested** | Describing a multi-step algorithm to an AI app builder precisely enough to get it right |
+| **Watch for** | Teams starting over; vague prompts about the time calculation; not testing seasonality separately |
+
+---
+
+## What Teams Are Actually Doing
+
+Teams are prompting Kova to modify what they already built. The two new concepts — seasonality multipliers and fractional-day time interpolation — both need to be explained clearly in the chat. Neither is complicated once you understand them, but describing them precisely enough for Kova to implement correctly is the challenge.
+
+The time calculation is the hardest part to describe. Most teams will need 2–3 iterations with Kova to get it right. That is expected and normal.
 
 ---
 
 ## Before the Round Starts
 
-Pre-calculate correct answers for all three scenarios. Work through each one using the formula below so you can diagnose team errors quickly during the round.
+Pre-calculate correct answers for all three scenarios. Use these to immediately tell a team whether their output is right.
 
 ### Scoring Scenarios and Correct Answers
 
@@ -32,8 +40,6 @@ seasonality:
   Jul=1.2  Aug=1.2  Sep=1.1  Oct=1.0  Nov=1.3  Dec=1.5
 ```
 
-Month-by-month (seasonality applied):
-
 | Month | Calendar | Seas. | Units | Revenue | Cumulative |
 |---|---|---|---|---|---|
 | 1 | Jan | 0.8 | 1,552 | $111,666.78 | $111,666.78 |
@@ -45,25 +51,15 @@ Month-by-month (seasonality applied):
 | 7 | Jul | 1.2 | 2,087 | $225,206.52 | $1,112,233.62 |
 | 8 | Aug | 1.2 | 2,217 | $239,385.30 | $1,351,618.92 |
 
-Crossing happens in **Month 8 (August 1955)**.
-
+Crossing happens in **Month 8 (August 1955)**:
 ```
 revenue_entering_month  = $1,112,233.62
-revenue_needed          = $1,210,000 - $1,112,233.62 = $97,766.38
-days_in_month           = 31  (August has 31 days)
-daily_revenue           = $239,385.30 / 31 = $7,721.46
-day_of_crossing         = $97,766.38 / $7,721.46 = 12.664...
-
-date = 1955-01-01 + 7 months + 12.664 days = 1955-08-12 + 0.664 days
-time = 0.664 × 24 = 15.94 hours → 15:56
+revenue_needed          = $97,766.38
+days_in_month           = 31
+day_of_crossing         = 97,766.38 / (239,385.30 / 31) = 12.664
 ```
 
-**Correct Answer A:**
-```
-projected_revenue  = $1,214,920  (cumulative at end of crossing month, for reference)
-achievement_date   = 1955-08-12
-achievement_time   = 15:56
-```
+**Correct Answer A:** `achievement_date = 1955-08-12` / `achievement_time = 15:56`
 
 ---
 
@@ -78,7 +74,7 @@ start_date    = 1955-06-01
 seasonality:  all months = 1.0
 ```
 
-Flat seasonality means this scenario tests clean date arithmetic with no multiplier complexity.
+Flat seasonality. This tests calendar arithmetic without the complication of varying multipliers. If a team gets A and C wrong but B right, seasonality mapping is the bug.
 
 | Month | Calendar | Units | Revenue | Cumulative |
 |---|---|---|---|---|
@@ -93,25 +89,15 @@ Flat seasonality means this scenario tests clean date arithmetic with no multipl
 | 9 | Feb | 5,741 | $143,441.59 | $1,150,514.58 |
 | 10 | Mar | 5,913 | $147,735.87 | $1,298,250.45 |
 
-Crossing happens in **Month 10 (March 1956)**.
-
+Crossing happens in **Month 10 (March 1956)**:
 ```
 revenue_entering_month  = $1,150,514.58
-revenue_needed          = $1,210,000 - $1,150,514.58 = $59,485.42
-days_in_month           = 31  (March has 31 days)
-daily_revenue           = $147,735.87 / 31 = $4,765.67
-day_of_crossing         = $59,485.42 / $4,765.67 = 12.482...
-
-date = 1955-06-01 + 9 months + 12.482 days = 1956-03-12 + 0.482 days
-time = 0.482 × 24 = 11.57 hours → 11:34
+revenue_needed          = $59,485.42
+days_in_month           = 31
+day_of_crossing         = 59,485.42 / (147,735.87 / 31) = 12.482
 ```
 
-**Correct Answer B:**
-```
-projected_revenue  = $1,298,250.45
-achievement_date   = 1956-03-12
-achievement_time   = 11:34
-```
+**Correct Answer B:** `achievement_date = 1956-03-12` / `achievement_time = 11:34`
 
 ---
 
@@ -133,25 +119,25 @@ seasonality:
 | 1 | Sep | 1.1 | 1,750 | $575,575.00 | $575,575.00 |
 | 2 | Oct | 1.3 | 2,388 | $927,643.20 | $1,503,218.20 |
 
-Crossing happens in **Month 2 (October 1955)**.
-
+Crossing happens in **Month 2 (October 1955)**:
 ```
 revenue_entering_month  = $575,575.00
-revenue_needed          = $1,210,000 - $575,575.00 = $634,425.00
-days_in_month           = 31  (October has 31 days)
-daily_revenue           = $927,643.20 / 31 = $29,924.62
-day_of_crossing         = $634,425.00 / $29,924.62 = 21.200...
-
-date = 1955-09-01 + 1 month + 21.200 days = 1955-10-21 + 0.200 days
-time = 0.200 × 24 = 4.80 hours → 04:48
+revenue_needed          = $634,425.00
+days_in_month           = 31
+day_of_crossing         = 634,425.00 / (927,643.20 / 31) = 21.200
 ```
 
-**Correct Answer C:**
-```
-projected_revenue  = $1,503,218.20
-achievement_date   = 1955-10-21
-achievement_time   = 04:48
-```
+**Correct Answer C:** `achievement_date = 1955-10-21` / `achievement_time = 04:48`
+
+---
+
+### Quick Reference
+
+| Scenario | Date | Time |
+|---|---|---|
+| A | 1955-08-12 | 15:56 |
+| B | 1956-03-12 | 11:34 |
+| C | 1955-10-21 | 04:48 |
 
 ---
 
@@ -159,71 +145,73 @@ achievement_time   = 04:48
 
 | Clock | What you do |
 |---|---|
-| 0:00 | Hand out brief. Say: "Keep your Round 1 app. You are adding on top of it. 25 minutes." |
-| 3:00 | Check that every team is modifying their existing app, not starting fresh. |
-| 8:00 | Teams should have seasonal multipliers wired in and monthly revenue changing. |
-| 15:00 | Teams should be working on the date/time interpolation step. If not, coach now. |
-| 22:00 | Announce "3 minutes." Teams should be testing, not building. |
+| 0:00 | Hand out brief. Say: "You are upgrading your existing app, not starting over. 25 minutes." |
+| 3:00 | Check every team is prompting Kova to modify their existing app. Stop anyone who opened a new project. |
+| 8:00 | Teams should have seasonality inputs added. Revenue table should be changing month-to-month. |
+| 15:00 | Teams should be working on the date/time output. This is the hard part — most will be iterating with Kova here. |
+| 22:00 | Announce "3 minutes." Teams should be testing outputs, not writing new prompts. |
 | 25:00 | Call time. Reveal all three scenarios simultaneously. |
-| 25:00–30:00 | Teams run each scenario and record their outputs. Collect results. |
+| 25:00–30:00 | Teams run each scenario and record outputs. Collect results. |
 
 ---
 
 ## What Healthy Team Progress Looks Like
 
-**Minutes 0–5**
-- Engineer immediately adds `campaign_start_date` and the 12 seasonality inputs to the existing UI
-- Non-engineer prepares a simple validation: if all seasonality values are 1.0, output should match Round 1
-- Both agree not to change the units formula — only the revenue formula gains the multiplier
+**Minutes 0–5: Describing the upgrade**
+- Team's first message to Kova says something like: "Upgrade the existing app. Add a campaign start date input and 12 monthly seasonality multipliers. Update the revenue formula to multiply by the seasonality value for the calendar month that each campaign month falls in."
+- One team member is drafting the prompt; the other is checking the brief to make sure nothing is missed
 
-**Minutes 5–15**
-- Monthly revenue is visibly different month-to-month based on the multiplier
-- Engineer and non-engineer test Scenario B (all 1.0 seasonality) as a sanity check against Round 1 output
-- Non-engineer asks: "If I change November to 2.0, does November revenue double?" — it should
+**Minutes 5–12: Verifying seasonality**
+- Seasonality inputs appear in the app
+- Team does the sanity check: set all 12 values to 1.0 — numbers should be close to Round 1 output
+- Team changes one month's multiplier (e.g. double November) and checks that November revenue doubles
 
-**Minutes 15–22**
-- Engineer is implementing the date/time interpolation
-- Non-engineer is working out the day arithmetic on paper as a reference: "November starts on day 1 of the month. If I need 40% of November's revenue, that's 40% × 30 days = 12 days in. 0.4 × 24 hours = 9:36."
-- Both verify: fractional day → hours → HH:MM format is working
+**Minutes 12–22: Getting the date and time right**
+- This takes most teams 2–3 attempts with Kova
+- Common pattern: Kova gives a date but no time → team asks Kova to add the fractional day → time appears but is wrong → team describes the calculation more precisely
+- Non-typing team member is working through the algorithm on paper as a reference for what to tell Kova next
 
-**Minutes 22–25**
-- Testing with all three scenario inputs
-- Output shows date AND time, not just a month number
+**Minutes 22–25: Testing all three scenarios**
+- Team runs all three scenarios and records outputs
+- No new prompts — only final checks
 
 ---
 
 ## Common Problems and How to Coach Them
 
-### "We're getting the right month but the date is wrong"
+### "Kova added seasonality but the numbers didn't change"
 
-The interpolation arithmetic is off. Walk them through it step by step:
+The multiplier is not in the right place. Ask the team:
 
-1. "How much revenue do you have entering the crossing month?" (cumulative at end of previous month)
-2. "How much revenue do you need to reach $1,210,000 from there?"
-3. "How much revenue does the crossing month generate per day?" (monthly revenue ÷ days in that month)
-4. "How many days into the month until you earn that much?" (revenue needed ÷ daily revenue)
+> "Tell Kova: the seasonality multiplier should be applied in the revenue calculation, not the units calculation. Revenue = units × price × seasonality for that calendar month."
 
-If step 4 gives a number > 31, their previous-month cumulative is wrong.
+### "The date looks right but there is no time showing"
 
-### "Our time is always midnight or noon"
+Kova implemented the day calculation but not the fractional-to-hours conversion. Coach the team to prompt:
 
-They computed days but dropped the fractional part. Ask: "What is your `day_of_crossing` value? Does it have a decimal?" If it's being floored to an integer, find where that truncation happens.
+> "The day of crossing will have a decimal part — for example, 5.918 means the 5th day at 0.918 × 24 = 22.04 hours. Please show the achievement time by converting the fractional part of the crossing day into HH:MM format."
 
-### "Seasonality doesn't seem to change anything"
+### "The time is always 00:00 or 12:00"
 
-They are applying the multiplier to the wrong thing — likely to units instead of revenue, or not applying it at all. Ask: "If I set every month to 0.0, does your revenue become zero?" If not, the multiplier is not in the revenue formula.
+The fractional part is being lost — Kova is rounding the day to a whole number. Coach the team:
 
-### "Our calendar months are off by one"
+> "Tell Kova: do not round the day of crossing to an integer. Keep the decimal, then multiply the decimal portion by 24 to get the hour."
 
-This is a common fence-post error. If campaign starts Jan 1:
-- Month 1 of campaign = January → seasonality[Jan]
-- Month 13 would wrap back to January
+### "The calendar months are wrong — month 3 of a June start shows March instead of August"
 
-Ask: "What calendar month does your app say month 3 of the campaign falls in?" With a Jan 1 start, Month 3 = March. With a Jun 1 start, Month 3 = August.
+Kova is counting from January instead of from the start month. Coach the team:
 
-### "Scenario B gives a different answer than Round 1"
+> "Tell Kova: the calendar month for campaign month N should be calculated as: start month + N - 1, wrapping around after December back to January."
 
-Expected — Round 2 changes the formula. Even with all seasonality = 1.0, the growth compounding is the same but the test scenario uses different inputs (start date Jun 1955, not a Round 1 input). If they are re-running the exact Round 1 inputs with all 1.0 seasonality and getting a different revenue, their multiplier application is wrong.
+### "Scenario B gives a different month than expected"
+
+Scenario B uses different inputs (lower price, higher units, lower growth) — it is not expected to match Round 1. If the team thinks B is wrong because it doesn't match Round 1, reassure them: B is intentionally a different merchant. The sanity check (all 1.0 seasonality = Round 1 output) only works when using the exact same inputs as Round 1.
+
+### "Team is starting over because the upgrade got messy"
+
+Stop them immediately. Starting over costs 10+ minutes. Coach them:
+
+> "Tell Kova exactly what is broken. 'The revenue formula is correct but the time output is missing.' Kova can fix one thing at a time."
 
 ---
 
@@ -237,38 +225,29 @@ Run this for each of the three scenarios:
 revenue_error  = |team_revenue - correct_revenue| / correct_revenue
 revenue_score  = max(0,  1 - revenue_error)
 
-team_minutes   = hours_part × 60 + minutes_part   (from team's achievement_time)
-correct_mins   = hours_part × 60 + minutes_part   (from correct answer)
-date_error     = |days between team_date and correct_date| + |team_minutes - correct_mins| / 1440
-date_score     = max(0,  1 - date_error / 7)       ← 7-day tolerance
+date_diff_days = |days between team_date and correct_date|
+time_diff_mins = |team_time_in_minutes - correct_time_in_minutes|
+date_score     = max(0,  1 - (date_diff_days + time_diff_mins / 1440) / 7)
 
 scenario_score = (revenue_score × 0.7) + (date_score × 0.3)
 
 round_2_score  = average of three scenario scores × 100
 ```
 
-### Quick Reference — Correct Answers
+### Diagnosing Low Scores
 
-| Scenario | Revenue | Date | Time |
-|---|---|---|---|
-| A | $1,214,920 | 1955-08-12 | 15:56 |
-| B | $1,298,250 | 1956-03-12 | 11:34 |
-| C | $1,503,218 | 1955-10-21 | 04:48 |
-
-### Diagnosing Team Scores
-
-| Symptom | Likely cause |
+| What the team got wrong | Likely cause |
 |---|---|
-| Revenue wrong, date wrong | Seasonality not applied |
-| Revenue right, date is just month 1 | Interpolation not implemented |
-| Revenue right, date right, time = 00:00 | Fractional day not converted to time |
-| All three scenarios give same date | Calendar month not shifting with start_date |
-| Scenario B wrong but A and C right | Off-by-one error in month indexing |
+| All three revenues off, dates off | Seasonality not applied to formula |
+| Revenues right, date is first of crossing month, time = 00:00 | Date/time interpolation not implemented |
+| Revenues right, date right, time = 00:00 | Fractional day not converted to HH:MM |
+| A and C wrong, B right | Calendar month offset from start_date not applied |
+| A right, B and C wrong | Correct for Round 1 inputs only; seasonality lookup is hardcoded |
 
 ---
 
-## What to Say When Transitioning to Round 3
+## Transition to Round 3
 
-> "You can now tell a merchant exactly when they will hit their target. Round 3 flips the problem. Instead of projecting forward, your app will work backwards. Doc knows when he needs to hit the number. Your app will find the minimum ad budget to make it happen."
+> "You can now tell a merchant exactly when they will hit their revenue target. Round 3 flips the problem. Doc knows exactly when he needs to hit $1,210,000 — 22:04 on November 5th. Your app needs to work backwards: find the minimum ad budget that makes it happen. You'll describe an optimizer to Kova that runs your existing projection formula in a search loop."
 
-Pause for any quick questions, then hand out the Round 3 brief.
+Hand out the Round 3 brief immediately.
