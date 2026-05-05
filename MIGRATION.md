@@ -138,5 +138,8 @@ bun test packages/issues/src \
 bun test
 ```
 
-17/17 new tests pass. All five new packages and the GitLab forge adapter
-typecheck under their respective `tsconfig.json` files.
+64/64 tests pass across the new packages and the promoted GitLab forge
+adapter (17 from the new IssueProvider/admin/GitLab/Jira packages, 53 from
+the upstream GitLab adapter that was promoted out of `community/`). All
+five new packages, the adapters package, and the server package typecheck
+under their respective `tsconfig.json` files.
