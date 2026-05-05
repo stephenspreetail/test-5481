@@ -44,17 +44,20 @@ All three are unit-tested with injected `fetch` (or `:memory:` for SQLite).
 
 ### GitLab platform adapter (`packages/adapters/src/forge/gitlab`)
 
-Sibling of the existing `forge/github` adapter:
+The upstream community GitLab adapter (798 lines + 53 tests) promoted from
+`packages/adapters/src/community/forge/gitlab/` to first-class:
 
-- Implements `IPlatformAdapter`.
-- Conversation IDs use GitLab's own ref syntax: `group/proj#42` for issues,
-  `group/proj!7` for merge requests.
-- Posts notes to either issues or MRs via `/api/v4/projects/:id/{issues,merge_requests}/:iid/notes`.
-- Webhook auth uses GitLab's `X-Gitlab-Token` header (constant-time compare),
-  not GitHub's HMAC scheme.
-- `parseConversationId`, `shouldRespondToNote`, `verifyWebhook`,
-  `isUserAuthorized`, message chunking — all mirror the GitHub adapter's
-  behavior.
+- Moved to `packages/adapters/src/forge/gitlab/` to sit beside `forge/github`.
+- Re-exported from `@archon/adapters` so `import { GitLabAdapter } from
+'@archon/adapters'` works alongside `GitHubAdapter`.
+- Server wiring (`packages/server/src/index.ts`) was already conditional on
+  `GITLAB_TOKEN` and `GITLAB_WEBHOOK_SECRET`; only the import path changed.
+- Implements `IPlatformAdapter`, full `handleMessage` integration, webhook
+  verification, allow-list parsing, and isolation-aware codebase resolution
+  (everything `GitHubAdapter` does).
+
+Earlier in this branch I wrote a short stub adapter at the same path; that
+stub was deleted in favour of the upstream community adapter.
 
 ### Issues admin app (`@archon/issues-admin`)
 
@@ -74,34 +77,50 @@ or `octokit`. Mechanically rewriting all of them would have ballooned this
 change beyond a single session and would have broken hundreds of existing
 unit tests. The pragmatic split:
 
-| Layer                                     | Status                                         |
-| ----------------------------------------- | ---------------------------------------------- |
-| GitHub forge adapter (legacy)             | Preserved, untouched                           |
-| GitLab forge adapter (new)                | Added, tested                                  |
-| `IssueProvider` abstraction               | Added, three impls                             |
-| Server wiring (`packages/server`)         | **Still instantiates `GitHubAdapter`**         |
-| Workflow YAMLs that mention "github"      | **Unchanged** — copy any you actively use      |
-| `gh` CLI calls (e.g. `github-graphql.ts`) | **Unchanged** — would need GitLab GraphQL port |
+| Layer                                     | Status                                                  |
+| ----------------------------------------- | ------------------------------------------------------- |
+| GitHub forge adapter (legacy)             | Preserved, untouched                                    |
+| GitLab forge adapter (first-class)        | Promoted from `community/forge/gitlab`; 53 tests pass   |
+| `IssueProvider` abstraction               | Added, three impls                                      |
+| Server wiring (`packages/server`)         | Already conditional — instantiates both when configured |
+| Workflow YAMLs that mention "github"      | **Unchanged** — copy any you actively use               |
+| `gh` CLI calls (e.g. `github-graphql.ts`) | **Unchanged** — would need GitLab REST port             |
 
 ## How to finish the migration (incremental path)
 
-1. **Server wiring.** In `packages/server/src/index.ts`, replace
-   `new GitHubAdapter(...)` with `new GitLabAdapter(...)` (constructor
-   signatures match closely; just swap GitHub `webhookSecret` for GitLab
-   `webhookToken` and add `baseUrl`).
-2. **Webhook routes.** Update `packages/server/src/routes/api.ts` to validate
-   `X-Gitlab-Token` instead of `X-Hub-Signature-256`.
+The real work is much smaller than the original "98 files" headline implied —
+of the 54 actual `.ts/.tsx` files that mention GitHub, only ~6 are squarely
+GitHub-only and ~4 have GitHub-aware branches. The rest are URLs in error
+messages, JSDoc examples, and metadata key names.
+
+1. **Server wiring is already conditional.** `packages/server/src/index.ts`
+   spins up `GitHubAdapter` only when `GITHUB_TOKEN` + `WEBHOOK_SECRET` are
+   set, and `GitLabAdapter` only when `GITLAB_TOKEN` + `GITLAB_WEBHOOK_SECRET`
+   are set. To run GitLab-only, just don't set the GitHub envs.
+2. **Webhook routes.** `packages/server/src/routes/api.ts` already has a
+   GitLab webhook path; verify it against your gateway.
 3. **`getLinkedIssueNumbers`.** Port `packages/core/src/utils/github-graphql.ts`
    to use GitLab's `/api/v4/projects/:id/merge_requests/:iid/closes_issues`
    REST endpoint — no GraphQL needed.
-4. **Workflow YAMLs.** Search `.archon/workflows/` for `github` references and
+4. **`packages/core/src/handlers/clone.ts`.** Add a `git@gitlab.com:` →
+   `https://gitlab.com/` SSH-URL normalization branch and a `GITLAB_TOKEN`
+   injection branch alongside the existing GitHub ones.
+5. **`packages/isolation/src/pr-state.ts`.** Currently bails out for
+   non-`github.com` remotes. Add a `gitlab.com` branch using `glab` CLI or
+   GitLab REST.
+6. **Workflow YAMLs.** Search `.archon/workflows/` for `github` references and
    either rename them or drop them.
-5. **`@archon/issues` injection.** In `packages/core/src/orchestrator/orchestrator.ts`,
-   accept an `IssueProvider` and route any "create issue" / "comment on issue"
-   nodes through it instead of calling Octokit directly.
+7. **`@archon/issues` injection.** In
+   `packages/core/src/orchestrator/orchestrator.ts`, accept an `IssueProvider`
+   and route any "create issue" / "comment on issue" nodes through it instead
+   of calling Octokit directly.
 
-The interface and adapters are ready; the work above is a series of mechanical
-swaps once you decide which specific workflows you need.
+Stale references that are safe to leave alone (or address later as cosmetic):
+URLs to upstream Archon's GitHub repo in error messages, the `github_context`
+metadata key name (it's just a string), routing-prompt examples in
+`workflows/router.ts`, and the `/adapters/community/gitlab/` doc-site URL
+(its source file is at `packages/docs-web/src/content/docs/adapters/community/gitlab.md`
+and just needs an `aliases:` entry if you move it).
 
 ## Tests
 

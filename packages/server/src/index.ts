@@ -55,9 +55,14 @@ registerCommunityProviders();
 
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { validationErrorHook } from './routes/openapi-defaults';
-import { TelegramAdapter, GitHubAdapter, DiscordAdapter, SlackAdapter } from '@archon/adapters';
+import {
+  TelegramAdapter,
+  GitHubAdapter,
+  GitLabAdapter,
+  DiscordAdapter,
+  SlackAdapter,
+} from '@archon/adapters';
 import { GiteaAdapter } from '@archon/adapters/community/forge/gitea';
-import { GitLabAdapter } from '@archon/adapters/community/forge/gitlab';
 import { WebAdapter } from './adapters/web';
 import { MessagePersistence } from './adapters/web/persistence';
 import { SSETransport } from './adapters/web/transport';

@@ -1,64 +1,108 @@
 /**
- * GitLab webhook payload subset that Archon cares about.
+ * GitLab webhook event types
  *
- * Three event kinds matter:
- *   - Issue Hook (`object_kind: "issue"`)
- *   - Merge Request Hook (`object_kind: "merge_request"`)
- *   - Note Hook (`object_kind: "note"`) — comments on issues/MRs
- *
- * Field names follow GitLab's snake_case payloads. See
- * https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html
+ * GitLab uses `object_kind` to discriminate events (unlike GitHub's action + X-GitHub-Event header).
+ * Field naming: `iid` (project-scoped) instead of `number`, `username` instead of `login`.
  */
+
+// --- Shared sub-types ---
+
 export interface GitLabUser {
-  id: number;
   username: string;
-  name?: string;
+  name: string;
 }
 
 export interface GitLabProject {
   id: number;
   path_with_namespace: string;
-  web_url: string;
   default_branch: string;
+  web_url: string;
+  http_url_to_repo: string;
 }
 
-export interface GitLabIssueAttrs {
-  id: number;
+export interface GitLabLabel {
+  title: string;
+}
+
+// --- Note (comment) event ---
+
+export interface GitLabNoteAttributes {
+  noteable_type: 'Issue' | 'MergeRequest';
+  note: string;
+  noteable_id: number;
+}
+
+export interface GitLabIssue {
   iid: number;
   title: string;
   description: string | null;
   state: 'opened' | 'closed';
-  action?: 'open' | 'close' | 'reopen' | 'update';
-  url: string;
-  labels?: { title: string }[];
+  labels: GitLabLabel[];
 }
 
-export interface GitLabMergeRequestAttrs {
-  id: number;
+export interface GitLabMergeRequest {
   iid: number;
   title: string;
   description: string | null;
   state: 'opened' | 'closed' | 'merged';
-  action?: 'open' | 'close' | 'reopen' | 'update' | 'merge';
-  url: string;
   source_branch: string;
   target_branch: string;
+  source_project_id: number;
+  target_project_id: number;
 }
 
-export interface GitLabNoteAttrs {
-  id: number;
-  note: string;
-  noteable_type: 'Issue' | 'MergeRequest' | (string & {});
-  url: string;
-}
-
-export interface WebhookEvent {
-  object_kind: 'issue' | 'merge_request' | 'note' | (string & {});
+export interface GitLabNoteEvent {
+  object_kind: 'note';
+  event_type: 'note';
   user: GitLabUser;
   project: GitLabProject;
-  object_attributes: GitLabIssueAttrs | GitLabMergeRequestAttrs | GitLabNoteAttrs;
-  /** Present on note hooks. */
-  issue?: GitLabIssueAttrs;
-  /** Present on note hooks attached to MRs. */
-  merge_request?: GitLabMergeRequestAttrs;
+  object_attributes: GitLabNoteAttributes;
+  issue?: GitLabIssue;
+  merge_request?: GitLabMergeRequest;
 }
+
+// --- Issue lifecycle event ---
+
+export interface GitLabIssueAttributes {
+  iid: number;
+  action: 'open' | 'close' | 'reopen' | 'update' | (string & {});
+  title: string;
+  description: string | null;
+  state: 'opened' | 'closed';
+  labels: GitLabLabel[];
+}
+
+export interface GitLabIssueEvent {
+  object_kind: 'issue';
+  event_type: 'issue';
+  user: GitLabUser;
+  project: GitLabProject;
+  object_attributes: GitLabIssueAttributes;
+}
+
+// --- Merge Request lifecycle event ---
+
+export interface GitLabMergeRequestAttributes {
+  iid: number;
+  action: 'open' | 'close' | 'merge' | 'reopen' | 'update' | (string & {});
+  title: string;
+  description: string | null;
+  state: 'opened' | 'closed' | 'merged';
+  source_branch: string;
+  target_branch: string;
+  source_project_id: number;
+  target_project_id: number;
+  merge_status: string;
+}
+
+export interface GitLabMergeRequestEvent {
+  object_kind: 'merge_request';
+  event_type: 'merge_request';
+  user: GitLabUser;
+  project: GitLabProject;
+  object_attributes: GitLabMergeRequestAttributes;
+}
+
+// --- Discriminated union ---
+
+export type GitLabWebhookEvent = GitLabNoteEvent | GitLabIssueEvent | GitLabMergeRequestEvent;

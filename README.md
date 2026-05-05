@@ -20,11 +20,12 @@ Archon workflow engine creates and updates.
 | `@archon/issues-gitlab`     | GitLab REST v4 issues impl (full read/write)                             |
 | `@archon/issues-jira`       | Jira Cloud read-only impl, JQL-driven; writes throw `NotSupportedError` |
 | `@archon/issues-admin`      | Hono web app: browse Jira epics/stories via JQL, add SQLite issues      |
-| `packages/adapters/src/forge/gitlab` | GitLab platform adapter (note posting on issues + MRs)         |
 
-The original GitHub adapter at `packages/adapters/src/forge/github` is
-preserved unchanged so existing tests stay green; new deployments should wire
-the GitLab adapter instead.
+The GitLab platform adapter at `packages/adapters/src/forge/gitlab` is the
+upstream community adapter promoted to first-class — it's exported from
+`@archon/adapters` alongside `GitHubAdapter`, and wired into the server in
+`packages/server/src/index.ts`. The original `GitHubAdapter` is preserved
+unchanged so existing tests stay green; both adapters can run side-by-side.
 
 ## Running the issues admin app
 
