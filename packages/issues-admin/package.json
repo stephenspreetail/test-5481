@@ -1,0 +1,22 @@
+{
+  "name": "@archon/issues-admin",
+  "version": "0.3.10",
+  "type": "module",
+  "main": "./src/server.ts",
+  "scripts": {
+    "dev": "bun run --hot src/server.ts",
+    "start": "bun run src/server.ts",
+    "test": "bun test src/",
+    "type-check": "bun x tsc --noEmit"
+  },
+  "dependencies": {
+    "@archon/issues": "workspace:*",
+    "@archon/issues-sqlite": "workspace:*",
+    "@archon/issues-jira": "workspace:*",
+    "@archon/issues-gitlab": "workspace:*",
+    "hono": "^4.12.16"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
