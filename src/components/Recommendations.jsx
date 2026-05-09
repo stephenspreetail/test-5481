@@ -1,8 +1,7 @@
 import {
   calcRmd, calcFederalTax, calcTaxableSocialSecurity, getIrmaaSurcharge,
-  getLifetimeTaxEstimate, STANDARD_DEDUCTION, getMarginalRate
+  getLifetimeTaxEstimate, STANDARD_DEDUCTION, getMarginalRate, getRmdStartAge
 } from '../utils/taxCalc.js'
-import { getRmdStartAge } from '../utils/taxCalc.js'
 
 function fmt(n) { return '$' + Math.round(n).toLocaleString() }
 
