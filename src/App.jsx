@@ -9,9 +9,9 @@ import Recommendations from './components/Recommendations.jsx'
 import { sumBuckets } from './utils/accountTypes.js'
 
 const DEMO_ACCOUNTS = [
-  { id: 1, type: '401k', label: '401(k) Traditional', balance: 3200000 },
-  { id: 2, type: 'roth_ira', label: 'Roth IRA', balance: 400000 },
-  { id: 3, type: 'brokerage', label: 'Taxable Brokerage', balance: 400000 },
+  { id: 1, type: '401k', label: '401(k) Traditional', balance: 1500000 },
+  { id: 2, type: 'roth_ira', label: 'Roth IRA', balance: 700000 },
+  { id: 3, type: 'brokerage', label: 'Taxable Brokerage', balance: 1500000 },
 ]
 
 const DEFAULT_INFO = {
