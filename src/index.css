@@ -141,6 +141,17 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 .acct-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #1e293b; }
 .acct-table tr:last-child td { border-bottom: none; }
 .text-right { text-align: right; font-variant-numeric: tabular-nums; }
+.acct-row { cursor: pointer; transition: background 0.1s; }
+.acct-row:hover { background: var(--surface2); }
+.acct-row:hover::after { content: ' ✎'; color: var(--text-dim); font-size: 0.75rem; }
+.edit-row td { padding: 0.4rem 0.5rem; background: var(--surface2); }
+.edit-row:first-child td:first-child { border-radius: 6px 0 0 0; }
+.input.input-sm { padding: 0.35rem 0.6rem; font-size: 0.82rem; }
+.select.select-sm { padding: 0.35rem 0.6rem; font-size: 0.82rem; }
+.edit-cell-stack { display: flex; flex-direction: column; gap: 0.35rem; }
+.edit-actions { white-space: nowrap; }
+.btn-save { background: var(--green); color: #052e16; border: none; border-radius: 6px; padding: 0.3rem 0.75rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; margin-right: 0.35rem; }
+.btn-save:hover { opacity: 0.85; }
 
 .bucket-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; }
 
