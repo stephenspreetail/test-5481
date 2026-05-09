@@ -4,6 +4,7 @@ import PersonalInfo from './components/PersonalInfo.jsx'
 import BucketSummary from './components/BucketSummary.jsx'
 import TaxExposure from './components/TaxExposure.jsx'
 import RmdProjection from './components/RmdProjection.jsx'
+import PortfolioGrowth from './components/PortfolioGrowth.jsx'
 import ConversionWindow from './components/ConversionWindow.jsx'
 import Recommendations from './components/Recommendations.jsx'
 import { sumBuckets } from './utils/accountTypes.js'
@@ -80,6 +81,7 @@ export default function App() {
             ) : (
               <>
                 <BucketSummary buckets={buckets} />
+                <PortfolioGrowth buckets={buckets} info={info} />
                 <TaxExposure buckets={buckets} info={info} />
                 <RmdProjection buckets={buckets} info={info} />
                 <div className="next-btn-wrap">
