@@ -37,7 +37,7 @@ export default function Recommendations({ buckets, info }) {
     buckets.traditional * Math.pow(1.05, yearsToRmd), socialSecurity, filingStatus
   )
   const optimizedLifetimeTax = getLifetimeTaxEstimate(
-    scaledIdealTrad.max * Math.pow(1.05, 0), socialSecurity, filingStatus
+    scaledIdealTrad.max * Math.pow(1.05, yearsToRmd), socialSecurity, filingStatus
   )
   const potentialSavings = Math.max(0, currentLifetimeTax - optimizedLifetimeTax)
 
@@ -66,7 +66,7 @@ export default function Recommendations({ buckets, info }) {
     recs.push({
       priority: 'high',
       title: `Reduce Traditional Balance to ${fmt(scaledIdealTrad.max)}`,
-      detail: `Your current traditional balance of ${fmt(buckets.traditional)} will generate ${fmt(calcRmd(buckets.traditional * Math.pow(1.05, yearsToRmd), rmdStartAge))} in forced RMDs at age ${rmdStartAge}. Target ${fmt(scaledIdealTrad.min)}–${fmt(scaledIdealTrad.max)} to keep RMDs at ${fmt(calcRmd(scaledIdealTrad.max, rmdStartAge))}–${fmt(calcRmd(scaledIdealTrad.min, rmdStartAge))}.`,
+      detail: `Your current traditional balance of ${fmt(buckets.traditional)} will generate ${fmt(calcRmd(buckets.traditional * Math.pow(1.05, yearsToRmd), rmdStartAge))} in forced RMDs at age ${rmdStartAge}. Target ${fmt(scaledIdealTrad.min)}–${fmt(scaledIdealTrad.max)} today (growing to ${fmt(scaledIdealTrad.max * Math.pow(1.05, yearsToRmd))} by ${rmdStartAge}) to keep RMDs at ${fmt(calcRmd(scaledIdealTrad.max * Math.pow(1.05, yearsToRmd), rmdStartAge))}–${fmt(calcRmd(scaledIdealTrad.min * Math.pow(1.05, yearsToRmd), rmdStartAge))}.`,
       action: `Redirect this gap to Roth conversions and/or taxable brokerage contributions.`,
     })
   }
