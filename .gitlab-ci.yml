@@ -1,0 +1,18 @@
+# Reviews merge requests with Claude and posts the review back to the MR.
+#
+# Requires two CI/CD variables:
+#   ANTHROPIC_API_KEY  — your Anthropic API key
+#   GITLAB_TOKEN       — a project/group access token with `api` scope
+#                        (CI_JOB_TOKEN cannot post MR notes)
+mr-review:
+  image: python:3.12-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - pip install -e .
+    - >
+      mr-review gitlab
+      --project "$CI_PROJECT_ID"
+      --mr "$CI_MERGE_REQUEST_IID"
+      --url "$CI_SERVER_URL"
+      --post

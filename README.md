@@ -1,11 +1,11 @@
 # MR Review Agent
 
 An AI merge-request / pull-request review agent powered by Claude. It reads a
-diff — either a local `git diff` or a GitHub pull request — asks Claude to review
-it as a staff engineer would, and returns structured findings (severity,
-category, confidence, location, and a suggested fix). It can print the review to
-your terminal, render it as Markdown, or post it straight back to a GitHub PR
-with inline comments.
+diff — a local `git diff`, a GitHub pull request, or a GitLab merge request —
+asks Claude to review it as a staff engineer would, and returns structured
+findings (severity, category, confidence, location, and a suggested fix). It can
+print the review to your terminal, render it as Markdown, or post it straight
+back to a GitHub PR or GitLab MR with inline comments.
 
 ## How it works
 
@@ -14,13 +14,15 @@ diff source ─▶ Reviewer (Claude) ─▶ ReviewResult ─▶ terminal / markd
 ```
 
 - **`mr_review/diff_source.py`** — fetches the change to review (`GitDiffSource`,
-  `GitHubPRSource`).
+  `GitHubPRSource`, `GitLabMRSource`).
 - **`mr_review/reviewer.py`** — the review brain. Sends the diff to Claude with a
   structured-output JSON schema so every finding has a severity, category,
   confidence, file/line, and suggestion.
 - **`mr_review/formatter.py`** — renders a `ReviewResult` as Markdown or plain text.
-- **`mr_review/github.py`** — posts the review back to a PR, placing inline
+- **`mr_review/github.py`** — posts the review back to a GitHub PR, placing inline
   comments on findings that anchor to a changed line.
+- **`mr_review/gitlab.py`** — posts the review back to a GitLab MR as inline
+  discussions plus a summary note.
 - **`mr_review/cli.py`** — the `mr-review` command.
 
 The agent uses Claude with adaptive thinking and `effort: high`, streams the
@@ -62,6 +64,15 @@ Review a GitHub PR and post the review back to it:
 mr-review github --repo owner/name --pr 42 --post
 ```
 
+Review a GitLab merge request (works against gitlab.com or a self-hosted
+instance via `--url`):
+
+```bash
+export GITLAB_TOKEN=glpat-...
+mr-review gitlab --project group/name --mr 42 --format markdown
+mr-review gitlab --project group/name --mr 42 --post
+```
+
 Use it as a CI gate (exit non-zero on any critical/high finding):
 
 ```bash
@@ -78,6 +89,8 @@ variables:
 | Variable                 | Default            | Purpose                                  |
 | ------------------------ | ------------------ | ---------------------------------------- |
 | `ANTHROPIC_API_KEY`      | —                  | Required. Your Anthropic API key.        |
+| `GITHUB_TOKEN`           | —                  | Token for `mr-review github`.            |
+| `GITLAB_TOKEN`           | —                  | Token (api scope) for `mr-review gitlab`. |
 | `MR_REVIEW_MODEL`        | `claude-opus-4-8`  | Model to use for the review.             |
 | `MR_REVIEW_MAX_TOKENS`   | `16000`            | Max output tokens.                       |
 | `MR_REVIEW_EFFORT`       | `high`             | Effort: `low`/`medium`/`high`/`xhigh`/`max`. |
@@ -90,6 +103,13 @@ the review back. It needs one repository secret, `ANTHROPIC_API_KEY` (the
 built-in `GITHUB_TOKEN` provides PR write access). By default the agent never
 self-approves — an `approve` verdict is downgraded to a plain comment unless you
 pass `--approve`.
+
+## GitLab CI
+
+`.gitlab-ci.yml` runs the agent on merge-request pipelines and posts the review
+back. It needs two CI/CD variables: `ANTHROPIC_API_KEY` and a `GITLAB_TOKEN`
+with `api` scope (the built-in `CI_JOB_TOKEN` cannot post MR notes). The agent
+only approves the MR when invoked with `--approve`.
 
 ## Tests
 
