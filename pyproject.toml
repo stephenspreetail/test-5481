@@ -1,0 +1,20 @@
+[project]
+name = "mr-review-agent"
+version = "0.1.0"
+description = "An AI merge-request / pull-request review agent powered by Claude."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.69.0",
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+mr-review = "mr_review.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["mr_review"]
